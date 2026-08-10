@@ -1,0 +1,34 @@
+app:
+  name: "Admin API HRIS"
+  host: "0.0.0.0"
+  port: 9000
+  env: "development"
+  cookie_secure: false
+  cookie_domain: localhost
+  prefork: false
+
+database:
+  username: postgres
+  password: postgres
+  host: localhost
+  port: 5432
+  name: "hr_saas"
+  sslmode: "disable"
+  timezone: "Asia/Jakarta"
+  pool:
+    idle: 10
+    max: 100
+    lifetime: 300
+
+log:
+  level: "debug"
+  format: "text"
+
+s3:
+  endpoint: "" # kosongkan untuk AWS, isi untuk MinIO/Cloudflare R2 (contoh: http://localhost:9000)
+  region: ""
+  bucket: "s"
+  public_bucket: ""
+  access_key: ""
+  secret_key: ""
+  public_url: "" # base URL publik untuk public_bucket

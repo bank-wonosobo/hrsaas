@@ -20,10 +20,15 @@ database:
     max: 100
     lifetime: 300
 
-auth:
-  jwt_secret: "your_jwt_secret"
-  jwt_expiration: 10
-
 log:
   level: "debug"
   format: "text"
+
+s3:
+  endpoint: "https://f25f6724d94ab200c9116b49d8acc632.r2.cloudflarestorage.com" # kosongkan untuk AWS, isi untuk MinIO/Cloudflare R2 (contoh: http://localhost:9000)
+  region: "apac"
+  bucket: "bw-akses-plus"
+  public_bucket: "public-bucket"
+  access_key: "453ce78d7559fa4720aa5f164108af0a"
+  secret_key: "186829944f018834af8b664642f1f61fea8d1bf4a6dcb26470218341e267cf4c"
+  public_url: "https://r2.bankwonosobo.co.id" # base URL publik untuk public_bucket
