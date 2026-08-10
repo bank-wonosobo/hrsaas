@@ -27,7 +27,7 @@ log:
 s3:
   endpoint: "" # kosongkan untuk AWS, isi untuk MinIO/Cloudflare R2 (contoh: http://localhost:9000)
   region: ""
-  bucket: "s"
+  bucket: ""
   public_bucket: ""
   access_key: ""
   secret_key: ""
