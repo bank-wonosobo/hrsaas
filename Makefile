@@ -57,3 +57,9 @@ run-expo:
 ## Jalankan admin-panel (Next.js)
 run-admin-panel:
 	cd apps/admin-panel && npm run dev
+
+run-tidy-admin:
+	cd apps/admin-api && go mod tidy
+
+run-tidy-client:
+	cd apps/admin-api && go mod tidy
