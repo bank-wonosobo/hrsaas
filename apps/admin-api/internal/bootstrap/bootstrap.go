@@ -5,6 +5,7 @@ import (
 	authRepo "hrsaas-admin-api/internal/modules/auth/repository"
 	authUc "hrsaas-admin-api/internal/modules/auth/usecase"
 	"hrsaas-admin-api/pkg/middleware"
+	pkg "hrsaas-admin-api/pkg/s3"
 
 	companyHttp "hrsaas-admin-api/internal/modules/company/delivery/http"
 	companyRepo "hrsaas-admin-api/internal/modules/company/repository"
@@ -14,7 +15,6 @@ import (
 	employeeRepo "hrsaas-admin-api/internal/modules/employee/repository"
 	employeeUc "hrsaas-admin-api/internal/modules/employee/usecase"
 
-	httpSalary "hrsaas-admin-api/internal/modules/salary/delivery/http"
 	userHttp "hrsaas-admin-api/internal/modules/user/delivery/http"
 	userRepo "hrsaas-admin-api/internal/modules/user/repository"
 	"hrsaas-admin-api/internal/modules/user/usecase"
@@ -32,6 +32,7 @@ type BootstrapConfig struct {
 	Log       *logrus.Logger
 	Validator *validator.Validate
 	Config    *viper.Viper
+	S3Client  *pkg.S3Client
 }
 
 func Bootstrap(cfg *BootstrapConfig) {
@@ -89,7 +90,6 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
 	employeeDocsController := employeeHttp.NewEmployeeDocumentController(employeeDocsUseCase, cfg.Log)
 	// module salary
-	salaryHandler := httpSalary.NewSalaryController(cfg.Log)
 
 	// ====== MIDDLEWARE =======
 	authMiddleware, protected := middleware.NewProtected(authUseCase)
@@ -107,5 +107,4 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeContractController.RegisterRoutes(api, protected)
 	employeeDocsController.RegisterRoutes(api, protected)
 	// module salary
-	salaryHandler.RegisterRoutes(api, protected)
 }

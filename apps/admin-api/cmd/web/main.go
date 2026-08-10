@@ -7,6 +7,7 @@ import (
 	"hrsaas-admin-api/pkg/database"
 	"hrsaas-admin-api/pkg/fiber"
 	"hrsaas-admin-api/pkg/logger"
+	pkg "hrsaas-admin-api/pkg/s3"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -20,12 +21,15 @@ func main() {
 
 	app := fiber.New(config)
 
+	s3 := pkg.NewS3Client(config)
+
 	bootstrap.Bootstrap(&bootstrap.BootstrapConfig{
 		App:       app,
 		DB:        db,
 		Log:       logger,
 		Validator: validator.New(),
 		Config:    config,
+		S3Client:  s3,
 	})
 
 	addr := fmt.Sprintf("%s:%d", config.GetString("app.host"), config.GetInt("app.port"))
