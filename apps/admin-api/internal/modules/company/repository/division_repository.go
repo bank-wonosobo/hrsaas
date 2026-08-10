@@ -1,0 +1,66 @@
+package repository
+
+import (
+	"hrsaas-admin-api/internal/modules/company/entity"
+	"hrsaas-admin-api/internal/modules/company/model"
+	"hrsaas-admin-api/pkg/repository"
+
+	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+)
+
+type DivisionRepository struct {
+	repository.Repository[entity.Division]
+	Log *logrus.Logger
+}
+
+func NewDivisionRepository(log *logrus.Logger) *DivisionRepository {
+	return &DivisionRepository{Log: log}
+}
+
+func (r *DivisionRepository) Search(db *gorm.DB, request *model.SearchDivisionRequest) ([]entity.Division, int64, error) {
+	var items []entity.Division
+
+	if err := db.Scopes(r.FilterSearch(request)).
+		Offset((request.Page - 1) * request.Size).
+		Limit(request.Size).
+		Find(&items).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var total int64
+	if err := db.Model(&entity.Division{}).Scopes(r.FilterSearch(request)).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
+}
+
+func (r *DivisionRepository) FilterSearch(request *model.SearchDivisionRequest) func(tx *gorm.DB) *gorm.DB {
+	return func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Where("company_id = ?", request.CompanyID)
+		if key := request.Name; key != "" {
+			key = "%" + key + "%"
+			tx = tx.Where("name LIKE ?", key).Or("description LIKE ?", key)
+		}
+		return tx
+	}
+}
+
+func (r *DivisionRepository) FindByName(db *gorm.DB, entity *entity.Division, name string, preloads ...string) error {
+	query := db
+
+	for _, preload := range preloads {
+		query = query.Preload(preload)
+	}
+
+	return query.Where("name = ?", name).Take(entity).Error
+}
+
+func (r *DivisionRepository) FindByIDAndCompany(db *gorm.DB, id string, companyID string) (*entity.Division, error) {
+	var item entity.Division
+	if err := db.Where("id = ?", id).Where("company_id = ?", companyID).Take(&item).Error; err != nil {
+		return nil, err
+	}
+	return &item, nil
+}

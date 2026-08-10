@@ -1,0 +1,100 @@
+package model
+
+import "hrsaas-admin-api/internal/modules/company/entity"
+
+type CompanyResponse struct {
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	LogoUrl        *string `json:"logo_url"`
+	BussinessField *string `json:"bussiness_field"`
+	Address        *string `json:"address"`
+	Province       *string `json:"province"`
+	City           *string `json:"city"`
+	District       *string `json:"district"`
+	Village        *string `json:"village"`
+	ZipCode        *string `json:"zip_code"`
+	PhoneNumber    *string `json:"phone_number"`
+	FaxNumber      *string `json:"fax_number"`
+	Email          *string `json:"email"`
+	Website        *string `json:"website"`
+	CreatedAt      int64   `json:"created_at"`
+	UpdatedAt      int64   `json:"updated_at"`
+}
+
+type CreateCompanyRequest struct {
+	Name           string `json:"name" validate:"required"`
+	LogoUrl        string `json:"logo_url,omitempty"`
+	BussinessField string `json:"bussiness_field,omitempty"`
+	Address        string `json:"address,omitempty"`
+	Province       string `json:"province,omitempty"`
+	City           string `json:"city,omitempty"`
+	District       string `json:"district,omitempty"`
+	Village        string `json:"village,omitempty"`
+	ZipCode        string `json:"zip_code,omitempty"`
+	PhoneNumber    string `json:"phone_number,omitempty"`
+	FaxNumber      string `json:"fax_number,omitempty"`
+	Email          string `json:"email,omitempty"`
+	Website        string `json:"website,omitempty"`
+}
+
+type RegisterCompanyRequest struct {
+	UserID         string  `json:"-" validate:"required"`
+	Name           string  `json:"name" validate:"required"`
+	LogoUrl        *string `json:"logo_url,omitempty"`
+	BussinessField *string `json:"bussiness_field,omitempty"`
+	Address        *string `json:"address,omitempty"`
+	Province       *string `json:"province,omitempty"`
+	City           *string `json:"city,omitempty"`
+	District       *string `json:"district,omitempty"`
+	Village        *string `json:"village,omitempty"`
+	ZipCode        *string `json:"zip_code,omitempty"`
+	PhoneNumber    *string `json:"phone_number,omitempty"`
+	FaxNumber      *string `json:"fax_number,omitempty"`
+	Email          *string `json:"email,omitempty"`
+	Website        *string `json:"website,omitempty"`
+}
+
+type UpdateCompanyRequest struct {
+	Name           *string `json:"name,omitempty"`
+	LogoUrl        *string `json:"logo_url,omitempty"`
+	BussinessField *string `json:"bussiness_field,omitempty"`
+	Address        *string `json:"address,omitempty"`
+	Province       *string `json:"province,omitempty"`
+	City           *string `json:"city,omitempty"`
+	District       *string `json:"district,omitempty"`
+	Village        *string `json:"village,omitempty"`
+	ZipCode        *string `json:"zip_code,omitempty"`
+	PhoneNumber    *string `json:"phone_number,omitempty"`
+	FaxNumber      *string `json:"fax_number,omitempty"`
+	Email          *string `json:"email,omitempty"`
+	Website        *string `json:"website,omitempty"`
+}
+
+type SearchCompanyRequest struct {
+	CompanyId string `json:"-" validate:"required"`
+	Name      string `json:"name,omitempty" validate:"max=100"`
+	Page      int    `json:"page" validate:"min=1"`
+	Size      int    `json:"size" validate:"min=1,max=100"`
+}
+
+func CompanyToResponse(company *entity.Company) *CompanyResponse {
+	if company == nil {
+		return nil
+	}
+	return &CompanyResponse{
+		ID:             company.ID,
+		Name:           company.Name,
+		LogoUrl:        company.LogoUrl,
+		BussinessField: company.BussinessField,
+		Address:        company.Address,
+		Province:       company.Province,
+		City:           company.City,
+		District:       company.District,
+		Village:        company.Village,
+		ZipCode:        company.ZipCode,
+		PhoneNumber:    company.PhoneNumber,
+		FaxNumber:      company.FaxNumber,
+		Email:          company.Email,
+		Website:        company.Website,
+	}
+}

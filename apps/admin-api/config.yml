@@ -1,0 +1,29 @@
+app:
+  name: "Admin API HRIS"
+  host: "0.0.0.0"
+  port: 9000
+  env: "development"
+  cookie_secure: false
+  cookie_domain: localhost
+  prefork: false
+
+database:
+  username: postgres
+  password: postgres
+  host: localhost
+  port: 5432
+  name: "hr_saas"
+  sslmode: "disable"
+  timezone: "Asia/Jakarta"
+  pool:
+    idle: 10
+    max: 100
+    lifetime: 300
+
+auth:
+  jwt_secret: "your_jwt_secret"
+  jwt_expiration: 10
+
+log:
+  level: "debug"
+  format: "text"
