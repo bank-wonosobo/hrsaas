@@ -1,0 +1,435 @@
+### ============================================================================
+### Payroll Module — HRIS Admin API
+### ============================================================================
+# Requires the VS Code "REST Client" extension (or a compatible .http runner).
+#
+# How to run:
+#   1. Fill in @email / @password below with a user that has the payroll
+#      permissions (SALARY_COMPONENTS, EMPLOYEE_SALARIES, EMPLOYEE_ALLOWANCES,
+#      EMPLOYEE_DEDUCTIONS, PAYROLLS, PAYROLL_ADJUSTMENTS, PAYROLL_PAYMENTS,
+#      PAYROLL_APPROVALS — see cmd/seed/main.go).
+#   2. Click "Send Request" on "Login" first. REST Client automatically stores
+#      the `token` session cookie and replays it on every request below.
+#   3. Run requests top to bottom — later requests reuse ids captured from
+#      earlier responses (e.g. {{createPayroll.response.body.$.data.id}}).
+### ============================================================================
+
+@baseUrl = http://localhost:9000/api
+@email = admin@company.com
+@password = Password123!
+
+### ── Auth ──────────────────────────────────────────────────────────────────
+
+### Login
+# @name login
+POST {{baseUrl}}/_login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Logout
+DELETE {{baseUrl}}/users/_logout
+
+
+### ── Lookup: an employee to run the rest of this file against ───────────────
+
+### List employees (grab the first one as the test subject)
+# @name listEmployees
+GET {{baseUrl}}/employees?page=1&size=10
+
+
+@employeeId = {{listEmployees.response.body.$.data[0].id}}
+
+
+### ============================================================================
+### 1. Salary Components  (master data — komponen tunjangan/potongan)
+### ============================================================================
+
+### Create component: Transport (EARNING, fixed)
+# @name createTransport
+POST {{baseUrl}}/salary-components
+Content-Type: application/json
+
+{
+  "code": "TRANSPORT",
+  "name": "Tunjangan Transport",
+  "type": "EARNING",
+  "calculation_type": "FIXED",
+  "is_taxable": true,
+  "is_bpjs_base": false
+}
+
+@transportComponentId = {{createTransport.response.body.$.data.id}}
+
+### Create component: Meal (EARNING, fixed)
+# @name createMeal
+POST {{baseUrl}}/salary-components
+Content-Type: application/json
+
+{
+  "code": "MEAL",
+  "name": "Tunjangan Makan",
+  "type": "EARNING",
+  "calculation_type": "FIXED",
+  "is_taxable": true,
+  "is_bpjs_base": false
+}
+
+@mealComponentId = {{createMeal.response.body.$.data.id}}
+
+### Create component: Position Allowance (EARNING, percentage of basic salary)
+# @name createPositionAllowance
+POST {{baseUrl}}/salary-components
+Content-Type: application/json
+
+{
+  "code": "POSITION_ALLOWANCE",
+  "name": "Tunjangan Jabatan",
+  "type": "EARNING",
+  "calculation_type": "PERCENTAGE",
+  "is_taxable": true,
+  "is_bpjs_base": false
+}
+
+@positionAllowanceComponentId = {{createPositionAllowance.response.body.$.data.id}}
+
+### Create component: BPJS Kesehatan (DEDUCTION, percentage of basic salary)
+# @name createBpjsHealth
+POST {{baseUrl}}/salary-components
+Content-Type: application/json
+
+{
+  "code": "BPJS_HEALTH",
+  "name": "BPJS Kesehatan",
+  "type": "DEDUCTION",
+  "calculation_type": "PERCENTAGE",
+  "is_taxable": false,
+  "is_bpjs_base": true
+}
+
+@bpjsHealthComponentId = {{createBpjsHealth.response.body.$.data.id}}
+
+### Create component: Koperasi (DEDUCTION, fixed)
+# @name createCooperativeLoan
+POST {{baseUrl}}/salary-components
+Content-Type: application/json
+
+{
+  "code": "LOAN_DEDUCTION",
+  "name": "Potongan Koperasi",
+  "type": "DEDUCTION",
+  "calculation_type": "FIXED",
+  "is_taxable": false,
+  "is_bpjs_base": false
+}
+
+@loanDeductionComponentId = {{createCooperativeLoan.response.body.$.data.id}}
+
+### List salary components
+GET {{baseUrl}}/salary-components?page=1&size=20
+
+### List salary components — EARNING only, active only
+GET {{baseUrl}}/salary-components?type=EARNING&active_only=true
+
+### Salary component detail
+GET {{baseUrl}}/salary-components/{{transportComponentId}}
+
+### Update salary component
+PUT {{baseUrl}}/salary-components/{{transportComponentId}}
+Content-Type: application/json
+
+{
+  "name": "Tunjangan Transport (Revisi)",
+  "is_taxable": false
+}
+
+### Delete salary component
+# DELETE {{baseUrl}}/salary-components/{{transportComponentId}}
+
+
+### ============================================================================
+### 2. Employee Salary  (histori gaji pokok)
+### ============================================================================
+
+### Create employee basic salary
+# @name createEmployeeSalary
+POST {{baseUrl}}/employee-salaries
+Content-Type: application/json
+
+{
+  "employee_id": "{{employeeId}}",
+  "basic_salary": 6000000,
+  "effective_date": "2026-01-01"
+}
+
+@employeeSalaryId = {{createEmployeeSalary.response.body.$.data.id}}
+
+### List employee salaries for this employee
+GET {{baseUrl}}/employee-salaries?employee_id={{employeeId}}
+
+### List currently-active employee salaries only
+GET {{baseUrl}}/employee-salaries?employee_id={{employeeId}}&active_only=true
+
+### Employee salary detail
+GET {{baseUrl}}/employee-salaries/{{employeeSalaryId}}
+
+### Update employee salary
+PUT {{baseUrl}}/employee-salaries/{{employeeSalaryId}}
+Content-Type: application/json
+
+{
+  "basic_salary": 6500000
+}
+
+### Delete employee salary
+# DELETE {{baseUrl}}/employee-salaries/{{employeeSalaryId}}
+
+
+### ============================================================================
+### 3. Employee Allowances  (tunjangan per pegawai)
+### ============================================================================
+
+### Add Transport allowance (fixed amount)
+# @name createTransportAllowance
+POST {{baseUrl}}/employee-allowances
+Content-Type: application/json
+
+{
+  "employee_id": "{{employeeId}}",
+  "salary_component_id": "{{transportComponentId}}",
+  "amount": 300000,
+  "effective_date": "2026-01-01"
+}
+
+@employeeAllowanceId = {{createTransportAllowance.response.body.$.data.id}}
+
+### Add Meal allowance (fixed amount)
+POST {{baseUrl}}/employee-allowances
+Content-Type: application/json
+
+{
+  "employee_id": "{{employeeId}}",
+  "salary_component_id": "{{mealComponentId}}",
+  "amount": 500000,
+  "effective_date": "2026-01-01"
+}
+
+### Add Position allowance (percentage of basic salary)
+POST {{baseUrl}}/employee-allowances
+Content-Type: application/json
+
+{
+  "employee_id": "{{employeeId}}",
+  "salary_component_id": "{{positionAllowanceComponentId}}",
+  "percentage": 10,
+  "effective_date": "2026-01-01"
+}
+
+### List employee allowances
+GET {{baseUrl}}/employee-allowances?employee_id={{employeeId}}&active_only=true
+
+### Employee allowance detail
+GET {{baseUrl}}/employee-allowances/{{employeeAllowanceId}}
+
+### Update employee allowance
+PUT {{baseUrl}}/employee-allowances/{{employeeAllowanceId}}
+Content-Type: application/json
+
+{
+  "amount": 350000
+}
+
+### Delete employee allowance
+# DELETE {{baseUrl}}/employee-allowances/{{employeeAllowanceId}}
+
+
+### ============================================================================
+### 4. Employee Deductions  (potongan per pegawai)
+### ============================================================================
+
+### Add BPJS Kesehatan deduction (percentage of basic salary)
+# @name createBpjsDeduction
+POST {{baseUrl}}/employee-deductions
+Content-Type: application/json
+
+{
+  "employee_id": "{{employeeId}}",
+  "salary_component_id": "{{bpjsHealthComponentId}}",
+  "percentage": 1,
+  "effective_date": "2026-01-01"
+}
+
+@employeeDeductionId = {{createBpjsDeduction.response.body.$.data.id}}
+
+### Add Koperasi deduction (fixed amount)
+POST {{baseUrl}}/employee-deductions
+Content-Type: application/json
+
+{
+  "employee_id": "{{employeeId}}",
+  "salary_component_id": "{{loanDeductionComponentId}}",
+  "amount": 100000,
+  "effective_date": "2026-01-01"
+}
+
+### List employee deductions
+GET {{baseUrl}}/employee-deductions?employee_id={{employeeId}}&active_only=true
+
+### Employee deduction detail
+GET {{baseUrl}}/employee-deductions/{{employeeDeductionId}}
+
+### Update employee deduction
+PUT {{baseUrl}}/employee-deductions/{{employeeDeductionId}}
+Content-Type: application/json
+
+{
+  "amount": 120000
+}
+
+### Delete employee deduction
+# DELETE {{baseUrl}}/employee-deductions/{{employeeDeductionId}}
+
+
+### ============================================================================
+### 5. Payroll  (proses payroll bulanan)
+### ============================================================================
+
+### Create a DRAFT payroll for a period
+# @name createPayroll
+POST {{baseUrl}}/payrolls
+Content-Type: application/json
+
+{
+  "period_month": 8,
+  "period_year": 2026
+}
+
+@payrollId = {{createPayroll.response.body.$.data.id}}
+
+### List payrolls
+GET {{baseUrl}}/payrolls?page=1&size=10
+
+### List payrolls — filter by status/year
+GET {{baseUrl}}/payrolls?status=DRAFT&period_year=2026
+
+### Payroll detail (includes payroll_details + payroll_items snapshot)
+# @name payrollDetail
+GET {{baseUrl}}/payrolls/{{payrollId}}
+
+### Calculate payroll — snapshots basic salary + active allowances/deductions
+### for every active employee into payroll_details/payroll_items (DRAFT -> CALCULATED)
+POST {{baseUrl}}/payrolls/{{payrollId}}/calculate
+
+### Submit payroll for approval (CALCULATED -> SUBMITTED)
+POST {{baseUrl}}/payrolls/{{payrollId}}/submit
+
+### Approve payroll (SUBMITTED -> APPROVED)
+POST {{baseUrl}}/payrolls/{{payrollId}}/approve
+
+### Reject payroll (SUBMITTED -> CALCULATED, for correction)
+# POST {{baseUrl}}/payrolls/{{payrollId}}/reject
+# Content-Type: application/json
+#
+# {
+#   "notes": "Tunjangan jabatan Andi belum sesuai, mohon dikoreksi"
+# }
+
+### Cancel payroll (DRAFT/CALCULATED/SUBMITTED -> CANCELLED)
+# POST {{baseUrl}}/payrolls/{{payrollId}}/cancel
+
+### Pay payroll — generates one PENDING payroll_payment per employee (APPROVED -> PAID)
+POST {{baseUrl}}/payrolls/{{payrollId}}/pay
+
+### List approval history for a payroll
+GET {{baseUrl}}/payrolls/{{payrollId}}/approvals
+
+### Delete payroll (only allowed while still DRAFT)
+# DELETE {{baseUrl}}/payrolls/{{payrollId}}
+
+
+### ============================================================================
+### 6. Payroll Details & Adjustments  (bonus / THR / koreksi per pegawai)
+### ============================================================================
+
+@payrollDetailId = {{payrollDetail.response.body.$.data.details[0].id}}
+
+### Payroll detail for one employee (basic salary + items + adjustments)
+GET {{baseUrl}}/payroll-details/{{payrollDetailId}}
+
+### Add a THR adjustment to one employee's payroll detail
+# @name createAdjustment
+POST {{baseUrl}}/payroll-details/{{payrollDetailId}}/adjustments
+Content-Type: application/json
+
+{
+  "type": "THR",
+  "name": "THR Idul Fitri 2026",
+  "amount": 6000000,
+  "description": "THR sebesar 1x gaji pokok"
+}
+
+@payrollAdjustmentId = {{createAdjustment.response.body.$.data.id}}
+
+### Add a Bonus adjustment
+POST {{baseUrl}}/payroll-details/{{payrollDetailId}}/adjustments
+Content-Type: application/json
+
+{
+  "type": "BONUS",
+  "name": "Bonus Kinerja Q2",
+  "amount": 500000
+}
+
+### List adjustments for a payroll detail
+GET {{baseUrl}}/payroll-details/{{payrollDetailId}}/adjustments
+
+### Delete an adjustment (only while payroll is DRAFT/CALCULATED)
+DELETE {{baseUrl}}/payroll-adjustments/{{payrollAdjustmentId}}
+
+
+### ============================================================================
+### 7. Payroll Payments  (integrasi pembayaran ke bank)
+### ============================================================================
+
+### List all payments
+GET {{baseUrl}}/payroll-payments?page=1&size=20
+
+### List payments for one payroll
+# @name listPayrollPayments
+GET {{baseUrl}}/payroll-payments?payroll_id={{payrollId}}
+
+### List payments filtered by status
+GET {{baseUrl}}/payroll-payments?status=PENDING
+
+@paymentId = {{listPayrollPayments.response.body.$.data[0].id}}
+
+### Payment detail
+GET {{baseUrl}}/payroll-payments/{{paymentId}}
+
+### Update payment status — mark as PROCESSING (e.g. sent to the bank)
+PATCH {{baseUrl}}/payroll-payments/{{paymentId}}/status
+Content-Type: application/json
+
+{
+  "status": "PROCESSING"
+}
+
+### Update payment status — mark as SUCCESS (e.g. bank callback confirms disbursement)
+PATCH {{baseUrl}}/payroll-payments/{{paymentId}}/status
+Content-Type: application/json
+
+{
+  "status": "SUCCESS",
+  "payment_reference": "TRX-20260825-0001"
+}
+
+### Update payment status — mark as FAILED
+# PATCH {{baseUrl}}/payroll-payments/{{paymentId}}/status
+# Content-Type: application/json
+#
+# {
+#   "status": "FAILED"
+# }

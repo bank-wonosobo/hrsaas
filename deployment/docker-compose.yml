@@ -1,0 +1,62 @@
+name: hrsaas
+
+services:
+  admin-api:
+    image: ghcr.io/bank-wonosobo/hrsaas/admin-api:${TAG:-development}
+    container_name: hrsaas-admin-api
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_API_PORT:-9001}:9000"
+    volumes:
+      - ./config/admin-api.config.yml:/app/config.yml:ro
+    networks:
+      - hrsaas-net
+
+  client-api:
+    image: ghcr.io/bank-wonosobo/hrsaas/client-api:${TAG:-development}
+    container_name: hrsaas-client-api
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_API_PORT:-9002}:9000"
+    volumes:
+      - ./config/client-api.config.yml:/app/config.yml:ro
+    networks:
+      - hrsaas-net
+
+  admin-panel:
+    image: ghcr.io/bank-wonosobo/hrsaas/admin-panel:${TAG:-development}
+    container_name: hrsaas-admin-panel
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PANEL_PORT:-3000}:3000"
+    networks:
+      - hrsaas-net
+
+  cloudflared-admin-api:
+    image: cloudflare/cloudflared:latest
+    container_name: hrsaas-admin-api-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_ADMIN_API_TOKEN}
+    networks:
+      - hrsaas-net
+
+  cloudflared-client-api:
+    image: cloudflare/cloudflared:latest
+    container_name: hrsaas-client-api-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_CLIENT_API_TOKEN}
+    networks:
+      - hrsaas-net
+
+  cloudflared-admin-panel:
+    image: cloudflare/cloudflared:latest
+    container_name: hrsaas-admin-panel-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CF_ADMIN_PANEL_TOKEN}
+    networks:
+      - hrsaas-net
+
+networks:
+  hrsaas-net:
+    name: hrsaas-net
+    driver: bridge

@@ -50,6 +50,18 @@ func (r *EmployeeRepository) Search(db *gorm.DB, request *model.SearchEmployeeRe
 	return employee, total, nil
 }
 
+// ListActiveByCompany returns every active employee of a company, used by the
+// payroll module to build payroll details for a period.
+func (r *EmployeeRepository) ListActiveByCompany(db *gorm.DB, companyID string) ([]entity.Employee, error) {
+	var employees []entity.Employee
+	err := db.
+		Where("company_id = ?", companyID).
+		Where("is_active = ?", true).
+		Order("fullname ASC").
+		Find(&employees).Error
+	return employees, err
+}
+
 func (r *EmployeeRepository) FilterSearch(request *model.SearchEmployeeRequest) func(tx *gorm.DB) *gorm.DB {
 	return func(tx *gorm.DB) *gorm.DB {
 		tx = tx.Where("company_id = ?", request.CompanyID)

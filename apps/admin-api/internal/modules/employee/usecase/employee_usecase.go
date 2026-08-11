@@ -109,6 +109,8 @@ func (c *EmployeeUseCase) Create(ctx context.Context, request *model.CreateEmplo
 		Address:        request.Address,
 		City:           request.City,
 		Timezone:       request.Timezone,
+		BankName:       request.BankName,
+		BankAccount:    request.BankAccount,
 		CompanyID:      request.CompanyID,
 		EmployeeNumber: request.EmployeeNumber,
 		UserID:         user.ID,
@@ -529,6 +531,14 @@ func (c *EmployeeUseCase) Update(ctx context.Context, companyID string, request 
 		}
 
 		employee.User.Email = email
+	}
+
+	if request.BankName != nil {
+		employee.BankName = strings.TrimSpace(*request.BankName)
+	}
+
+	if request.BankAccount != nil {
+		employee.BankAccount = strings.TrimSpace(*request.BankAccount)
 	}
 
 	if request.IsActive != nil {

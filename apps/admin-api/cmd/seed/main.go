@@ -164,7 +164,7 @@ func main() {
 
 	adminRole := findOrCreateRole(db, "ADMIN")
 	staffRole := findOrCreateRole(db, "STAFF")
-	permissionNames := []string{"USERS", "EMPLOYEES", "EMPLOYEE_CONTRACTS", "DIVISIONS", "SANCTIONS", "EMPLOYEE_SANCTIONS", "POSITIONS", "OFFICE_LOCATIONS", "SHIFTS", "TIME_OFF_REQUESTS", "TIME_OFF_TYPES", "TIME_OFF_BALANCES", "PERMISSIONS", "ROLES", "EMPLOYEE_DOCUMENTS", "VISITS", "HOLIDAYS", "EMPLOYEE_EDUCATIONS", "EMPLOYEE_TRAININGS", "EMPLOYEE_IDENTITIES", "ATTENDANCES", "REMIDIAL_VISITS", "ANNOUNCEMENTS"}
+	permissionNames := []string{"USERS", "EMPLOYEES", "EMPLOYEE_CONTRACTS", "DIVISIONS", "SANCTIONS", "EMPLOYEE_SANCTIONS", "POSITIONS", "OFFICE_LOCATIONS", "SHIFTS", "TIME_OFF_REQUESTS", "TIME_OFF_TYPES", "TIME_OFF_BALANCES", "PERMISSIONS", "ROLES", "EMPLOYEE_DOCUMENTS", "VISITS", "HOLIDAYS", "EMPLOYEE_EDUCATIONS", "EMPLOYEE_TRAININGS", "EMPLOYEE_IDENTITIES", "ATTENDANCES", "REMIDIAL_VISITS", "ANNOUNCEMENTS", "SALARY_COMPONENTS", "EMPLOYEE_SALARIES", "EMPLOYEE_ALLOWANCES", "EMPLOYEE_DEDUCTIONS", "PAYROLLS", "PAYROLL_ADJUSTMENTS", "PAYROLL_PAYMENTS", "PAYROLL_APPROVALS"}
 	for _, name := range permissionNames {
 		var permission Permission
 		if db.Where("name = ?", name).First(&permission).Error != nil {
@@ -177,9 +177,19 @@ func main() {
 		}
 	}
 
+	defaultPassword := password("Password123!")
+	var adminUser User
+	if db.Where("email = ?", "admin@company.com").First(&adminUser).Error != nil {
+		adminUser = User{ID: id(), Name: "Admin", Email: "admin@company.com", Password: defaultPassword, EmailVerified: true, CompanyID: company.ID, CreatedAt: now(), UpdatedAt: now()}
+		mustCreate(db, &adminUser)
+	}
+	var adminUserRole UserRole
+	if db.Where("user_id = ? AND role_id = ?", adminUser.ID, adminRole.ID).First(&adminUserRole).Error != nil {
+		mustCreate(db, &UserRole{UserID: adminUser.ID, RoleID: adminRole.ID})
+	}
+
 	birthDate := time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
 	contractStart := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
-	defaultPassword := password("Password123!")
 	for index, seed := range employees {
 		var user User
 		if db.Where("email = ?", seed.Email).First(&user).Error != nil {
