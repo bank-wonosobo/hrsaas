@@ -2,7 +2,7 @@ import SignInForm from "../../../features/user/components/sign-in-form";
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-teal-800">
+    <div className="min-h-screen flex items-center justify-center bg-[#3f9aae]">
       <div className="bg-card p-8 shadow-xl w-full max-w-md rounded-3xl space-y-4">
         <div className="text-center">
           <h1 className="text-xl font-semibold">Sign In </h1>
