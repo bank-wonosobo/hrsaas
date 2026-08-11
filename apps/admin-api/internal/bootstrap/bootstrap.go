@@ -19,6 +19,11 @@ import (
 	employeeRepo "hrsaas-admin-api/internal/modules/employee/repository"
 	employeeUc "hrsaas-admin-api/internal/modules/employee/usecase"
 
+
+	payrollHttp "hrsaas-admin-api/internal/modules/payroll/delivery/http"
+	payrollRepo "hrsaas-admin-api/internal/modules/payroll/repository"
+	payrollUc "hrsaas-admin-api/internal/modules/payroll/usecase"
+  
 	permissionHttp "hrsaas-admin-api/internal/modules/user/delivery/http"
 	permissionRepo "hrsaas-admin-api/internal/modules/user/repository"
 	permissionUc "hrsaas-admin-api/internal/modules/user/usecase"
@@ -71,6 +76,17 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeRepository := employeeRepo.NewEmployeeRepository(cfg.Log)
 	employeeContractRepository := employeeRepo.NewEmployeeContractRepository(cfg.Log)
 	employeeDocsRepository := employeeRepo.NewEmployeeDocumentRepository(cfg.Log)
+	employeeSalaryRepository := employeeRepo.NewEmployeeSalaryRepository(cfg.Log)
+	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
+	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
+	// module payroll
+	salaryComponentRepository := payrollRepo.NewSalaryComponentRepository(cfg.Log)
+	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
+	payrollDetailRepository := payrollRepo.NewPayrollDetailRepository(cfg.Log)
+	payrollItemRepository := payrollRepo.NewPayrollItemRepository(cfg.Log)
+	payrollAdjustmentRepository := payrollRepo.NewPayrollAdjustmentRepository(cfg.Log)
+	payrollPaymentRepository := payrollRepo.NewPayrollPaymentRepository(cfg.Log)
+	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
 	//module visit
 	visitRepository := visitRepo.NewVisitRepository(cfg.Log)
 	collectingRepository := collectingRepo.NewCollectingRepository(cfg.Log, cfg.Config.GetString("nasabah.base_url"))
@@ -100,6 +116,18 @@ func Bootstrap(cfg *BootstrapConfig) {
 		divisionRepository,
 	)
 	employeeDocsUseCase := employeeUc.NewEmployeeDocumentUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDocsRepository)
+	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeSalaryRepository)
+	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeAllowanceRepository, salaryComponentRepository)
+	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDeductionRepository, salaryComponentRepository)
+	// module payroll
+	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(cfg.DB, cfg.Log, cfg.Validator, salaryComponentRepository)
+	payrollUseCase := payrollUc.NewPayrollUseCase(
+		cfg.DB, cfg.Log, cfg.Validator,
+		payrollRepository, payrollDetailRepository, payrollItemRepository,
+		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
+		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository, employeeDeductionRepository,
+	)
+	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(cfg.DB, cfg.Log, cfg.Validator, payrollPaymentRepository)
 	// module visit
 	visitUseCase := visitUc.NewVisitUseCase(cfg.DB, cfg.Log, cfg.Validator, visitRepository, cfg.S3Client)
 	collectingUseCase := collectingUc.NewCollectingUseCase(cfg.DB, cfg.Log, cfg.Validator, collectingRepository, employeeRepository, cfg.S3Client)
@@ -119,6 +147,13 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeController := employeeHttp.NewEmployeeController(employeeUseCase, cfg.Log)
 	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
 	employeeDocsController := employeeHttp.NewEmployeeDocumentController(employeeDocsUseCase, cfg.Log)
+	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(employeeSalaryUseCase, cfg.Log)
+	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(employeeAllowanceUseCase, cfg.Log)
+	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(employeeDeductionUseCase, cfg.Log)
+	// module payroll
+	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)
+	payrollController := payrollHttp.NewPayrollController(payrollUseCase, cfg.Log)
+	payrollPaymentController := payrollHttp.NewPayrollPaymentController(payrollPaymentUseCase, cfg.Log)
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
@@ -141,6 +176,13 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeController.RegisterRoutes(api, protected)
 	employeeContractController.RegisterRoutes(api, protected)
 	employeeDocsController.RegisterRoutes(api, protected)
+	employeeSalaryController.RegisterRoutes(api, protected)
+	employeeAllowanceController.RegisterRoutes(api, protected)
+	employeeDeductionController.RegisterRoutes(api, protected)
+	// module payroll
+	salaryController.RegisterRoutes(api, protected)
+	payrollController.RegisterRoutes(api, protected)
+	payrollPaymentController.RegisterRoutes(api, protected)
 	// module visit
 	visitController.RegisterRoutes(api, protected)
 	collectingController.RegisterRoutes(api, protected)
