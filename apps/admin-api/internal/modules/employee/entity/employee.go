@@ -27,6 +27,8 @@ type Employee struct {
 	Address        string `gorm:"column:address;not null"`
 	City           string `gorm:"column:city;not null"`
 	Timezone       string `gorm:"column:timezone;not null"`
+	BankName       string `gorm:"column:bank_name"`
+	BankAccount    string `gorm:"column:bank_account"`
 	IsActive       bool   `gorm:"column:is_active;not null"`
 	CreatedAt      int64  `gorm:"column:created_at"`
 	UpdatedAt      int64  `gorm:"column:updated_at"`

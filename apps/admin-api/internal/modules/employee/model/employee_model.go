@@ -23,6 +23,8 @@ type EmployeeResponse struct {
 	Address            string                      `json:"address,omitempty"`
 	City               string                      `json:"city,omitempty"`
 	Timezone           string                      `json:"timezone,omitempty"`
+	BankName           string                      `json:"bank_name,omitempty"`
+	BankAccount        string                      `json:"bank_account,omitempty"`
 	IsActive           bool                        `json:"is_active"`
 	Contracts          []EmployeeContractResponse  `json:"contracts,omitempty"`
 	EmployeeDocs       []EmployeeDocumentResponse  `json:"employee_docs,omitempty"`
@@ -50,6 +52,8 @@ type CreateEmployeeRequest struct {
 	Password       string `json:"password" validate:"required,min=3"`
 	Address        string `json:"address" validate:"required"`
 	City           string `json:"city" validate:"required"`
+	BankName       string `json:"bank_name"`
+	BankAccount    string `json:"bank_account"`
 }
 
 type UpdateEmployeeRequest struct {
@@ -68,6 +72,8 @@ type UpdateEmployeeRequest struct {
 	Email          *string `json:"email,omitempty" validate:"omitempty,email"`
 	Address        *string `json:"address,omitempty"`
 	City           *string `json:"city,omitempty"`
+	BankName       *string `json:"bank_name,omitempty"`
+	BankAccount    *string `json:"bank_account,omitempty"`
 	IsActive       *bool   `json:"is_active,omitempty"`
 }
 
@@ -117,6 +123,8 @@ func EmployeeToResponse(employee *entity.Employee) *EmployeeResponse {
 		Address:        employee.Address,
 		City:           employee.City,
 		Timezone:       employee.Timezone,
+		BankName:       employee.BankName,
+		BankAccount:    employee.BankAccount,
 		EmployeeNumber: employee.EmployeeNumber,
 		IsActive:       employee.IsActive,
 		Contracts:      contracts,

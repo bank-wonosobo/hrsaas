@@ -15,6 +15,10 @@ import (
 	employeeRepo "hrsaas-admin-api/internal/modules/employee/repository"
 	employeeUc "hrsaas-admin-api/internal/modules/employee/usecase"
 
+	payrollHttp "hrsaas-admin-api/internal/modules/payroll/delivery/http"
+	payrollRepo "hrsaas-admin-api/internal/modules/payroll/repository"
+	payrollUc "hrsaas-admin-api/internal/modules/payroll/usecase"
+
 	userHttp "hrsaas-admin-api/internal/modules/user/delivery/http"
 	userRepo "hrsaas-admin-api/internal/modules/user/repository"
 	"hrsaas-admin-api/internal/modules/user/usecase"
@@ -52,7 +56,17 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeRepository := employeeRepo.NewEmployeeRepository(cfg.Log)
 	employeeContractRepository := employeeRepo.NewEmployeeContractRepository(cfg.Log)
 	employeeDocsRepository := employeeRepo.NewEmployeeDocumentRepository(cfg.Log)
-	// module salary
+	employeeSalaryRepository := employeeRepo.NewEmployeeSalaryRepository(cfg.Log)
+	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
+	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
+	// module payroll
+	salaryComponentRepository := payrollRepo.NewSalaryComponentRepository(cfg.Log)
+	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
+	payrollDetailRepository := payrollRepo.NewPayrollDetailRepository(cfg.Log)
+	payrollItemRepository := payrollRepo.NewPayrollItemRepository(cfg.Log)
+	payrollAdjustmentRepository := payrollRepo.NewPayrollAdjustmentRepository(cfg.Log)
+	payrollPaymentRepository := payrollRepo.NewPayrollPaymentRepository(cfg.Log)
+	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
 
 	// ====== USE CASE =======
 	// module auth
@@ -75,7 +89,18 @@ func Bootstrap(cfg *BootstrapConfig) {
 		divisionRepository,
 	)
 	employeeDocsUseCase := employeeUc.NewEmployeeDocumentUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDocsRepository)
-	// module salary
+	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeSalaryRepository)
+	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeAllowanceRepository, salaryComponentRepository)
+	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDeductionRepository, salaryComponentRepository)
+	// module payroll
+	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(cfg.DB, cfg.Log, cfg.Validator, salaryComponentRepository)
+	payrollUseCase := payrollUc.NewPayrollUseCase(
+		cfg.DB, cfg.Log, cfg.Validator,
+		payrollRepository, payrollDetailRepository, payrollItemRepository,
+		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
+		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository, employeeDeductionRepository,
+	)
+	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(cfg.DB, cfg.Log, cfg.Validator, payrollPaymentRepository)
 
 	// ====== CONTROLLER =======
 	// module auth
@@ -89,7 +114,13 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeController := employeeHttp.NewEmployeeController(employeeUseCase, cfg.Log)
 	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
 	employeeDocsController := employeeHttp.NewEmployeeDocumentController(employeeDocsUseCase, cfg.Log)
-	// module salary
+	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(employeeSalaryUseCase, cfg.Log)
+	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(employeeAllowanceUseCase, cfg.Log)
+	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(employeeDeductionUseCase, cfg.Log)
+	// module payroll
+	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)
+	payrollController := payrollHttp.NewPayrollController(payrollUseCase, cfg.Log)
+	payrollPaymentController := payrollHttp.NewPayrollPaymentController(payrollPaymentUseCase, cfg.Log)
 
 	// ====== MIDDLEWARE =======
 	authMiddleware, protected := middleware.NewProtected(authUseCase)
@@ -106,5 +137,11 @@ func Bootstrap(cfg *BootstrapConfig) {
 	employeeController.RegisterRoutes(api, protected)
 	employeeContractController.RegisterRoutes(api, protected)
 	employeeDocsController.RegisterRoutes(api, protected)
-	// module salary
+	employeeSalaryController.RegisterRoutes(api, protected)
+	employeeAllowanceController.RegisterRoutes(api, protected)
+	employeeDeductionController.RegisterRoutes(api, protected)
+	// module payroll
+	salaryController.RegisterRoutes(api, protected)
+	payrollController.RegisterRoutes(api, protected)
+	payrollPaymentController.RegisterRoutes(api, protected)
 }
