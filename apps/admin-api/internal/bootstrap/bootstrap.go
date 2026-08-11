@@ -6,6 +6,11 @@ import (
 	authUc "hrsaas-admin-api/internal/modules/auth/usecase"
 	"hrsaas-admin-api/pkg/middleware"
 	pkg "hrsaas-admin-api/pkg/s3"
+	upload "hrsaas-admin-api/pkg/upload"
+
+	attendanceHttp "hrsaas-admin-api/internal/modules/attendance/delivery/http"
+	attendanceRepo "hrsaas-admin-api/internal/modules/attendance/repository"
+	attendanceUc "hrsaas-admin-api/internal/modules/attendance/usecase"
 
 	companyHttp "hrsaas-admin-api/internal/modules/company/delivery/http"
 	companyRepo "hrsaas-admin-api/internal/modules/company/repository"
@@ -54,6 +59,7 @@ type BootstrapConfig struct {
 	Validator *validator.Validate
 	Config    *viper.Viper
 	S3Client  *pkg.S3Client
+	Upload    *upload.UploadUseCase
 }
 
 func Bootstrap(cfg *BootstrapConfig) {
@@ -63,6 +69,14 @@ func Bootstrap(cfg *BootstrapConfig) {
 	// module auth
 	userRepository := userRepo.NewUserRepository(cfg.Log)
 	sessionRepo := authRepo.NewSessionRepository(cfg.Log)
+
+	// module attendance
+	attendanceRepository := attendanceRepo.NewAttendanceRepository(cfg.Log)
+	attendanceLogRepository := attendanceRepo.NewAttendanceLogRepository(cfg.Log)
+	shiftRepository := attendanceRepo.NewShiftRepository(cfg.Log)
+	shiftDayRepository := attendanceRepo.NewShiftDayRepository(cfg.Log)
+	officeLocRepository := attendanceRepo.NewOfficeLocationRepository(cfg.Log)
+
 	// module company
 	companyRepository := companyRepo.NewCompanyRepository(cfg.Log)
 	divisionRepository := companyRepo.NewDivisionRepository(cfg.Log)
@@ -89,22 +103,97 @@ func Bootstrap(cfg *BootstrapConfig) {
 	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
 	//module visit
 	visitRepository := visitRepo.NewVisitRepository(cfg.Log)
-	collectingRepository := collectingRepo.NewCollectingRepository(cfg.Log, cfg.Config.GetString("nasabah.base_url"))
+	collectingRepository := collectingRepo.NewCollectingRepository(
+		cfg.Log,
+		cfg.Config.GetString("nasabah.base_url"),
+	)
 
 	// module salary
 
 	// ====== USE CASE =======
 	// module auth
-	authUseCase := authUc.NewAuthUseCase(cfg.DB, cfg.Log, cfg.Validator, userRepository, sessionRepo, companyRepository, roleRepoitory)
+	authUseCase := authUc.NewAuthUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		userRepository,
+		sessionRepo,
+		companyRepository,
+		roleRepoitory,
+	)
+
+	// module attendance
+	attendanceUseCase := attendanceUc.NewAttendanceUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		attendanceRepository,
+		officeLocRepository,
+		shiftRepository,
+		shiftDayRepository,
+		attendanceLogRepository,
+		employeeRepository,
+		userRepository,
+		cfg.Upload,
+		cfg.Config.GetString("face.base_url"),
+	)
+	shiftUseCase := attendanceUc.NewShiftUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		shiftRepository,
+		shiftDayRepository,
+	)
+	officeLocationUseCase := attendanceUc.NewOfficeLocationUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		officeLocRepository,
+	)
+
 	// module company
-	divisionUseCase := compantUc.NewDivisionUseCase(cfg.DB, cfg.Log, cfg.Validator, divisionRepository)
-	positionUseCase := compantUc.NewPositionUseCase(cfg.DB, cfg.Log, cfg.Validator, positionRepository)
+	divisionUseCase := compantUc.NewDivisionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		divisionRepository,
+	)
+	positionUseCase := compantUc.NewPositionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		positionRepository,
+	)
+
 	// module user
-	permissionUseCase := permissionUc.NewPermissionUseCase(cfg.DB, cfg.Log, cfg.Validator, permissionRepository)
-	roleUseCase := roleUc.NewRoleUseCase(cfg.DB, cfg.Log, cfg.Validator, roleRepoitory, permissionRepository)
-	userUseCase := userUc.NewUserUseCase(cfg.DB, cfg.Log, cfg.Validator, userRepository, roleRepoitory)
+	permissionUseCase := permissionUc.NewPermissionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		permissionRepository,
+	)
+	roleUseCase := roleUc.NewRoleUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		roleRepoitory,
+		permissionRepository,
+	)
+	userUseCase := userUc.NewUserUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		userRepository,
+		roleRepoitory,
+	)
+
 	// module employee
-	employeeContractUseCase := employeeUc.NewEmployeeContractUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeContractRepository)
+	employeeContractUseCase := employeeUc.NewEmployeeContractUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeContractRepository,
+	)
 	employeeUseCase := employeeUc.NewEmployeeUseCase(
 		cfg.DB,
 		cfg.Log,
@@ -129,20 +218,45 @@ func Bootstrap(cfg *BootstrapConfig) {
 	)
 	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(cfg.DB, cfg.Log, cfg.Validator, payrollPaymentRepository)
 	// module visit
-	visitUseCase := visitUc.NewVisitUseCase(cfg.DB, cfg.Log, cfg.Validator, visitRepository, cfg.S3Client)
-	collectingUseCase := collectingUc.NewCollectingUseCase(cfg.DB, cfg.Log, cfg.Validator, collectingRepository, employeeRepository, cfg.S3Client)
+	visitUseCase := visitUc.NewVisitUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		visitRepository,
+		cfg.S3Client,
+	)
+	collectingUseCase := collectingUc.NewCollectingUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		collectingRepository,
+		employeeRepository,
+		cfg.S3Client,
+	)
+
 	// module salary
 
 	// ====== CONTROLLER =======
 	// module auth
 	authController := authHttp.NewAuthController(authUseCase, cfg.Log, cfg.Config)
+
+	// module attendnance
+	attendanceController := attendanceHttp.NewAttendanceController(attendanceUseCase, cfg.Log)
+	shiftController := attendanceHttp.NewShifController(shiftUseCase, cfg.Log)
+	officeLocController := attendanceHttp.NewOfficeLocationController(
+		officeLocationUseCase,
+		cfg.Log,
+	)
+
 	// module company
 	divisionController := companyHttp.NewDivisionController(divisionUseCase, cfg.Log)
 	positionController := companyHttp.NewPositionController(positionUseCase, cfg.Log)
+
 	// module user
 	userController := userHttp.NewUserController(userUseCase, cfg.Log)
 	permissionController := permissionHttp.NewPermissionController(permissionUseCase, cfg.Log)
 	roleController := roleHttp.NewRoleController(roleUseCase, cfg.Log)
+
 	// module employee
 	employeeController := employeeHttp.NewEmployeeController(employeeUseCase, cfg.Log)
 	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
@@ -157,6 +271,7 @@ func Bootstrap(cfg *BootstrapConfig) {
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
+
 	// module salary
 
 	// ====== MIDDLEWARE =======
@@ -165,13 +280,21 @@ func Bootstrap(cfg *BootstrapConfig) {
 	// ====== ROUTER REGISTER =======
 	// module auth
 	authController.RegisterRoutes(api)
+
+	// module attendance
+	attendanceController.RegisterRoutes(api, protected)
+	shiftController.RegisterRoutes(api, protected)
+	officeLocController.RegisterRoutes(api, protected)
+
 	// module company
 	divisionController.RegisterRoutes(api, protected)
 	positionController.RegisterRoutes(api, protected)
+
 	// module user
 	userController.RegisterRoutes(api, authMiddleware, protected)
 	permissionController.RegisterRoutes(api, protected)
 	roleController.RegisterRoutes(api, protected)
+
 	// module employee
 	employeeController.RegisterRoutes(api, protected)
 	employeeContractController.RegisterRoutes(api, protected)
@@ -186,5 +309,6 @@ func Bootstrap(cfg *BootstrapConfig) {
 	// module visit
 	visitController.RegisterRoutes(api, protected)
 	collectingController.RegisterRoutes(api, protected)
+
 	// module salary
 }
