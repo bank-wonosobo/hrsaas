@@ -11,17 +11,34 @@ import (
 	companyRepo "hrsaas-admin-api/internal/modules/company/repository"
 	compantUc "hrsaas-admin-api/internal/modules/company/usecase"
 
+	collectingHttp "hrsaas-admin-api/internal/modules/visit/delivery/http"
+	collectingRepo "hrsaas-admin-api/internal/modules/visit/repository"
+	collectingUc "hrsaas-admin-api/internal/modules/visit/usecase"
+
 	employeeHttp "hrsaas-admin-api/internal/modules/employee/delivery/http"
 	employeeRepo "hrsaas-admin-api/internal/modules/employee/repository"
 	employeeUc "hrsaas-admin-api/internal/modules/employee/usecase"
 
+
 	payrollHttp "hrsaas-admin-api/internal/modules/payroll/delivery/http"
 	payrollRepo "hrsaas-admin-api/internal/modules/payroll/repository"
 	payrollUc "hrsaas-admin-api/internal/modules/payroll/usecase"
+  
+	permissionHttp "hrsaas-admin-api/internal/modules/user/delivery/http"
+	permissionRepo "hrsaas-admin-api/internal/modules/user/repository"
+	permissionUc "hrsaas-admin-api/internal/modules/user/usecase"
+
+	roleHttp "hrsaas-admin-api/internal/modules/user/delivery/http"
+	roleRepo "hrsaas-admin-api/internal/modules/user/repository"
+	roleUc "hrsaas-admin-api/internal/modules/user/usecase"
 
 	userHttp "hrsaas-admin-api/internal/modules/user/delivery/http"
 	userRepo "hrsaas-admin-api/internal/modules/user/repository"
-	"hrsaas-admin-api/internal/modules/user/usecase"
+	userUc "hrsaas-admin-api/internal/modules/user/usecase"
+
+	visitHttp "hrsaas-admin-api/internal/modules/visit/delivery/http"
+	visitRepo "hrsaas-admin-api/internal/modules/visit/repository"
+	visitUc "hrsaas-admin-api/internal/modules/visit/usecase"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -50,8 +67,11 @@ func Bootstrap(cfg *BootstrapConfig) {
 	companyRepository := companyRepo.NewCompanyRepository(cfg.Log)
 	divisionRepository := companyRepo.NewDivisionRepository(cfg.Log)
 	positionRepository := companyRepo.NewPositionRepository(cfg.Log)
+
 	// module user
-	roleRepoitory := userRepo.NewRoleRepository(cfg.Log)
+	roleRepoitory := roleRepo.NewRoleRepository(cfg.Log)
+	permissionRepository := permissionRepo.NewPermissionRepository(cfg.Log)
+
 	// module employee
 	employeeRepository := employeeRepo.NewEmployeeRepository(cfg.Log)
 	employeeContractRepository := employeeRepo.NewEmployeeContractRepository(cfg.Log)
@@ -67,6 +87,11 @@ func Bootstrap(cfg *BootstrapConfig) {
 	payrollAdjustmentRepository := payrollRepo.NewPayrollAdjustmentRepository(cfg.Log)
 	payrollPaymentRepository := payrollRepo.NewPayrollPaymentRepository(cfg.Log)
 	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
+	//module visit
+	visitRepository := visitRepo.NewVisitRepository(cfg.Log)
+	collectingRepository := collectingRepo.NewCollectingRepository(cfg.Log, cfg.Config.GetString("nasabah.base_url"))
+
+	// module salary
 
 	// ====== USE CASE =======
 	// module auth
@@ -75,7 +100,9 @@ func Bootstrap(cfg *BootstrapConfig) {
 	divisionUseCase := compantUc.NewDivisionUseCase(cfg.DB, cfg.Log, cfg.Validator, divisionRepository)
 	positionUseCase := compantUc.NewPositionUseCase(cfg.DB, cfg.Log, cfg.Validator, positionRepository)
 	// module user
-	userUseCase := usecase.NewUserUseCase(cfg.DB, cfg.Log, cfg.Validator, userRepository, roleRepoitory)
+	permissionUseCase := permissionUc.NewPermissionUseCase(cfg.DB, cfg.Log, cfg.Validator, permissionRepository)
+	roleUseCase := roleUc.NewRoleUseCase(cfg.DB, cfg.Log, cfg.Validator, roleRepoitory, permissionRepository)
+	userUseCase := userUc.NewUserUseCase(cfg.DB, cfg.Log, cfg.Validator, userRepository, roleRepoitory)
 	// module employee
 	employeeContractUseCase := employeeUc.NewEmployeeContractUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeContractRepository)
 	employeeUseCase := employeeUc.NewEmployeeUseCase(
@@ -101,6 +128,10 @@ func Bootstrap(cfg *BootstrapConfig) {
 		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository, employeeDeductionRepository,
 	)
 	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(cfg.DB, cfg.Log, cfg.Validator, payrollPaymentRepository)
+	// module visit
+	visitUseCase := visitUc.NewVisitUseCase(cfg.DB, cfg.Log, cfg.Validator, visitRepository, cfg.S3Client)
+	collectingUseCase := collectingUc.NewCollectingUseCase(cfg.DB, cfg.Log, cfg.Validator, collectingRepository, employeeRepository, cfg.S3Client)
+	// module salary
 
 	// ====== CONTROLLER =======
 	// module auth
@@ -110,6 +141,8 @@ func Bootstrap(cfg *BootstrapConfig) {
 	positionController := companyHttp.NewPositionController(positionUseCase, cfg.Log)
 	// module user
 	userController := userHttp.NewUserController(userUseCase, cfg.Log)
+	permissionController := permissionHttp.NewPermissionController(permissionUseCase, cfg.Log)
+	roleController := roleHttp.NewRoleController(roleUseCase, cfg.Log)
 	// module employee
 	employeeController := employeeHttp.NewEmployeeController(employeeUseCase, cfg.Log)
 	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
@@ -121,6 +154,10 @@ func Bootstrap(cfg *BootstrapConfig) {
 	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)
 	payrollController := payrollHttp.NewPayrollController(payrollUseCase, cfg.Log)
 	payrollPaymentController := payrollHttp.NewPayrollPaymentController(payrollPaymentUseCase, cfg.Log)
+	// module visit
+	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
+	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
+	// module salary
 
 	// ====== MIDDLEWARE =======
 	authMiddleware, protected := middleware.NewProtected(authUseCase)
@@ -133,6 +170,8 @@ func Bootstrap(cfg *BootstrapConfig) {
 	positionController.RegisterRoutes(api, protected)
 	// module user
 	userController.RegisterRoutes(api, authMiddleware, protected)
+	permissionController.RegisterRoutes(api, protected)
+	roleController.RegisterRoutes(api, protected)
 	// module employee
 	employeeController.RegisterRoutes(api, protected)
 	employeeContractController.RegisterRoutes(api, protected)
@@ -144,4 +183,8 @@ func Bootstrap(cfg *BootstrapConfig) {
 	salaryController.RegisterRoutes(api, protected)
 	payrollController.RegisterRoutes(api, protected)
 	payrollPaymentController.RegisterRoutes(api, protected)
+	// module visit
+	visitController.RegisterRoutes(api, protected)
+	collectingController.RegisterRoutes(api, protected)
+	// module salary
 }
