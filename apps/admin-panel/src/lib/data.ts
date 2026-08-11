@@ -50,3 +50,45 @@ export const days = [
   "Sabtu",
   "Minggu",
 ];
+
+export const months: Option[] = [
+  { value: "1", label: "Januari" },
+  { value: "2", label: "Februari" },
+  { value: "3", label: "Maret" },
+  { value: "4", label: "April" },
+  { value: "5", label: "Mei" },
+  { value: "6", label: "Juni" },
+  { value: "7", label: "Juli" },
+  { value: "8", label: "Agustus" },
+  { value: "9", label: "September" },
+  { value: "10", label: "Oktober" },
+  { value: "11", label: "November" },
+  { value: "12", label: "Desember" },
+];
+
+export const salaryComponentTypeOptions: Option[] = [
+  { value: "EARNING", label: "Penambah (Earning)" },
+  { value: "DEDUCTION", label: "Pengurang (Deduction)" },
+];
+
+export const calculationTypeOptions: Option[] = [
+  { value: "FIXED", label: "Nominal Tetap" },
+  { value: "PERCENTAGE", label: "Persentase dari Gaji Pokok" },
+  { value: "FORMULA", label: "Formula" },
+  { value: "MANUAL", label: "Input Manual" },
+];
+
+export const payrollAdjustmentTypeOptions: Option[] = [
+  { value: "BONUS", label: "Bonus" },
+  { value: "THR", label: "THR" },
+  { value: "JASPROD", label: "Jasa Produksi" },
+  { value: "INCENTIVE", label: "Insentif" },
+  { value: "CORRECTION", label: "Koreksi" },
+];
+
+export const paymentStatusOptions: Option[] = [
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSING", label: "Diproses" },
+  { value: "SUCCESS", label: "Berhasil" },
+  { value: "FAILED", label: "Gagal" },
+];

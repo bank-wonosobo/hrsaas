@@ -66,6 +66,13 @@ export function diffDateDetail(start: Date, end: Date) {
   return { years, months, days };
 }
 
+export const formatRupiah = (amount: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+
 export function mapToOptions<T>(
   data: T[],
   getLabel: (item: T) => string,

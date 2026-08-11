@@ -17,6 +17,7 @@ export default async function LayoutDetailEmployee({
   const tabs: Tab[] = [
     { label: "General", path: `/employees/${id}/detail` },
     { label: "Kontrak Kepegawaian", path: `/employees/${id}/contract` },
+    { label: "Gaji & Kompensasi", path: `/employees/${id}/payroll` },
     { label: "Kuota Cuti", path: `/employees/${id}/time-off-balance` },
     { label: "Dokumen", path: `/employees/${id}/docs` },
     { label: "Pendidikan", path: `/employees/${id}/education` },

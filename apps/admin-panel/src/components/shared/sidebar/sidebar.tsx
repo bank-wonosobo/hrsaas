@@ -16,9 +16,11 @@ import {
   NotebookPen,
   Search,
   Settings2,
+  SlidersHorizontal,
   TriangleAlert,
   UserLock,
   Users,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -80,6 +82,13 @@ export default function Sidebar() {
           { label: "Kehadiran", icon: CalendarHeart, path: "/attendances", permission: "ATTENDANCES" },
           { label: "Kunjungan", icon: MapPinned, path: "/visits", permission: "VISITS" },
           { label: "Sanksi / Pelanggaran", icon: TriangleAlert, path: "/employee-sanctions", permission: "EMPLOYEE_SANCTIONS" },
+        ],
+      },
+      {
+        title: "Payroll",
+        items: [
+          { label: "Proses Payroll", icon: Wallet, path: "/payrolls", permission: "PAYROLLS" },
+          { label: "Komponen Gaji", icon: SlidersHorizontal, path: "/salary-components", permission: "SALARY_COMPONENTS" },
         ],
       },
       {
