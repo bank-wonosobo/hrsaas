@@ -1,5 +1,5 @@
 
-ENV ?= dev
+ENV ?= local
 -include .env.$(ENV)
 
 DB_URL = "postgresql://$(DB_USER):$(DB_PASS)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)"
@@ -55,11 +55,13 @@ run-expo:
 	cd apps/client-mobile && npx expo start
 
 ## Jalankan admin-panel (Next.js)
-run-admin-panel:
-	cd apps/admin-panel && npm run dev
+run-dev-admin-panel:
+	cd apps/admin-panel && bun run dev
 
 run-tidy-admin:
 	cd apps/admin-api && go mod tidy
 
 run-tidy-client:
 	cd apps/admin-api && go mod tidy
+
+	

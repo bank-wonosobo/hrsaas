@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "uniwind";
+
+@theme {
+  --font-poppins-black: "Inter_900Black";
+  --font-poppins-extrabold: "Inter_800ExtraBold";
+  --font-poppins-bold: "Inter_700Bold";
+  --font-poppins-semibold: "Inter_600SemiBold";
+  --font-poppins-medium: "Inter_500Medium";
+  --font-poppins-regular: "Inter_400Regular";
+  --font-poppins-light: "Inter_300Light";
+  --font-poppins-extralight: "Inter_200ExtraLight";
+  --font-poppins-thin: "Inter_100Thin";
+  --color-primary: #3f9aae;
+  --color-secondary: #04162c;
+  --color-accent: #7e5ed9;
+  --color-text: #050f13;
+  --color-bg: #f6fbfd;
+}

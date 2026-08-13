@@ -10,8 +10,11 @@ func (h *SalaryController) RegisterRoutes(
 	router fiber.Router,
 	protected middleware.ProtectedMiddleware,
 ) {
-	salary := router.Group("/salaries")
+	salary := router.Group("/salary-components")
 
-	// Product catalogue
-	salary.Get("/", protected("SALARY", h.List)...)
+	salary.Get("/", protected("SALARY_COMPONENTS", h.List)...)
+	salary.Post("/", protected("SALARY_COMPONENTS", h.Create)...)
+	salary.Get("/:id", protected("SALARY_COMPONENTS", h.Detail)...)
+	salary.Put("/:id", protected("SALARY_COMPONENTS", h.Update)...)
+	salary.Delete("/:id", protected("SALARY_COMPONENTS", h.Delete)...)
 }
