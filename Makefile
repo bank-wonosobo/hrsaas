@@ -38,17 +38,17 @@ migrate-version:
 migrate-create:
 	migrate create -ext sql -dir database/migrations -format "20060102150405" $(NAME)
 
-## Jalankan client-api (Go)
+## Jalankan client API (Go)
 run-client:
-	cd apps/client-api && go run main.go
+	cd apps/api && go run ./cmd/client
 
-## Jalankan admin-api (Go)
+## Jalankan admin API (Go)
 run-admin:
-	cd apps/admin-api && go run cmd/web/main.go
+	cd apps/api && go run ./cmd/admin
 
 ## Jalankan database seeder dari root repository
 seed:
-	cd apps/admin-api && go run cmd/seed/main.go
+	cd apps/api && go run ./cmd/seed
 
 ## Jalankan client-mobile (Expo)
 run-expo:
@@ -58,10 +58,8 @@ run-expo:
 run-dev-admin-panel:
 	cd apps/admin-panel && bun run dev
 
-run-tidy-admin:
-	cd apps/admin-api && go mod tidy
-
-run-tidy-client:
-	cd apps/admin-api && go mod tidy
+## Tidy go.mod di apps/api
+tidy:
+	cd apps/api && go mod tidy
 
 	

@@ -1,0 +1,90 @@
+@startuml flow-payroll
+title Flow Payroll (Gaji)
+
+skinparam activity {
+  BackgroundColor #EFF6FF
+  BorderColor #2563EB
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF9C3
+  DiamondBorderColor #CA8A04
+}
+skinparam swimlaneTitleFontStyle bold
+
+|HR/Finance|
+start
+:Buat Payroll baru untuk periode (bulan/tahun);
+note right
+  1 payroll per company per periode (unique constraint bulan+tahun).
+  Nomor otomatis: PR-YYYYMM-XXXX
+end note
+:Status payroll = DRAFT;
+
+:Klik "Calculate";
+
+|Sistem|
+:Ambil semua employee aktif di company;
+while (masih ada employee?) is (ya)
+  :Ambil basic salary aktif employee (per akhir bulan periode);
+  if (punya basic salary aktif?) then (tidak)
+    :Skip employee ini;
+  else (ya)
+    :Buat Payroll Detail;
+    :Tambah item "Basic Salary" sebagai earning;
+    :Ambil allowance aktif, tambah sebagai payroll item earning (nominal/persentase);
+    :Ambil deduction aktif, tambah sebagai payroll item deduction (nominal/persentase);
+    :Hitung Gross, Total Deduction, Net Salary per employee;
+  endif
+endwhile (tidak)
+:Akumulasi Total Gross, Deduction, dan Net ke level Payroll;
+:Status payroll = CALCULATED;
+
+|HR/Finance|
+if (perlu Bonus/THR/Koreksi?) then (ya)
+  :Tambah atau hapus Payroll Adjustment pada Payroll Detail;
+  note right
+    Hanya bisa selama status
+    DRAFT atau CALCULATED
+  end note
+  |Sistem|
+  :Re-kalkulasi Total Earning dan Net Salary, baik di level detail maupun total payroll;
+  |HR/Finance|
+else (tidak)
+endif
+
+:Submit payroll untuk approval;
+|Sistem|
+:Status payroll = SUBMITTED;
+
+|Approver|
+:Review payroll;
+if (Keputusan?) then (Approve)
+  :Catat Payroll Approval (level, status APPROVED);
+  |Sistem|
+  :Status payroll = APPROVED;
+  :Set approved_by dan approved_at;
+else (Reject)
+  :Catat Payroll Approval (level, status REJECTED, sertakan catatan);
+  |Sistem|
+  :Status payroll kembali ke CALCULATED;
+  stop
+endif
+
+|HR/Finance|
+:Klik "Pay";
+|Sistem|
+:Untuk setiap Payroll Detail, buat Payroll Payment (snapshot rekening bank employee, amount = net salary);
+:Status payment = PENDING;
+:Set payment_date;
+:Status payroll = PAID;
+
+|HR/Finance|
+:Pantau status pembayaran per employee;
+:Update status payment secara bertahap dari PENDING ke PROCESSING lalu ke SUCCESS atau FAILED;
+stop
+
+legend right
+  Payroll bisa di-Cancel dari status DRAFT, CALCULATED, atau SUBMITTED menuju CANCELLED.
+  Payroll hanya bisa di-Delete saat masih berstatus DRAFT.
+end legend
+
+@enduml
