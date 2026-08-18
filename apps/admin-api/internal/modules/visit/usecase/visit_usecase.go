@@ -6,6 +6,7 @@ import (
 	"hrsaas-admin-api/internal/modules/visit/entity"
 	"hrsaas-admin-api/internal/modules/visit/model"
 	"hrsaas-admin-api/internal/modules/visit/repository"
+	"hrsaas-admin-api/pkg/excel"
 	pkg "hrsaas-admin-api/pkg/s3"
 
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -41,103 +43,10 @@ func NewVisitUseCase(
 	}
 }
 
-func (c *VisitUseCase) Create(ctx context.Context, employeeID, companyID string, request *model.CreateVisitRequest) (*model.VisitResponse, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
-	if err := c.Validate.Struct(request); err != nil {
-		c.Log.WithError(err).Error("Failed to validate request body")
-		return nil, fiber.ErrBadRequest
-	}
-
-	visitType := strings.ToUpper(strings.TrimSpace(request.VisitType))
-
-	now := time.Now()
-	nowMilli := now.UnixMilli()
-	todayStr := now.Format("2006-01-02")
-	timeStr := now.Format("15:04:05")
-
-	var location *string
-	if request.Latitude != nil && request.Longitude != nil {
-		loc := *request.Latitude + ", " + *request.Longitude
-		location = &loc
-	}
-
-	var visitID string
-
-	if visitType == "IN" {
-		if request.ClientName == "" {
-			return nil, fiber.NewError(fiber.StatusBadRequest, "Client name perlu diisi untuk memulai kunjungan")
-		}
-
-		_, err := c.Repo.FindLastOpenByEmployee(tx, employeeID)
-		if err == nil {
-			return nil, fiber.NewError(fiber.StatusBadRequest, "Tidak dapat memulai kunjungan. Lakukan selesai kunjungan terlebih dahulu")
-		}
-		if err != gorm.ErrRecordNotFound {
-			c.Log.WithError(err).Error("Gagal memeriksa kunjungan terbuka")
-			return nil, fiber.ErrInternalServerError
-		}
-
-		visit := &entity.Visit{
-			EmployeeID: employeeID,
-			CompanyID:  companyID,
-			Date:       todayStr,
-			ClientName: request.ClientName,
-		}
-		if err := c.Repo.Create(tx, visit); err != nil {
-			c.Log.WithError(err).Error("Gagal membuat data kunjungan")
-			return nil, fiber.ErrInternalServerError
-		}
-		visitID = visit.ID
-
-	} else {
-		openVisit, err := c.Repo.FindLastOpenByEmployee(tx, employeeID)
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return nil, fiber.NewError(fiber.StatusBadRequest, "Tidak dapat menyelesaikan kunjungan. Anda harus memulai kunjungan terlebih dahulu.")
-			}
-			c.Log.WithError(err).Error("Gagal menemukan kunjungan terbuka")
-			return nil, fiber.ErrInternalServerError
-		}
-		visitID = openVisit.ID
-
-		if err := tx.Model(&entity.Visit{}).Where("id = ?", visitID).Update("updated_at", nowMilli).Error; err != nil {
-			c.Log.WithError(err).Error("Gagal memperbarui updated_at kunjungan")
-			return nil, fiber.ErrInternalServerError
-		}
-	}
-
-	detail := &entity.VisitDetail{
-		VisitID:   visitID,
-		VisitType: visitType,
-		VisitAt:   timeStr,
-		DateVisit: todayStr,
-		FileUrl:   request.FileUrl,
-		Location:  location,
-		Address:   request.Address,
-		Note:      request.Note,
-	}
-	if err := tx.Create(detail).Error; err != nil {
-		c.Log.WithError(err).Error("Gagal membuat detail kunjungan")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	var result entity.Visit
-	if err := tx.Preload("Employee").Preload("Details").Where("id = ?", visitID).Take(&result).Error; err != nil {
-		c.Log.WithError(err).Error("Gagal memuat kunjungan dengan relasi")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	return model.VisitToResponse(&result), nil
-}
-
-func (c *VisitUseCase) List(ctx context.Context, request *model.SearchVisitRequest) ([]model.VisitResponse, int64, error) {
+func (c *VisitUseCase) List(
+	ctx context.Context,
+	request *model.SearchVisitRequest,
+) ([]model.VisitResponse, int64, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -186,25 +95,11 @@ func (c *VisitUseCase) List(ctx context.Context, request *model.SearchVisitReque
 	return responses, total, nil
 }
 
-func (c *VisitUseCase) GetByID(ctx context.Context, id string) (*model.VisitResponse, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
-	item, err := c.Repo.FindByID(tx, id, true)
-	if err != nil {
-		c.Log.WithError(err).Error("Kunjungan tidak ditemukan")
-		return nil, fiber.ErrNotFound
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	return model.VisitToResponse(item), nil
-}
-
-func (c *VisitUseCase) Update(ctx context.Context, id string, request *model.UpdateVisitRequest) (*model.VisitResponse, error) {
+func (c *VisitUseCase) Update(
+	ctx context.Context,
+	id string,
+	request *model.UpdateVisitRequest,
+) (*model.VisitResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -220,7 +115,10 @@ func (c *VisitUseCase) Update(ctx context.Context, id string, request *model.Upd
 
 	if request.Latitude != nil || request.Longitude != nil {
 		if request.Latitude == nil || request.Longitude == nil {
-			return nil, fiber.NewError(fiber.StatusBadRequest, "lokasi tidak valid. Latitude dan longitude harus diisi bersamaan")
+			return nil, fiber.NewError(
+				fiber.StatusBadRequest,
+				"lokasi tidak valid. Latitude dan longitude harus diisi bersamaan",
+			)
 		}
 	}
 
@@ -263,7 +161,11 @@ func (c *VisitUseCase) Update(ctx context.Context, id string, request *model.Upd
 		detailUpdates["note"] = request.Note
 	}
 	if request.Latitude != nil && request.Longitude != nil {
-		location := strings.TrimSpace(*request.Latitude) + ", " + strings.TrimSpace(*request.Longitude)
+		location := strings.TrimSpace(
+			*request.Latitude,
+		) + ", " + strings.TrimSpace(
+			*request.Longitude,
+		)
 		detailUpdates["location"] = location
 	}
 
@@ -288,81 +190,6 @@ func (c *VisitUseCase) Update(ctx context.Context, id string, request *model.Upd
 	return model.VisitToResponse(result), nil
 }
 
-func (c *VisitUseCase) GetVisitOwner(ctx context.Context, id string) (string, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
-	item, err := c.Repo.FindByID(tx, id, false)
-	if err != nil {
-		c.Log.WithError(err).Error("Kunjungan tidak ditemukan")
-		return "", fiber.ErrNotFound
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
-		return "", fiber.ErrInternalServerError
-	}
-
-	return item.EmployeeID, nil
-}
-
-func (c *VisitUseCase) CanDoVisit(ctx context.Context, employeeID, visitType string) (*model.CanDoVisitResponse, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
-	visitType = strings.ToUpper(strings.TrimSpace(visitType))
-	if visitType != "IN" && visitType != "OUT" {
-		return nil, fiber.NewError(fiber.StatusBadRequest, "Tipe kunjungan tidak valid. Harus IN atau OUT")
-	}
-
-	_, err := c.Repo.FindLastOpenByEmployee(tx, employeeID)
-	hasOpenVisit := err == nil
-
-	if err != nil && err != gorm.ErrRecordNotFound {
-		c.Log.WithError(err).Error("Gagal memeriksa kunjungan terbuka")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	response := &model.CanDoVisitResponse{CanDoVisit: true, Message: "Anda dapat melakukan kunjungan " + visitType}
-
-	if visitType == "IN" && hasOpenVisit {
-		response.CanDoVisit = false
-		response.Message = "Anda tidak dapat melakukan memulai kunjungan sebelum menyelesaikan kunjungan sebelumnya"
-	} else if visitType == "OUT" && !hasOpenVisit {
-		response.CanDoVisit = false
-		response.Message = "Anda tidak dapat menyelesaikan kunjungan sebelum memulai kunjungan baru"
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	return response, nil
-}
-
-func (c *VisitUseCase) GetUnclosedVisit(ctx context.Context, employeeID string) (*model.VisitResponse, error) {
-	tx := c.DB.WithContext(ctx).Begin()
-	defer tx.Rollback()
-
-	openVisit, err := c.Repo.FindLastOpenByEmployee(tx, employeeID)
-	if err != nil && err != gorm.ErrRecordNotFound {
-		c.Log.WithError(err).Error("Gagal memeriksa kunjungan terbuka")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
-		return nil, fiber.ErrInternalServerError
-	}
-
-	if err == gorm.ErrRecordNotFound {
-		return nil, nil
-	}
-
-	return model.VisitToResponse(openVisit), nil
-}
-
 // TODO: Consider soft delete if audits are required.
 func (c *VisitUseCase) Delete(ctx context.Context, id string) error {
 	tx := c.DB.WithContext(ctx).Begin()
@@ -384,5 +211,139 @@ func (c *VisitUseCase) Delete(ctx context.Context, id string) error {
 		return fiber.ErrInternalServerError
 	}
 
+	return nil
+}
+
+func (c *VisitUseCase) ExportToExcel(
+	ctx context.Context,
+	request *model.SearchVisitRequest,
+) (*excelize.File, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Gagal memvalidasi body permintaan")
+		return nil, fiber.ErrBadRequest
+	}
+	if request.SortBy != "" && request.SortBy != "newest" && request.SortBy != "oldest" {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "sort_by must be newest or oldest")
+	}
+	if request.StartDate != "" {
+		if _, err := time.Parse("2006-01-02", request.StartDate); err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Tanggal mulai tidak valid")
+		}
+	}
+	if request.EndDate != "" {
+		if _, err := time.Parse("2006-01-02", request.EndDate); err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Tanggal selesai tidak valid")
+		}
+	}
+
+	// Export mengambil seluruh data, bukan per halaman.
+	request.Page = 0
+	request.Size = 0
+
+	items, _, err := c.Repo.List(tx, request, true)
+	if err != nil {
+		c.Log.WithError(err).Error("Gagal memuat daftar kunjungan untuk export")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	employeeMap := make(map[string]*model.VisitSheet)
+	employeeOrder := make([]string, 0, len(items))
+	for i := range items {
+		visit := items[i]
+		empID := visit.EmployeeID
+		if _, exists := employeeMap[empID]; !exists {
+			employeeMap[empID] = &model.VisitSheet{
+				Name:  visit.Employee.Fullname,
+				Data:  []model.ExportVisitResponse{},
+				Total: 0,
+			}
+			employeeOrder = append(employeeOrder, empID)
+		}
+
+		// Detail IN menandai awal kunjungan, detail OUT menandai akhir kunjungan.
+		var inDetail, outDetail *entity.VisitDetail
+		for j := range visit.Details {
+			detail := &visit.Details[j]
+			switch detail.VisitType {
+			case "IN":
+				if inDetail == nil || detail.CreatedAt < inDetail.CreatedAt {
+					inDetail = detail
+				}
+			case "OUT":
+				if outDetail == nil || detail.CreatedAt > outDetail.CreatedAt {
+					outDetail = detail
+				}
+			}
+		}
+
+		row := model.ExportVisitResponse{
+			EmployeeName: visit.Employee.Fullname,
+			StartDate:    formatVisitAt(inDetail),
+			EndDate:      formatVisitAt(outDetail),
+			ClientName:   visit.ClientName,
+			Address:      firstNonEmpty(inDetail, outDetail, func(d *entity.VisitDetail) *string { return d.Address }),
+			Note:         firstNonEmpty(inDetail, outDetail, func(d *entity.VisitDetail) *string { return d.Note }),
+		}
+
+		employeeMap[empID].Data = append(employeeMap[empID].Data, row)
+		employeeMap[empID].Total++
+	}
+
+	sheets := make([]model.VisitSheet, 0, len(employeeOrder))
+	for _, empID := range employeeOrder {
+		sheets = append(sheets, *employeeMap[empID])
+	}
+
+	periodeData := "Semua Periode"
+	if request.StartDate != "" && request.EndDate != "" {
+		periodeData = request.StartDate + " s/d " + request.EndDate
+	} else if request.StartDate != "" {
+		periodeData = "Mulai " + request.StartDate
+	} else if request.EndDate != "" {
+		periodeData = "Sampai " + request.EndDate
+	}
+
+	file, err := excel.ExportVisitToExcel(sheets, periodeData)
+	if err != nil {
+		c.Log.WithError(err).Error("Gagal membuat file excel kunjungan")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return file, nil
+}
+
+// formatVisitAt menggabungkan tanggal dan jam kunjungan menjadi "2006-01-02 15:04:05".
+func formatVisitAt(detail *entity.VisitDetail) string {
+	if detail == nil {
+		return "-"
+	}
+	value := strings.TrimSpace(detail.DateVisit + " " + detail.VisitAt)
+	if value == "" {
+		return "-"
+	}
+	return value
+}
+
+// firstNonEmpty mengambil nilai dari detail IN, dan jatuh ke detail OUT bila kosong.
+func firstNonEmpty(
+	inDetail, outDetail *entity.VisitDetail,
+	get func(*entity.VisitDetail) *string,
+) *string {
+	for _, detail := range []*entity.VisitDetail{inDetail, outDetail} {
+		if detail == nil {
+			continue
+		}
+		if value := get(detail); value != nil && strings.TrimSpace(*value) != "" {
+			return value
+		}
+	}
 	return nil
 }

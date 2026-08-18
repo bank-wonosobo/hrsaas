@@ -44,7 +44,12 @@ func (r *VisitRepository) List(db *gorm.DB, request *model.SearchVisitRequest, w
 		dataQuery = dataQuery.Order("created_at DESC")
 	}
 
-	if err := dataQuery.Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&items).Error; err != nil {
+	// Page/Size kosong berarti ambil semua data (dipakai oleh export excel).
+	if request.Page > 0 && request.Size > 0 {
+		dataQuery = dataQuery.Offset((request.Page - 1) * request.Size).Limit(request.Size)
+	}
+
+	if err := dataQuery.Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -98,6 +103,9 @@ func (r *VisitRepository) FindLatestDetailByVisitID(db *gorm.DB, visitID string)
 func (r *VisitRepository) applyFilters(query *gorm.DB, request *model.SearchVisitRequest) (*gorm.DB, error) {
 	if request == nil {
 		return query, nil
+	}
+	if request.CompanyID != "" {
+		query = query.Where("company_id = ?", request.CompanyID)
 	}
 	if request.EmployeeID != "" {
 		query = query.Where("employee_id = ?", request.EmployeeID)

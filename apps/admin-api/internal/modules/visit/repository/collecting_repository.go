@@ -8,6 +8,7 @@ import (
 	"hrsaas-admin-api/internal/modules/visit/model"
 	"hrsaas-admin-api/pkg/repository"
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -97,6 +98,9 @@ func (r *CollectingRepository) List(db *gorm.DB, request *model.SearchRemidialVi
 
 func (r *CollectingRepository) FilterSearch(db *gorm.DB, request *model.SearchRemidialVisitRequest) (*gorm.DB, error) {
 	query := db.Joins("LEFT JOIN employees e ON e.id = remidial_visit.employee_id")
+	if request.CompanyID != "" {
+		query = query.Where("remidial_visit.company_id = ?", request.CompanyID)
+	}
 	if request.EmployeeID != "" {
 		query = query.Where("remidial_visit.employee_id = ?", request.EmployeeID)
 	}
@@ -106,11 +110,21 @@ func (r *CollectingRepository) FilterSearch(db *gorm.DB, request *model.SearchRe
 	if request.NasabahName != "" {
 		query = query.Where("remidial_visit.nasabah_name ILIKE ?", "%"+request.NasabahName+"%")
 	}
+	// created_at disimpan sebagai epoch milli, jadi tanggal filter perlu dikonversi dulu.
 	if request.StartDate != "" {
-		query = query.Where("remidial_visit.created_at >= ?", request.StartDate)
+		startDate, err := time.ParseInLocation("2006-01-02", request.StartDate, time.Local)
+		if err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Tanggal mulai tidak valid")
+		}
+		query = query.Where("remidial_visit.created_at >= ?", startDate.UnixMilli())
 	}
 	if request.EndDate != "" {
-		query = query.Where("remidial_visit.created_at <= ?", request.EndDate)
+		endDate, err := time.ParseInLocation("2006-01-02", request.EndDate, time.Local)
+		if err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Tanggal selesai tidak valid")
+		}
+		endOfDay := endDate.Add(24*time.Hour - time.Millisecond)
+		query = query.Where("remidial_visit.created_at <= ?", endOfDay.UnixMilli())
 	}
 	if request.NoPjm != "" {
 		query = query.Where("remidial_visit.no_pjm ILIKE ?", "%"+request.NoPjm+"%")

@@ -30,7 +30,7 @@ type VisitDetailResponse struct {
 }
 
 type CreateVisitRequest struct {
-	VisitType  string  `json:"visit_type" validate:"required,oneof=IN OUT"`
+	VisitType  string  `json:"visit_type"          validate:"required,oneof=IN OUT"`
 	ClientName string  `json:"client_name"`
 	Note       *string `json:"note,omitempty"`
 	Latitude   *string `json:"latitude,omitempty"`
@@ -49,12 +49,22 @@ type UpdateVisitRequest struct {
 }
 
 type SearchVisitRequest struct {
+	CompanyID  string `json:"-"`
 	EmployeeID string `json:"employee_id,omitempty" validate:"max=100"`
-	StartDate  string `json:"start_date,omitempty" validate:"max=20"`
-	EndDate    string `json:"end_date,omitempty" validate:"max=20"`
-	SortBy     string `json:"sort_by,omitempty" validate:"max=10"`
-	Page       int    `json:"page,omitempty" validate:"min=1"`
-	Size       int    `json:"size,omitempty" validate:"min=1,max=100"`
+	StartDate  string `json:"start_date,omitempty"  validate:"max=20"`
+	EndDate    string `json:"end_date,omitempty"    validate:"max=20"`
+	SortBy     string `json:"sort_by,omitempty"     validate:"max=10"`
+	Page       int    `json:"page,omitempty"        validate:"min=1"`
+	Size       int    `json:"size,omitempty"        validate:"min=1,max=100"`
+}
+
+type ExportVisitResponse struct {
+	EmployeeName string  `json:"employee_name"`
+	StartDate    string  `json:"start_date,omitempty" validate:"max=20"`
+	EndDate      string  `json:"end_date,omitempty"   validate:"max=20"`
+	ClientName   string  `json:"client_name"`
+	Address      *string `json:"address"`
+	Note         *string `json:"note"`
 }
 
 type CanDoVisitResponse struct {
@@ -103,4 +113,10 @@ func VisitToResponse(visit *entity.Visit) *VisitResponse {
 		CreatedAt:    visit.CreatedAt,
 		Details:      details,
 	}
+}
+
+type VisitSheet struct {
+	Name  string                `json:"nama"`
+	Data  []ExportVisitResponse `json:"data"`
+	Total int                   `json:"total"`
 }

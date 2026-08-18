@@ -16,6 +16,7 @@ func (c *EmployeeController) RegisterRoutes(
 	route.Get("/", protected("EMPLOYEES", c.ListEmployee)...)
 	route.Post("/", protected("EMPLOYEES", c.CreateEmployee)...)
 	route.Post("/_import", protected("EMPLOYEES", c.ImportExcel)...)
+	route.Get("/_export", protected("EMPLOYEES", c.ExportExcel)...)
 	route.Get("/:id", protected("EMPLOYEES", c.DetailEmployee)...)
 	route.Put("/:id", protected("EMPLOYEES", c.UpdateEmployee)...)
 	route.Delete("/:id", protected("EMPLOYEES", c.DeleteEmployee)...)

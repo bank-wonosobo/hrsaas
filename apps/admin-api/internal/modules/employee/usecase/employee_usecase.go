@@ -8,6 +8,7 @@ import (
 	"hrsaas-admin-api/internal/modules/employee/entity"
 	"hrsaas-admin-api/internal/modules/employee/repository"
 	userEntity "hrsaas-admin-api/internal/modules/user/entity"
+	excelPkg "hrsaas-admin-api/pkg/excel"
 	pkg "hrsaas-admin-api/pkg/time"
 
 	userRepository "hrsaas-admin-api/internal/modules/user/repository"
@@ -59,7 +60,10 @@ func NewEmployeeUseCase(db *gorm.DB,
 }
 
 // Create Employee Usecase
-func (c *EmployeeUseCase) Create(ctx context.Context, request *model.CreateEmployeeRequest) (*model.EmployeeResponse, error) {
+func (c *EmployeeUseCase) Create(
+	ctx context.Context,
+	request *model.CreateEmployeeRequest,
+) (*model.EmployeeResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -130,7 +134,10 @@ func (c *EmployeeUseCase) Create(ctx context.Context, request *model.CreateEmplo
 }
 
 // Search Employee
-func (c *EmployeeUseCase) Search(ctx context.Context, request *model.SearchEmployeeRequest) ([]model.EmployeeResponse, int64, error) {
+func (c *EmployeeUseCase) Search(
+	ctx context.Context,
+	request *model.SearchEmployeeRequest,
+) ([]model.EmployeeResponse, int64, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -160,7 +167,10 @@ func (c *EmployeeUseCase) Search(ctx context.Context, request *model.SearchEmplo
 }
 
 // Import Excel Employee
-func (c *EmployeeUseCase) ImportExcel(ctx context.Context, request *model.ImportExcelEmployeeRequest) (int64, error) {
+func (c *EmployeeUseCase) ImportExcel(
+	ctx context.Context,
+	request *model.ImportExcelEmployeeRequest,
+) (int64, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -202,8 +212,12 @@ func (c *EmployeeUseCase) ImportExcel(ctx context.Context, request *model.Import
 		}
 
 		if len(row) < 14 {
-			c.Log.WithError(fmt.Errorf("row %d has insufficient columns", i+1)).Error("Invalid row format")
-			return 0, fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("Row %d has insufficient columns", i+1))
+			c.Log.WithError(fmt.Errorf("row %d has insufficient columns", i+1)).
+				Error("Invalid row format")
+			return 0, fiber.NewError(
+				fiber.StatusBadRequest,
+				fmt.Sprintf("Row %d has insufficient columns", i+1),
+			)
 		}
 
 		if err := c.ValidateUniqueEmployeeAndEmail(tx, row[2], request.CompanyID, row[10], row[0]); err != nil {
@@ -290,6 +304,74 @@ func (c *EmployeeUseCase) ImportExcel(ctx context.Context, request *model.Import
 	return totalData, nil
 }
 
+func (c *EmployeeUseCase) ExportExcel(
+	ctx context.Context,
+	request *model.ExportExcelEmployeeResponse,
+) (*excelize.File, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate export request")
+		return nil, fiber.ErrBadRequest
+	}
+
+	// Fetch all active employees for the company with their contracts
+	var employees []entity.Employee
+	if err := tx.
+		Where("company_id = ?", request.CompanyID).
+		Where("is_active").
+		Order("fullname ASC").
+		Preload("EmployeeContract").
+		Find(&employees).Error; err != nil {
+		c.Log.WithError(err).Error("Failed to fetch employees")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// Convert employees to export model format
+	exportData := make([]model.ExportExcelEmployeeResponse, len(employees))
+	for i, emp := range employees {
+		// Convert contracts
+		contractResponses := make([]model.EmployeeContractResponse, len(emp.EmployeeContract))
+		for j, contract := range emp.EmployeeContract {
+			contractResponses[j] = model.EmployeeContractResponse{
+				ID:           contract.ID,
+				EmployeeID:   contract.EmployeeID,
+				StartDate:    contract.StartDate,
+				EndDate:      contract.EndDate,
+				ContractType: contract.ContractType,
+				Salary:       contract.Salary,
+			}
+		}
+
+		exportData[i] = model.ExportExcelEmployeeResponse{
+			CompanyID:      emp.CompanyID,
+			Nama:           emp.Fullname,
+			Gender:         emp.Gender,
+			IdentityNumber: emp.IdentityNumber,
+			BirthPlace:     emp.BirthPlace,
+			BirthDate:      emp.BirthDate,
+			Contracts:      contractResponses,
+			IsActive:       emp.IsActive,
+			Phone:          emp.Phone,
+			Address:        emp.Address,
+		}
+	}
+
+	file, err := excelPkg.ExportEmployeeToExcel(exportData)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to generate Excel file")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return file, nil
+}
+
 // Validate unique employee number and email
 func (c *EmployeeUseCase) ValidateUniqueEmployeeAndEmail(
 	tx *gorm.DB,
@@ -300,7 +382,11 @@ func (c *EmployeeUseCase) ValidateUniqueEmployeeAndEmail(
 ) error {
 
 	// validate employee number
-	total, err := c.EmployeeRepository.CountByEmployeeNumberAndCompanyID(tx, employeeNumber, companyID)
+	total, err := c.EmployeeRepository.CountByEmployeeNumberAndCompanyID(
+		tx,
+		employeeNumber,
+		companyID,
+	)
 	if err != nil {
 		c.Log.WithError(err).Error("Failed to count employee by number and company")
 		return fiber.ErrInternalServerError
@@ -325,7 +411,10 @@ func (c *EmployeeUseCase) ValidateUniqueEmployeeAndEmail(
 }
 
 // Detail employee
-func (c *EmployeeUseCase) Detail(ctx context.Context, request *model.DetailEmployeeRequest) (*model.EmployeeResponse, error) {
+func (c *EmployeeUseCase) Detail(
+	ctx context.Context,
+	request *model.DetailEmployeeRequest,
+) (*model.EmployeeResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -350,7 +439,10 @@ func (c *EmployeeUseCase) Detail(ctx context.Context, request *model.DetailEmplo
 }
 
 // Current
-func (c *EmployeeUseCase) Current(ctx context.Context, request *model.CurrentEmployeeRequest) (*model.EmployeeResponse, error) {
+func (c *EmployeeUseCase) Current(
+	ctx context.Context,
+	request *model.CurrentEmployeeRequest,
+) (*model.EmployeeResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -379,7 +471,11 @@ func (c *EmployeeUseCase) Current(ctx context.Context, request *model.CurrentEmp
 	return model.EmployeeToResponse(employee), nil
 }
 
-func (c *EmployeeUseCase) Update(ctx context.Context, companyID string, request *model.UpdateEmployeeRequest) (*model.EmployeeResponse, error) {
+func (c *EmployeeUseCase) Update(
+	ctx context.Context,
+	companyID string,
+	request *model.UpdateEmployeeRequest,
+) (*model.EmployeeResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -470,7 +566,10 @@ func (c *EmployeeUseCase) Update(ctx context.Context, companyID string, request 
 	if request.MaritalStatus != nil {
 		maritalStatus := strings.TrimSpace(*request.MaritalStatus)
 		if maritalStatus == "" {
-			return nil, fiber.NewError(fiber.StatusBadRequest, "Status pernikahan tidak boleh kosong")
+			return nil, fiber.NewError(
+				fiber.StatusBadRequest,
+				"Status pernikahan tidak boleh kosong",
+			)
 		}
 		employee.MaritalStatus = maritalStatus
 	}
@@ -579,16 +678,24 @@ func (c *EmployeeUseCase) Delete(ctx context.Context, id string, companyID strin
 
 	if err := c.EmployeeRepository.Delete(tx, employee); err != nil {
 		c.Log.WithError(err).Error("Failed to delete employee")
-		if strings.Contains(strings.ToLower(err.Error()), "foreign key") || strings.Contains(err.Error(), "SQLSTATE 23503") {
-			return fiber.NewError(fiber.StatusConflict, "Employee cannot be deleted because it is still used by other records")
+		if strings.Contains(strings.ToLower(err.Error()), "foreign key") ||
+			strings.Contains(err.Error(), "SQLSTATE 23503") {
+			return fiber.NewError(
+				fiber.StatusConflict,
+				"Employee cannot be deleted because it is still used by other records",
+			)
 		}
 		return fiber.ErrInternalServerError
 	}
 
 	if err := c.UserRepository.Delete(tx, &employee.User); err != nil {
 		c.Log.WithError(err).Error("Failed to delete employee user")
-		if strings.Contains(strings.ToLower(err.Error()), "foreign key") || strings.Contains(err.Error(), "SQLSTATE 23503") {
-			return fiber.NewError(fiber.StatusConflict, "Employee user cannot be deleted because it is still used by other records")
+		if strings.Contains(strings.ToLower(err.Error()), "foreign key") ||
+			strings.Contains(err.Error(), "SQLSTATE 23503") {
+			return fiber.NewError(
+				fiber.StatusConflict,
+				"Employee user cannot be deleted because it is still used by other records",
+			)
 		}
 		return fiber.ErrInternalServerError
 	}
