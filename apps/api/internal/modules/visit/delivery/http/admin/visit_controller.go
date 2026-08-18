@@ -3,6 +3,7 @@ package admin
 import (
 	"hrsaas/internal/modules/visit/model"
 	"hrsaas/internal/modules/visit/usecase"
+	"hrsaas/pkg/auth"
 	"hrsaas/pkg/response"
 
 	"math"
@@ -51,6 +52,35 @@ func (c *VisitController) List(ctx *fiber.Ctx) error {
 		Data:   responses,
 		Paging: paging,
 	})
+}
+
+func (c *VisitController) Export(ctx *fiber.Ctx) error {
+	request := new(model.SearchVisitRequest)
+	request.CompanyID = auth.GetCompanyId(ctx)
+	request.EmployeeID = ctx.Query("employee_id", "")
+	request.StartDate = ctx.Query("start_date", "")
+	request.EndDate = ctx.Query("end_date", "")
+	request.SortBy = ctx.Query("sort_by", "oldest")
+
+	request.Page = 1
+	request.Size = 100
+
+	file, err := c.UseCase.ExportToExcel(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to export visits")
+		return err
+	}
+
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", "attachment; filename=\"export-visit.xlsx\"")
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		c.Log.WithError(err).Error("failed to write excel to buffer")
+		return fiber.ErrInternalServerError
+	}
+
+	return ctx.Send(buffer.Bytes())
 }
 
 func (c *VisitController) Update(ctx *fiber.Ctx) error {

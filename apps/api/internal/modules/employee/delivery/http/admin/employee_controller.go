@@ -102,6 +102,27 @@ func (c *EmployeeController) ImportExcel(ctx *fiber.Ctx) error {
 	})
 }
 
+func (c *EmployeeController) ExportExcel(ctx *fiber.Ctx) error {
+	companyID := auth.GetCompanyId(ctx)
+
+	request := &model.ExportExcelEmployeeResponse{
+		CompanyID: companyID,
+	}
+
+	file, err := c.EmployeeUseCase.ExportExcel(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to export excel employee")
+		return err
+	}
+
+	// Set response headers for file download
+	ctx.Set("Content-Disposition", "attachment; filename=employees.xlsx")
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+	// Write Excel file to response
+	return file.Write(ctx)
+}
+
 // Detail Employee Controller
 func (c *EmployeeController) DetailEmployee(ctx *fiber.Ctx) error {
 	employeeID := ctx.Params("id")

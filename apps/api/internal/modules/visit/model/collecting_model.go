@@ -110,6 +110,7 @@ type DetailPinjamanResponse struct {
 }
 
 type SearchRemidialVisitRequest struct {
+	CompanyID    string `json:"-"`
 	EmployeeID   string `json:"employee_id,omitempty" validate:"omitempty,uuid4"`
 	EmployeeName string `json:"employee_name,omitempty" validate:"max=100"`
 	NasabahName  string `json:"nama,omitempty" validate:"max=100"`
@@ -118,6 +119,25 @@ type SearchRemidialVisitRequest struct {
 	EndDate      string `json:"end_date,omitempty" validate:"max=20"`
 	Page         int    `json:"page,omitempty" validate:"min=1"`
 	Size         int    `json:"size,omitempty" validate:"min=1,max=100"`
+}
+
+type ExportCollectingResponse struct {
+	EmployeeName       string `json:"employee_name"`
+	Date               int64  `json:"date"`
+	NasabahName        string `json:"nasabah_name"`
+	NoPjm              string `json:"no_pjm"`
+	Collectibility     string `json:"collectibility"`
+	OutstandingBalance int64  `json:"outstanding_balance"`
+	OverdueTotal       int64  `json:"overdue_total"`
+	TotalPaid          int64  `json:"total_paid"`
+	Commitment         string `json:"commitment"`
+}
+
+type CollectingSheet struct {
+	Name      string                     `json:"nama"`
+	Data      []ExportCollectingResponse `json:"data"`
+	Total     int                        `json:"total"`
+	TotalPaid int64                      `json:"total_paid"`
 }
 
 type UpdateRemidialVisitRequest struct {

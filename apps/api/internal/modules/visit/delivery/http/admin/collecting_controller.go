@@ -129,6 +129,37 @@ func (c *CollectingController) ListAdmin(ctx *fiber.Ctx) error {
 	})
 }
 
+func (c *CollectingController) Export(ctx *fiber.Ctx) error {
+	request := new(model.SearchRemidialVisitRequest)
+	request.CompanyID = auth.GetCompanyId(ctx)
+	request.EmployeeID = ctx.Query("employee_id", "")
+	request.EmployeeName = ctx.Query("employee_name", "")
+	request.NasabahName = ctx.Query("nama", "")
+	request.NoPjm = ctx.Query("no_pjm", "")
+	request.StartDate = ctx.Query("start_date", "")
+	request.EndDate = ctx.Query("end_date", "")
+
+	request.Page = 1
+	request.Size = 100
+
+	file, err := c.UseCase.ExportToExcel(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to export remidial visits")
+		return err
+	}
+
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", "attachment; filename=\"export-collecting.xlsx\"")
+
+	buffer, err := file.WriteToBuffer()
+	if err != nil {
+		c.Log.WithError(err).Error("failed to write excel to buffer")
+		return fiber.ErrInternalServerError
+	}
+
+	return ctx.Send(buffer.Bytes())
+}
+
 func (c *CollectingController) ListByNoPjm(ctx *fiber.Ctx) error {
 	request := new(model.SearchRemidialVisitRequest)
 	request.NoPjm = ctx.Params("no_pjm")

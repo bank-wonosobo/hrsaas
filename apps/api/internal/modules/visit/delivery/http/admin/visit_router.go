@@ -10,7 +10,8 @@ func (c *VisitController) RegisterRoutes(
 	router fiber.Router,
 	protected middleware.ProtectedMiddleware) {
 	route := router.Group("/visits")
-	route.Get("/", protected("VISIT", c.List)...)
-	route.Put("/:id", protected("VISIT", c.Update)...)
-	route.Delete("/:id", protected("VISIT", c.Delete)...)
+	route.Get("/", protected("VISITS", c.List)...)
+	route.Get("/export", protected("VISITS", c.Export)...)
+	route.Put("/:id", protected("VISITS", c.Update)...)
+	route.Delete("/:id", protected("VISITS", c.Delete)...)
 }
