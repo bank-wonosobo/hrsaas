@@ -7,7 +7,7 @@ on:
       - test
       - main
     paths:
-      - "apps/client-api/**"
+      - "apps/api/**"
       - ".github/workflows/deploy-client-api.yml"
 
 env:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/client-api
+        working-directory: apps/api
 
     steps:
       - name: Checkout Repository
@@ -56,9 +56,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker Image
-        working-directory: apps/client-api
+        working-directory: apps/api
         run: |
           docker build \
+          -f Dockerfile.client \
           -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }} \
           -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
 

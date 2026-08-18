@@ -1,0 +1,126 @@
+package repository
+
+import (
+	"hrsaas/internal/modules/attendance/entity"
+	"hrsaas/internal/modules/attendance/model"
+	employeeEntity "hrsaas/internal/modules/employee/entity"
+	"hrsaas/pkg/repository"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+)
+
+type ShiftRepository struct {
+	repository.Repository[entity.Shift]
+	Log *logrus.Logger
+}
+
+func NewShiftRepository(log *logrus.Logger) *ShiftRepository {
+	return &ShiftRepository{
+		Log: log,
+	}
+}
+
+func (r *ShiftRepository) FindByEmployeeID(db *gorm.DB, employeeId string) ([]entity.Shift, error) {
+	var shifts []entity.Shift
+	if err := db.
+		Model(&entity.Shift{}).
+		Select(`
+			shifts.id,
+			shifts.company_id,
+			shifts.name,
+			shifts.late_tolerance,
+			shifts.created_at,
+			shifts.updated_at
+		`).
+		Joins("JOIN employee_shifts ON employee_shifts.shift_id = shifts.id").
+		Where("employee_shifts.employee_id = ?", employeeId).
+		Find(&shifts).Error; err != nil {
+		return nil, err
+	}
+	return shifts, nil
+}
+
+func (r *ShiftRepository) CountByIDAndCompanyID(db *gorm.DB, shiftID, companyID string) (int64, error) {
+	var total int64
+	err := db.Model(&entity.Shift{}).
+		Where("id = ?", shiftID).
+		Where("company_id = ?", companyID).
+		Count(&total).Error
+	return total, err
+}
+
+func (r *ShiftRepository) CountEmployeeByIDAndCompanyID(db *gorm.DB, employeeID, companyID string) (int64, error) {
+	var total int64
+	err := db.Model(&employeeEntity.Employee{}).
+		Where("id = ?", employeeID).
+		Where("company_id = ?", companyID).
+		Count(&total).Error
+	return total, err
+}
+
+func (r *ShiftRepository) DeleteEmployeeShiftsByEmployeeID(db *gorm.DB, employeeID string) error {
+	return db.Exec("DELETE FROM employee_shifts WHERE employee_id = ?", employeeID).Error
+}
+
+func (r *ShiftRepository) AssignEmployeeToShift(db *gorm.DB, employeeID, shiftID string) error {
+	return db.Exec(
+		"INSERT INTO employee_shifts (employee_id, shift_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
+		employeeID,
+		shiftID,
+		int64(time.Now().UnixMilli()),
+		int64(time.Now().UnixMilli()),
+	).Error
+}
+
+func (r *ShiftRepository) DeleteEmployeesByShiftID(db *gorm.DB, shiftID string) error {
+	return db.Exec("DELETE FROM employee_shifts WHERE shift_id = ?", shiftID).Error
+}
+
+func (r *ShiftRepository) BulkAssignEmployees(db *gorm.DB, employeeIDs []string, shiftID string) error {
+	now := int64(time.Now().UnixMilli())
+	for _, employeeID := range employeeIDs {
+		if err := db.Exec(
+			"INSERT INTO employee_shifts (employee_id, shift_id, created_at, updated_at) VALUES (?, ?, ?, ?)",
+			employeeID, shiftID, now, now,
+		).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ShiftRepository) Search(db *gorm.DB, request *model.SearchShiftRequest) ([]entity.Shift, int64, error) {
+	var shifts []entity.Shift
+	if err := db.Preload("ShiftDays").Scopes(r.FilterSearch(request)).
+		Offset((request.Page - 1) * request.Size).
+		Limit(request.Size).
+		Find(&shifts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var total int64
+	if err := db.Model(&entity.Shift{}).Scopes(r.FilterSearch(request)).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return shifts, total, nil
+}
+
+func (r *ShiftRepository) FilterSearch(request *model.SearchShiftRequest) func(tx *gorm.DB) *gorm.DB {
+	return func(tx *gorm.DB) *gorm.DB {
+		tx = tx.Where("company_id = ?", request.CompanyID)
+
+		if request.EmployeeID != "" {
+			tx = tx.Joins("JOIN employee_shifts ON employee_shifts.shift_id = shifts.id").
+				Where("employee_shifts.employee_id = ?", request.EmployeeID)
+		}
+
+		if request.Key != "" {
+			tx = tx.Where("name LIKE ?", "%"+request.Key+"%")
+		}
+
+		return tx
+	}
+}
