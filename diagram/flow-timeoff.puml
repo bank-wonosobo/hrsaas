@@ -1,0 +1,65 @@
+@startuml flow-timeoff
+title Flow Time Off (Cuti/Izin)
+
+skinparam activity {
+  BackgroundColor #FDF4FF
+  BorderColor #A21CAF
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF9C3
+  DiamondBorderColor #CA8A04
+}
+skinparam swimlaneTitleFontStyle bold
+
+|Karyawan|
+start
+:Cek sisa kuota cuti (Time Off Balance per Time Off Type);
+:Isi form pengajuan cuti/izin (jenis cuti, tanggal mulai, tanggal selesai, alasan, lampiran opsional);
+:Submit pengajuan;
+
+|Sistem|
+:Hitung requested_days (selisih tanggal mulai-selesai);
+:Buat Time Off Request dengan status PENDING;
+:Tentukan daftar approver yang diperlukan (mis. Atasan Langsung, lalu HR) sebagai baris Time Off Approval berstatus PENDING;
+:Kirim notifikasi ke approver pertama;
+
+|Approver (Atasan/HR)|
+:Buka daftar Time Off Approval miliknya;
+:Review pengajuan cuti karyawan;
+
+if (Keputusan approver?) then (Approve)
+  :Kirim aksi APPROVE beserta action_reason;
+  |Sistem|
+  :Tandai baris approval ini APPROVED dan catat action_at;
+  if (masih ada approver required lain yang belum action?) then (ya)
+    :Kirim notifikasi ke approver berikutnya;
+    stop
+  else (semua sudah approve)
+    :Ubah request_status Time Off Request menjadi APPROVED;
+    :Kurangi Time Off Balance karyawan sesuai requested_days;
+    :Kirim notifikasi ke karyawan bahwa cuti disetujui;
+    stop
+  endif
+else (Reject)
+  :Kirim aksi REJECT beserta action_reason (wajib diisi);
+  |Sistem|
+  :Tandai baris approval ini REJECTED, catat action_at dan alasan;
+  :Ubah request_status Time Off Request menjadi REJECTED;
+  :Kirim notifikasi ke karyawan bahwa cuti ditolak beserta alasan;
+  stop
+endif
+
+|HR/Admin|
+start
+:Kelola Time Off Type (nama, kuota tahunan, aturan);
+:Kelola dan monitor Time Off Balance tiap karyawan;
+:Pantau seluruh Time Off Request dan Approval lintas karyawan;
+stop
+
+legend right
+  Alur ini disusun dari skema dan permission yang sudah ada di frontend
+  (admin-panel / client-mobile: TIME_OFF_REQUESTS, TIME_OFF_TYPES,
+  TIME_OFF_BALANCES). Modul backend time-off di admin-api belum
+  diimplementasikan, jadi endpoint di atas masih bersifat target desain.
+end legend
+
+@enduml

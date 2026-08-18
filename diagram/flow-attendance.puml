@@ -1,0 +1,90 @@
+@startuml flow-attendance
+title Flow Attendance (Absensi)
+
+skinparam activity {
+  BackgroundColor #ECFDF5
+  BorderColor #059669
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF9C3
+  DiamondBorderColor #CA8A04
+}
+skinparam swimlaneTitleFontStyle bold
+
+|Karyawan (Mobile)|
+start
+if (sudah register wajah?) then (belum)
+  :Ambil foto wajah;
+  :Upload foto, dapatkan object_key;
+  :POST /attendances/_current/register-face;
+  |Sistem|
+  :Simpan referensi wajah karyawan ke Face Service;
+else (sudah)
+endif
+
+|Karyawan (Mobile)|
+:Buka menu Check-in;
+:Ambil lokasi GPS (lat, lng);
+:Ambil foto wajah saat ini;
+:POST /attendances/check-in (lat, lng, device_info, foto);
+
+|Sistem|
+:Cek shift/jadwal kerja karyawan hari ini (Shift & Shift Day);
+:Hitung jarak lokasi ke Office Location (geofencing), hasilkan location_distance;
+if (dalam radius kantor?) then (tidak)
+  :Tandai is_location_verified = false;
+else (ya)
+  :Tandai is_location_verified = true;
+endif
+:Kirim foto ke Face Service untuk verifikasi wajah, hasilkan face_confidence;
+if (wajah cocok?) then (tidak)
+  :Tandai is_face_verified = false;
+else (ya)
+  :Tandai is_face_verified = true;
+endif
+:Buat atau update Attendance hari ini dengan check_in_time = sekarang;
+:Bandingkan check_in_time dengan jam masuk shift, tentukan Status (HADIR atau TERLAMBAT);
+:Simpan Attendance Log tipe CHECK_IN (lat, lng, distance, face_confidence, device_info, foto);
+
+|Karyawan (Mobile)|
+:Terima hasil check-in, berhasil atau butuh approval jika lokasi/wajah tidak terverifikasi;
+:Beberapa jam kemudian, buka kembali aplikasi;
+:Buka menu Check-out;
+:Ambil lokasi GPS dan foto wajah;
+:POST /attendances/check-out (lat, lng, device_info, foto);
+
+|Sistem|
+:Verifikasi lokasi dan wajah dengan cara yang sama seperti check-in;
+:Update Attendance dengan check_out_time = sekarang;
+:Hitung total_work_minutes dan total_break_minutes;
+:Simpan Attendance Log tipe CHECK_OUT;
+
+|Karyawan (Mobile)|
+:Lihat riwayat absensi (GET /attendances/_current);
+stop
+
+|HR/Admin (Panel)|
+start
+:Lihat daftar absensi seluruh karyawan (filter tanggal/status);
+if (perlu koreksi?) then (ya)
+  :Edit Attendance (jam masuk/keluar, status, menit kerja);
+  |Sistem|
+  :Update record Attendance;
+else (tidak)
+endif
+
+|HR/Admin (Panel)|
+if (perlu hapus data salah?) then (ya)
+  :Hapus Attendance beserta Attendance Log terkait;
+else (tidak)
+endif
+:Export rekap absensi ke Excel (per periode/karyawan);
+stop
+
+legend right
+  Endpoint HR (list, detail, update, delete, export, log) sudah tersedia di admin-api.
+  Endpoint karyawan (check-in, check-out, register-face, riwayat _current) sudah
+  dipakai oleh aplikasi mobile namun implementasi backend-nya (client-api / face
+  service) masih perlu dilengkapi.
+end legend
+
+@enduml
