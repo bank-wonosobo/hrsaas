@@ -8,6 +8,10 @@ import (
 	pkg "hrsaas/pkg/s3"
 	upload "hrsaas/pkg/upload"
 
+	announcementHttp "hrsaas/internal/modules/announcement/delivery/http/admin"
+	announcementRepo "hrsaas/internal/modules/announcement/repository"
+	announcementUc "hrsaas/internal/modules/announcement/usecase"
+
 	attendanceHttp "hrsaas/internal/modules/attendance/delivery/http/admin"
 	attendanceRepo "hrsaas/internal/modules/attendance/repository"
 	attendanceUc "hrsaas/internal/modules/attendance/usecase"
@@ -44,6 +48,10 @@ import (
 	userRepo "hrsaas/internal/modules/user/repository"
 	userUc "hrsaas/internal/modules/user/usecase"
 
+	timeOffHttp "hrsaas/internal/modules/time_off/delivery/http/admin"
+	timeOffRepo "hrsaas/internal/modules/time_off/repository"
+	timeOffUc "hrsaas/internal/modules/time_off/usecase"
+
 	visitHttp "hrsaas/internal/modules/visit/delivery/http/admin"
 	visitRepo "hrsaas/internal/modules/visit/repository"
 	visitUc "hrsaas/internal/modules/visit/usecase"
@@ -73,11 +81,15 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	userRepository := userRepo.NewUserRepository(cfg.Log)
 	sessionRepo := authRepo.NewSessionRepository(cfg.Log)
 
+	// module announcement
+	announcementRepository := announcementRepo.NewAnnouncementRepository(cfg.Log)
+
 	// module attendance
 	attendanceRepository := attendanceRepo.NewAttendanceRepository(cfg.Log)
 	attendanceLogRepository := attendanceRepo.NewAttendanceLogRepository(cfg.Log)
 	shiftRepository := attendanceRepo.NewShiftRepository(cfg.Log)
 	shiftDayRepository := attendanceRepo.NewShiftDayRepository(cfg.Log)
+	holidayRepository := attendanceRepo.NewHolidayRepository(cfg.Log)
 	officeLocRepository := attendanceRepo.NewOfficeLocationRepository(cfg.Log)
 
 	// module company
@@ -93,6 +105,15 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeRepository := employeeRepo.NewEmployeeRepository(cfg.Log)
 	employeeContractRepository := employeeRepo.NewEmployeeContractRepository(cfg.Log)
 	employeeDocsRepository := employeeRepo.NewEmployeeDocumentRepository(cfg.Log)
+	sanctionRepository := employeeRepo.NewSanctionRepository(cfg.Log)
+	employeeSancRepository := employeeRepo.NewEmSancRepository(cfg.Log)
+
+	// module time_off
+	timeOffApprovalRepository := timeOffRepo.NewTimeOffApprovalRepository(cfg.Log)
+	timeOffBalanceRepository := timeOffRepo.NewTimeOffBalanceRepository(cfg.Log)
+	timeOffRequestRepository := timeOffRepo.NewTimeOffRequestRepository(cfg.Log)
+	timeOffTypeRepository := timeOffRepo.NewTimeOffTypeRepository(cfg.Log)
+
 	employeeSalaryRepository := employeeRepo.NewEmployeeSalaryRepository(cfg.Log)
 	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
 	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
@@ -121,6 +142,16 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	// module salary
 
 	// ====== USE CASE =======
+
+	// modul announcement
+	announcementUseCase := announcementUc.NewAnnouncementUsecase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		announcementRepository,
+		employeeRepository,
+	)
+
 	// module auth
 	authUseCase := authUc.NewAuthUseCase(
 		cfg.DB,
@@ -153,6 +184,12 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Validator,
 		shiftRepository,
 		shiftDayRepository,
+	)
+	holidayUseCase := attendanceUc.NewHolidayUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		holidayRepository,
 	)
 	officeLocationUseCase := attendanceUc.NewOfficeLocationUseCase(
 		cfg.DB,
@@ -218,6 +255,16 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeSalaryRepository)
 	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeAllowanceRepository, salaryComponentRepository)
 	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDeductionRepository, salaryComponentRepository)
+	sanctionUseCase := employeeUc.NewSantionUseCase(cfg.DB, cfg.Log, cfg.Validator, sanctionRepository)
+	empSancUseCase := employeeUc.NewEmSancUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeSancRepository,
+		sanctionRepository,
+		employeeRepository,
+		cfg.S3Client,
+	)
 	// module notification
 	notificationUseCase := notificationUc.NewNotificationUseCase(
 		cfg.DB,
@@ -232,6 +279,30 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	)
 	notificationTemplateUseCase := notificationUc.NewNotificationTemplateUseCase(cfg.DB, cfg.Log, cfg.Validator, notificationTemplateRepository)
 	notificationPreferenceUseCase := notificationUc.NewNotificationPreferenceUseCase(cfg.DB, cfg.Log, cfg.Validator, notificationPreferenceRepository)
+	// module time off
+	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		timeOffBalanceRepository,
+		timeOffTypeRepository,
+	)
+	timeOffRequestUseCase := timeOffUc.NewTimeOffRequestUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		timeOffRequestRepository,
+		timeOffTypeRepository,
+		timeOffBalanceRepository,
+		timeOffApprovalRepository,
+		employeeContractRepository,
+	)
+	timeOffTypeUseCase := timeOffUc.NewTimeOffTypeUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		timeOffTypeRepository,
+	)
 	// module payroll
 	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(cfg.DB, cfg.Log, cfg.Validator, salaryComponentRepository)
 	payrollUseCase := payrollUc.NewPayrollUseCase(
@@ -240,7 +311,12 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
 		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository, employeeDeductionRepository,
 	)
-	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(cfg.DB, cfg.Log, cfg.Validator, payrollPaymentRepository)
+	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		payrollPaymentRepository,
+	)
 	// module visit
 	visitUseCase := visitUc.NewVisitUseCase(
 		cfg.DB,
@@ -264,9 +340,16 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	// module auth
 	authController := authHttp.NewAuthController(authUseCase, cfg.Log, cfg.Config)
 
+	// module announcement
+	announcementController := announcementHttp.NewAnnouncementController(
+		announcementUseCase,
+		cfg.Log,
+	)
+
 	// module attendnance
 	attendanceController := attendanceHttp.NewAttendanceController(attendanceUseCase, cfg.Log)
 	shiftController := attendanceHttp.NewShifController(shiftUseCase, cfg.Log)
+	holidayController := attendanceHttp.NewHolidayController(holidayUseCase, cfg.Log)
 	officeLocController := attendanceHttp.NewOfficeLocationController(
 		officeLocationUseCase,
 		cfg.Log,
@@ -288,14 +371,23 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(employeeSalaryUseCase, cfg.Log)
 	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(employeeAllowanceUseCase, cfg.Log)
 	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(employeeDeductionUseCase, cfg.Log)
+	sanctionController := employeeHttp.NewSanctionController(sanctionUseCase, cfg.Log)
+	empSancController := employeeHttp.NewEmSancController(empSancUseCase, cfg.Log)
 	// module notification
 	notificationController := notificationHttp.NewNotificationController(notificationUseCase, cfg.Log)
 	notificationTemplateController := notificationHttp.NewNotificationTemplateController(notificationTemplateUseCase, cfg.Log)
 	notificationPreferenceController := notificationHttp.NewNotificationPreferenceController(notificationPreferenceUseCase, cfg.Log)
+	// module time off
+	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(timeOffBalanceUseCase, cfg.Log)
+	timeOffRequestController := timeOffHttp.NewTimeOffRequestController(timeOffRequestUseCase, cfg.Log)
+	timeOffTypeController := timeOffHttp.NewTimeOffTypeController(timeOffTypeUseCase, cfg.Log)
 	// module payroll
 	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)
 	payrollController := payrollHttp.NewPayrollController(payrollUseCase, cfg.Log)
-	payrollPaymentController := payrollHttp.NewPayrollPaymentController(payrollPaymentUseCase, cfg.Log)
+	payrollPaymentController := payrollHttp.NewPayrollPaymentController(
+		payrollPaymentUseCase,
+		cfg.Log,
+	)
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
@@ -306,12 +398,17 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	authMiddleware, protected := middleware.NewProtected(authUseCase)
 
 	// ====== ROUTER REGISTER =======
+
+	//module announcement
+	announcementController.RegisterRoutes(api, protected)
+
 	// module auth
 	authController.RegisterRoutes(api)
 
 	// module attendance
 	attendanceController.RegisterRoutes(api, protected)
 	shiftController.RegisterRoutes(api, protected)
+	holidayController.RegisterRoutes(api, protected)
 	officeLocController.RegisterRoutes(api, protected)
 
 	// module company
@@ -327,6 +424,14 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeController.RegisterRoutes(api, protected)
 	employeeContractController.RegisterRoutes(api, protected)
 	employeeDocsController.RegisterRoutes(api, protected)
+	sanctionController.RegisterRoutes(api, protected)
+	empSancController.RegisterRoutes(api, protected)
+
+	// module time off
+	timeOffBalanceController.RegisterRoutes(api, protected)
+	timeOffRequestController.RegisterRoutes(api, protected)
+	timeOffTypeController.RegisterRoutes(api, protected)
+
 	employeeSalaryController.RegisterRoutes(api, protected)
 	employeeAllowanceController.RegisterRoutes(api, protected)
 	employeeDeductionController.RegisterRoutes(api, protected)
