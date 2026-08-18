@@ -74,7 +74,7 @@ type AdminBootstrapConfig struct {
 }
 
 func BootstrapAdmin(cfg *AdminBootstrapConfig) {
-	api := cfg.App.Group("/api")
+	api := cfg.App.Group("/api/admin")
 
 	// ====== REPO =======
 	// module auth
@@ -123,7 +123,9 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	notificationRecipientRepository := notificationRepo.NewNotificationRecipientRepository(cfg.Log)
 	notificationDeliveryRepository := notificationRepo.NewNotificationDeliveryRepository(cfg.Log)
 	notificationTemplateRepository := notificationRepo.NewNotificationTemplateRepository(cfg.Log)
-	notificationPreferenceRepository := notificationRepo.NewNotificationPreferenceRepository(cfg.Log)
+	notificationPreferenceRepository := notificationRepo.NewNotificationPreferenceRepository(
+		cfg.Log,
+	)
 	// module payroll
 	salaryComponentRepository := payrollRepo.NewSalaryComponentRepository(cfg.Log)
 	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
@@ -251,11 +253,38 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		positionRepository,
 		divisionRepository,
 	)
-	employeeDocsUseCase := employeeUc.NewEmployeeDocumentUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDocsRepository)
-	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeSalaryRepository)
-	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeAllowanceRepository, salaryComponentRepository)
-	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDeductionRepository, salaryComponentRepository)
-	sanctionUseCase := employeeUc.NewSantionUseCase(cfg.DB, cfg.Log, cfg.Validator, sanctionRepository)
+	employeeDocsUseCase := employeeUc.NewEmployeeDocumentUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeDocsRepository,
+	)
+	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeSalaryRepository,
+	)
+	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeAllowanceRepository,
+		salaryComponentRepository,
+	)
+	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeDeductionRepository,
+		salaryComponentRepository,
+	)
+	sanctionUseCase := employeeUc.NewSantionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		sanctionRepository,
+	)
 	empSancUseCase := employeeUc.NewEmSancUseCase(
 		cfg.DB,
 		cfg.Log,
@@ -277,8 +306,18 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		notificationTemplateRepository,
 		notificationPreferenceRepository,
 	)
-	notificationTemplateUseCase := notificationUc.NewNotificationTemplateUseCase(cfg.DB, cfg.Log, cfg.Validator, notificationTemplateRepository)
-	notificationPreferenceUseCase := notificationUc.NewNotificationPreferenceUseCase(cfg.DB, cfg.Log, cfg.Validator, notificationPreferenceRepository)
+	notificationTemplateUseCase := notificationUc.NewNotificationTemplateUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		notificationTemplateRepository,
+	)
+	notificationPreferenceUseCase := notificationUc.NewNotificationPreferenceUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		notificationPreferenceRepository,
+	)
 	// module time off
 	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(
 		cfg.DB,
@@ -304,12 +343,26 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffTypeRepository,
 	)
 	// module payroll
-	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(cfg.DB, cfg.Log, cfg.Validator, salaryComponentRepository)
+	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		salaryComponentRepository,
+	)
 	payrollUseCase := payrollUc.NewPayrollUseCase(
-		cfg.DB, cfg.Log, cfg.Validator,
-		payrollRepository, payrollDetailRepository, payrollItemRepository,
-		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
-		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository, employeeDeductionRepository,
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		payrollRepository,
+		payrollDetailRepository,
+		payrollItemRepository,
+		payrollAdjustmentRepository,
+		payrollPaymentRepository,
+		payrollApprovalRepository,
+		employeeRepository,
+		employeeSalaryRepository,
+		employeeAllowanceRepository,
+		employeeDeductionRepository,
 	)
 	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(
 		cfg.DB,
@@ -366,20 +419,50 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 
 	// module employee
 	employeeController := employeeHttp.NewEmployeeController(employeeUseCase, cfg.Log)
-	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
-	employeeDocsController := employeeHttp.NewEmployeeDocumentController(employeeDocsUseCase, cfg.Log)
-	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(employeeSalaryUseCase, cfg.Log)
-	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(employeeAllowanceUseCase, cfg.Log)
-	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(employeeDeductionUseCase, cfg.Log)
+	employeeContractController := employeeHttp.NewEmployeeContractController(
+		employeeContractUseCase,
+		cfg.Log,
+	)
+	employeeDocsController := employeeHttp.NewEmployeeDocumentController(
+		employeeDocsUseCase,
+		cfg.Log,
+	)
+	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(
+		employeeSalaryUseCase,
+		cfg.Log,
+	)
+	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(
+		employeeAllowanceUseCase,
+		cfg.Log,
+	)
+	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(
+		employeeDeductionUseCase,
+		cfg.Log,
+	)
 	sanctionController := employeeHttp.NewSanctionController(sanctionUseCase, cfg.Log)
 	empSancController := employeeHttp.NewEmSancController(empSancUseCase, cfg.Log)
 	// module notification
-	notificationController := notificationHttp.NewNotificationController(notificationUseCase, cfg.Log)
-	notificationTemplateController := notificationHttp.NewNotificationTemplateController(notificationTemplateUseCase, cfg.Log)
-	notificationPreferenceController := notificationHttp.NewNotificationPreferenceController(notificationPreferenceUseCase, cfg.Log)
+	notificationController := notificationHttp.NewNotificationController(
+		notificationUseCase,
+		cfg.Log,
+	)
+	notificationTemplateController := notificationHttp.NewNotificationTemplateController(
+		notificationTemplateUseCase,
+		cfg.Log,
+	)
+	notificationPreferenceController := notificationHttp.NewNotificationPreferenceController(
+		notificationPreferenceUseCase,
+		cfg.Log,
+	)
 	// module time off
-	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(timeOffBalanceUseCase, cfg.Log)
-	timeOffRequestController := timeOffHttp.NewTimeOffRequestController(timeOffRequestUseCase, cfg.Log)
+	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(
+		timeOffBalanceUseCase,
+		cfg.Log,
+	)
+	timeOffRequestController := timeOffHttp.NewTimeOffRequestController(
+		timeOffRequestUseCase,
+		cfg.Log,
+	)
 	timeOffTypeController := timeOffHttp.NewTimeOffTypeController(timeOffTypeUseCase, cfg.Log)
 	// module payroll
 	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)

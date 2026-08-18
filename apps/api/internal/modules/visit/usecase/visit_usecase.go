@@ -3,18 +3,11 @@ package usecase
 import (
 	"context"
 
-<<<<<<< HEAD:apps/admin-api/internal/modules/visit/usecase/visit_usecase.go
-	"hrsaas-admin-api/internal/modules/visit/entity"
-	"hrsaas-admin-api/internal/modules/visit/model"
-	"hrsaas-admin-api/internal/modules/visit/repository"
-	"hrsaas-admin-api/pkg/excel"
-	pkg "hrsaas-admin-api/pkg/s3"
-=======
 	"hrsaas/internal/modules/visit/entity"
 	"hrsaas/internal/modules/visit/model"
 	"hrsaas/internal/modules/visit/repository"
+	"hrsaas/pkg/excel"
 	pkg "hrsaas/pkg/s3"
->>>>>>> edef0240a9dad419f26aa3517d6a2014e4231eef:apps/api/internal/modules/visit/usecase/visit_usecase.go
 
 	"strings"
 	"time"
@@ -296,8 +289,16 @@ func (c *VisitUseCase) ExportToExcel(
 			StartDate:    formatVisitAt(inDetail),
 			EndDate:      formatVisitAt(outDetail),
 			ClientName:   visit.ClientName,
-			Address:      firstNonEmpty(inDetail, outDetail, func(d *entity.VisitDetail) *string { return d.Address }),
-			Note:         firstNonEmpty(inDetail, outDetail, func(d *entity.VisitDetail) *string { return d.Note }),
+			Address: firstNonEmpty(
+				inDetail,
+				outDetail,
+				func(d *entity.VisitDetail) *string { return d.Address },
+			),
+			Note: firstNonEmpty(
+				inDetail,
+				outDetail,
+				func(d *entity.VisitDetail) *string { return d.Note },
+			),
 		}
 
 		employeeMap[empID].Data = append(employeeMap[empID].Data, row)

@@ -3,24 +3,14 @@ package usecase
 import (
 	"context"
 	"fmt"
-<<<<<<< HEAD:apps/admin-api/internal/modules/employee/usecase/employee_usecase.go
-	companyEntity "hrsaas-admin-api/internal/modules/company/entity"
-	companyRepository "hrsaas-admin-api/internal/modules/company/repository"
-	"hrsaas-admin-api/internal/modules/employee/entity"
-	"hrsaas-admin-api/internal/modules/employee/repository"
-	userEntity "hrsaas-admin-api/internal/modules/user/entity"
-	excelPkg "hrsaas-admin-api/pkg/excel"
-	pkg "hrsaas-admin-api/pkg/time"
-=======
 	companyEntity "hrsaas/internal/modules/company/entity"
 	companyRepository "hrsaas/internal/modules/company/repository"
 	"hrsaas/internal/modules/employee/entity"
 	"hrsaas/internal/modules/employee/repository"
 	userEntity "hrsaas/internal/modules/user/entity"
-	pkg "hrsaas/pkg/time"
->>>>>>> edef0240a9dad419f26aa3517d6a2014e4231eef:apps/api/internal/modules/employee/usecase/employee_usecase.go
-
 	userRepository "hrsaas/internal/modules/user/repository"
+	excelPkg "hrsaas/pkg/excel"
+	pkg "hrsaas/pkg/time"
 
 	"hrsaas/internal/modules/employee/model"
 

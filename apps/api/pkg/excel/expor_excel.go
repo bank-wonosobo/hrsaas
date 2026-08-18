@@ -2,17 +2,10 @@ package excel
 
 import (
 	"fmt"
-<<<<<<< HEAD:apps/admin-api/pkg/excel/expor_excel.go
-	"hrsaas-admin-api/internal/modules/attendance/model"
-	employeeModel "hrsaas-admin-api/internal/modules/employee/model"
-	visitModel "hrsaas-admin-api/internal/modules/visit/model"
-	"strings"
-=======
 	"hrsaas/internal/modules/attendance/model"
 	employeeModel "hrsaas/internal/modules/employee/model"
 	visitModel "hrsaas/internal/modules/visit/model"
-	collectionModel "hrsaas/internal/modules/visit/model"
->>>>>>> edef0240a9dad419f26aa3517d6a2014e4231eef:apps/api/pkg/excel/expor_excel.go
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"

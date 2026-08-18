@@ -2,22 +2,13 @@ package usecase
 
 import (
 	"context"
-<<<<<<< HEAD:apps/admin-api/internal/modules/visit/usecase/collecting_usecase.go
-	employeeEntity "hrsaas-admin-api/internal/modules/employee/entity"
-	employeeRepo "hrsaas-admin-api/internal/modules/employee/repository"
-	"hrsaas-admin-api/internal/modules/visit/entity"
-	"hrsaas-admin-api/internal/modules/visit/model"
-	"hrsaas-admin-api/internal/modules/visit/repository"
-	"hrsaas-admin-api/pkg/excel"
-	pkg "hrsaas-admin-api/pkg/s3"
-=======
 	employeeEntity "hrsaas/internal/modules/employee/entity"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	"hrsaas/internal/modules/visit/entity"
 	"hrsaas/internal/modules/visit/model"
 	"hrsaas/internal/modules/visit/repository"
+	"hrsaas/pkg/excel"
 	pkg "hrsaas/pkg/s3"
->>>>>>> edef0240a9dad419f26aa3517d6a2014e4231eef:apps/api/internal/modules/visit/usecase/collecting_usecase.go
 
 	"time"
 
@@ -56,7 +47,10 @@ func NewCollectingUseCase(
 	}
 }
 
-func (c *CollectingUseCase) SearchNasabah(ctx context.Context, request *model.SearchNasabahRequest) ([]model.SearchNasabahResponse, error) {
+func (c *CollectingUseCase) SearchNasabah(
+	ctx context.Context,
+	request *model.SearchNasabahRequest,
+) ([]model.SearchNasabahResponse, error) {
 	if err := c.Validate.Struct(request); err != nil {
 		c.Log.WithError(err).Error("Failed to validate request body")
 		return nil, fiber.ErrBadRequest
@@ -99,7 +93,10 @@ func (c *CollectingUseCase) SearchNasabah(ctx context.Context, request *model.Se
 	return responses, nil
 }
 
-func (c *CollectingUseCase) Create(ctx context.Context, request *model.CreateRemidialVisitRequest) (*model.RemidialVisitResponse, error) {
+func (c *CollectingUseCase) Create(
+	ctx context.Context,
+	request *model.CreateRemidialVisitRequest,
+) (*model.RemidialVisitResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -147,7 +144,10 @@ func (c *CollectingUseCase) Create(ctx context.Context, request *model.CreateRem
 	return c.toResponse(ctx, visit), nil
 }
 
-func (c *CollectingUseCase) List(ctx context.Context, request *model.SearchRemidialVisitRequest) ([]model.RemidialVisitResponse, int64, error) {
+func (c *CollectingUseCase) List(
+	ctx context.Context,
+	request *model.SearchRemidialVisitRequest,
+) ([]model.RemidialVisitResponse, int64, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -316,7 +316,10 @@ func (c *CollectingUseCase) employeeNames(
 	return names, nil
 }
 
-func (c *CollectingUseCase) toResponse(ctx context.Context, visit *entity.RemidialVisit) *model.RemidialVisitResponse {
+func (c *CollectingUseCase) toResponse(
+	ctx context.Context,
+	visit *entity.RemidialVisit,
+) *model.RemidialVisitResponse {
 	var employeeName string
 	employee := new(employeeEntity.Employee)
 	if err := c.EmployeeRepository.FindByIdAndCompany(c.DB.WithContext(ctx), employee, visit.EmployeeID, visit.CompanyID); err == nil {
@@ -355,7 +358,10 @@ func (c *CollectingUseCase) toResponse(ctx context.Context, visit *entity.Remidi
 	}
 }
 
-func (c *CollectingUseCase) Update(ctx context.Context, request *model.UpdateRemidialVisitRequest) (*model.RemidialVisitResponse, error) {
+func (c *CollectingUseCase) Update(
+	ctx context.Context,
+	request *model.UpdateRemidialVisitRequest,
+) (*model.RemidialVisitResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 

@@ -1,16 +1,10 @@
 package admin
 
 import (
-<<<<<<< HEAD:apps/admin-api/internal/modules/visit/delivery/http/visit_controller.go
-	"hrsaas-admin-api/internal/modules/visit/model"
-	"hrsaas-admin-api/internal/modules/visit/usecase"
-	"hrsaas-admin-api/pkg/auth"
-	"hrsaas-admin-api/pkg/response"
-=======
 	"hrsaas/internal/modules/visit/model"
 	"hrsaas/internal/modules/visit/usecase"
+	"hrsaas/pkg/auth"
 	"hrsaas/pkg/response"
->>>>>>> edef0240a9dad419f26aa3517d6a2014e4231eef:apps/api/internal/modules/visit/delivery/http/admin/visit_controller.go
 
 	"math"
 
