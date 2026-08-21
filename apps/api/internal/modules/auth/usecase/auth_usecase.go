@@ -33,7 +33,15 @@ type AuthUseCase struct {
 	// S3Client          *pkg.S3Client
 }
 
-func NewAuthUseCase(db *gorm.DB, log *logrus.Logger, validate *validator.Validate, userRepository *userRepo.UserRepository, sessionRepository *repository.SessionRepository, companyRepository *companyRepository.CompanyRepository, roleRepository *userRepo.RoleRepository) *AuthUseCase {
+func NewAuthUseCase(
+	db *gorm.DB,
+	log *logrus.Logger,
+	validate *validator.Validate,
+	userRepository *userRepo.UserRepository,
+	sessionRepository *repository.SessionRepository,
+	companyRepository *companyRepository.CompanyRepository,
+	roleRepository *userRepo.RoleRepository,
+) *AuthUseCase {
 	return &AuthUseCase{
 		DB:                db,
 		Log:               log,
@@ -48,7 +56,10 @@ func NewAuthUseCase(db *gorm.DB, log *logrus.Logger, validate *validator.Validat
 /*
 Verify User
 */
-func (c *AuthUseCase) Verify(ctx context.Context, request *model.VerifyUserRequest) (*model.UserResponse, error) {
+func (c *AuthUseCase) Verify(
+	ctx context.Context,
+	request *model.VerifyUserRequest,
+) (*model.UserResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -78,7 +89,10 @@ func (c *AuthUseCase) Verify(ctx context.Context, request *model.VerifyUserReque
 	}
 
 	if user.CompanyID == "" {
-		return nil, fiber.NewError(fiber.StatusForbidden, "User tidak terasosiasi dengan perusahaan manapun")
+		return nil, fiber.NewError(
+			fiber.StatusForbidden,
+			"User tidak terasosiasi dengan perusahaan manapun",
+		)
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -92,7 +106,10 @@ func (c *AuthUseCase) Verify(ctx context.Context, request *model.VerifyUserReque
 /*
 Register User
 */
-func (c *AuthUseCase) Register(ctx context.Context, request *model.RegisterUserRequest) (*model.UserResponse, error) {
+func (c *AuthUseCase) Register(
+	ctx context.Context,
+	request *model.RegisterUserRequest,
+) (*model.UserResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -169,7 +186,10 @@ func (c *AuthUseCase) Register(ctx context.Context, request *model.RegisterUserR
 /*
 Login User
 */
-func (c *AuthUseCase) Login(ctx context.Context, request *model.LoginUserRequest) (*model.LoginUserResponse, error) {
+func (c *AuthUseCase) Login(
+	ctx context.Context,
+	request *model.LoginUserRequest,
+) (*model.LoginUserResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -215,6 +235,72 @@ func (c *AuthUseCase) Login(ctx context.Context, request *model.LoginUserRequest
 		IPAddress: &request.Ip,
 		UserAgent: &request.UserAgent,
 		ExpiredAt: time.Now().Add(24 * time.Hour).UnixMilli(),
+	}
+
+	if err := c.SessionRepository.Create(tx, session); err != nil {
+		c.Log.WithError(err).Error("Failed to create session")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.Warnf("Failed commit transaction : %+v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return &model.LoginUserResponse{
+		User:  *model.UserToResponse(user),
+		Token: token,
+	}, nil
+}
+
+func (c *AuthUseCase) LoginClient(
+	ctx context.Context,
+	request *model.LoginUserRequest,
+) (*model.LoginUserResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	// validate request
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate request body")
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
+	}
+
+	// find user by email
+	user := new(userEntity.User)
+	if err := c.UserRepository.FindByEmail(tx, user, request.Email, "Roles", "Roles.Permissions"); err != nil {
+		c.Log.Warnf("Gagal menemukan user by email : %+v", err)
+		return nil, fiber.NewError(fiber.StatusConflict, "email dan password tidak valid")
+	}
+
+	// find session by user id
+	session := new(entity.Session)
+	totalSession, err := c.SessionRepository.CountByUserId(tx, user.ID)
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	if totalSession > 10000 {
+		return nil, fiber.NewError(fiber.StatusConflict, "User sudah login di perangkat lain")
+	}
+
+	// compare password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
+		c.Log.Warnf("Password tidak valid : %+v", err)
+		return nil, fiber.NewError(fiber.StatusConflict, "email dan password tidak valid")
+	}
+
+	// create token
+	token, err := auth.GenerateToken(32)
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// create session
+	session = &entity.Session{
+		UserID:    user.ID,
+		Token:     token,
+		IPAddress: &request.Ip,
+		UserAgent: &request.UserAgent,
 	}
 
 	if err := c.SessionRepository.Create(tx, session); err != nil {

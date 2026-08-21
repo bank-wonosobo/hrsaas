@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 
 	"hrsaas/internal/modules/visit/entity"
 	"hrsaas/internal/modules/visit/model"
@@ -41,6 +42,108 @@ func NewVisitUseCase(
 		Repo:     repo,
 		S3Client: s3Client,
 	}
+}
+
+func (c *VisitUseCase) Create(
+	ctx context.Context,
+	companyID string,
+	employeeID string,
+	request *model.CreateVisitRequest,
+) (*model.VisitResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Gagal memvalidasi body permintaan")
+		return nil, fiber.ErrBadRequest
+	}
+
+	if request.Latitude == nil || request.Longitude == nil {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"lokasi tidak valid. Latitude dan longitude harus diisi bersamaan",
+		)
+	}
+
+	if request.FileUrl == nil || strings.TrimSpace(*request.FileUrl) == "" {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Bukti kunjungan harus diunggah")
+	}
+
+	now := time.Now()
+
+	var visit *entity.Visit
+	if request.VisitType == "IN" {
+		if _, err := c.Repo.FindLastOpenByEmployee(tx, employeeID); err == nil {
+			return nil, fiber.NewError(
+				fiber.StatusConflict,
+				"Masih ada kunjungan yang belum diselesaikan",
+			)
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.Log.WithError(err).Error("Gagal memeriksa kunjungan yang belum selesai")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		clientName := strings.TrimSpace(request.ClientName)
+		if clientName == "" {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Nama klien tidak boleh kosong")
+		}
+
+		visit = &entity.Visit{
+			EmployeeID: employeeID,
+			CompanyID:  companyID,
+			Date:       now.Format("2006-01-02"),
+			ClientName: clientName,
+		}
+
+		if err := c.Repo.Create(tx, visit); err != nil {
+			c.Log.WithError(err).Error("Gagal menyimpan kunjungan")
+			return nil, fiber.ErrInternalServerError
+		}
+	} else {
+		item, err := c.Repo.FindLastOpenByEmployee(tx, employeeID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fiber.NewError(
+					fiber.StatusBadRequest,
+					"Tidak ada kunjungan yang sedang berlangsung",
+				)
+			}
+			c.Log.WithError(err).Error("Gagal memuat kunjungan yang belum selesai")
+			return nil, fiber.ErrInternalServerError
+		}
+		visit = item
+	}
+
+	location := strings.TrimSpace(*request.Latitude) + ", " + strings.TrimSpace(*request.Longitude)
+
+	detail := &entity.VisitDetail{
+		VisitID:   visit.ID,
+		VisitType: request.VisitType,
+		VisitAt:   now.Format("15:04:05"),
+		DateVisit: now.Format("2006-01-02"),
+		FileUrl:   request.FileUrl,
+		Location:  &location,
+		Address:   request.Address,
+		Note:      request.Note,
+	}
+
+	if err := tx.Create(detail).Error; err != nil {
+		c.Log.WithError(err).Error("Gagal menyimpan detail kunjungan")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	result, err := c.Repo.FindByID(tx, visit.ID, true)
+	if err != nil {
+		c.Log.WithError(err).Error("Gagal memuat kunjungan yang dibuat")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return model.VisitToResponse(result), nil
 }
 
 func (c *VisitUseCase) List(
