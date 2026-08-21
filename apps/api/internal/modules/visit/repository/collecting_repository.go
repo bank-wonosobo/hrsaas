@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+
 	"hrsaas/internal/modules/visit/entity"
 	"hrsaas/internal/modules/visit/model"
 	"hrsaas/pkg/repository"
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -29,14 +32,22 @@ func NewCollectingRepository(log *logrus.Logger, baseURL string) *CollectingRepo
 	}
 }
 
-func (r *CollectingRepository) SearchNasabah(ctx context.Context, req *model.SearchNasabahRequest) ([]model.NasabahData, error) {
+func (r *CollectingRepository) SearchNasabah(
+	ctx context.Context,
+	req *model.SearchNasabahRequest,
+) ([]model.NasabahData, error) {
 	data, err := json.Marshal(req)
 	if err != nil {
 		r.Log.WithError(err).Error("Failed to marshal request")
 		return nil, fiber.ErrInternalServerError
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/bwakses/apirem", bytes.NewBuffer(data))
+	httpReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		r.baseURL+"/bwakses/apirem",
+		bytes.NewBuffer(data),
+	)
 	if err != nil {
 		r.Log.WithError(err).Error("Failed to create request")
 		return nil, err
@@ -52,7 +63,10 @@ func (r *CollectingRepository) SearchNasabah(ctx context.Context, req *model.Sea
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		r.Log.Errorf("External API returned status: %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		r.Log.WithField("payload", string(data)).
+			WithField("body", string(body)).
+			Errorf("External API returned status: %d", resp.StatusCode)
 		return nil, fiber.ErrInternalServerError
 	}
 
@@ -64,13 +78,19 @@ func (r *CollectingRepository) SearchNasabah(ctx context.Context, req *model.Sea
 
 	if result.RC != "00" {
 		r.Log.Errorf("External API returned RC: %s", result.RC)
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "Gagal mendapatkan data dari server core")
+		return nil, fiber.NewError(
+			fiber.StatusInternalServerError,
+			"Gagal mendapatkan data dari server core",
+		)
 	}
 
 	return result.Data, nil
 }
 
-func (r *CollectingRepository) List(db *gorm.DB, request *model.SearchRemidialVisitRequest) ([]entity.RemidialVisit, int64, error) {
+func (r *CollectingRepository) List(
+	db *gorm.DB,
+	request *model.SearchRemidialVisitRequest,
+) ([]entity.RemidialVisit, int64, error) {
 	var items []entity.RemidialVisit
 
 	query, err := r.FilterSearch(db.Model(&entity.RemidialVisit{}), request)
@@ -95,8 +115,14 @@ func (r *CollectingRepository) List(db *gorm.DB, request *model.SearchRemidialVi
 	return items, total, nil
 }
 
-func (r *CollectingRepository) FilterSearch(db *gorm.DB, request *model.SearchRemidialVisitRequest) (*gorm.DB, error) {
+func (r *CollectingRepository) FilterSearch(
+	db *gorm.DB,
+	request *model.SearchRemidialVisitRequest,
+) (*gorm.DB, error) {
 	query := db.Joins("LEFT JOIN employees e ON e.id = remidial_visit.employee_id")
+	if request.CompanyID != "" {
+		query = query.Where("remidial_visit.company_id = ?", request.CompanyID)
+	}
 	if request.EmployeeID != "" {
 		query = query.Where("remidial_visit.employee_id = ?", request.EmployeeID)
 	}
@@ -107,10 +133,19 @@ func (r *CollectingRepository) FilterSearch(db *gorm.DB, request *model.SearchRe
 		query = query.Where("remidial_visit.nasabah_name ILIKE ?", "%"+request.NasabahName+"%")
 	}
 	if request.StartDate != "" {
-		query = query.Where("remidial_visit.created_at >= ?", request.StartDate)
+		startDate, err := time.ParseInLocation("2006-01-02", request.StartDate, time.Local)
+		if err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Tanggal mulai tidak valid")
+		}
+		query = query.Where("remidial_visit.created_at >= ?", startDate.UnixMilli())
 	}
 	if request.EndDate != "" {
-		query = query.Where("remidial_visit.created_at <= ?", request.EndDate)
+		endDate, err := time.ParseInLocation("2006-01-02", request.EndDate, time.Local)
+		if err != nil {
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Tanggal selesai tidak valid")
+		}
+		endOfDay := endDate.Add(24*time.Hour - time.Millisecond)
+		query = query.Where("remidial_visit.created_at <= ?", endOfDay.UnixMilli())
 	}
 	if request.NoPjm != "" {
 		query = query.Where("remidial_visit.no_pjm ILIKE ?", "%"+request.NoPjm+"%")

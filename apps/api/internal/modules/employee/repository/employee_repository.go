@@ -28,6 +28,24 @@ func (r *EmployeeRepository) CountByEmployeeNumberAndCompanyID(db *gorm.DB, empl
 	return total, err
 }
 
+func (r *EmployeeRepository) FindByUserIdAndCompany(
+	db *gorm.DB,
+	employee *entity.Employee,
+	userId string,
+	companyId string,
+	preloads ...string,
+) error {
+	query := db
+
+	for _, preload := range preloads {
+		query = query.Preload(preload)
+	}
+
+	return query.Where("user_id = ?", userId).
+		Where("company_id = ?", companyId).
+		Take(employee).Error
+}
+
 func (r *EmployeeRepository) Search(db *gorm.DB, request *model.SearchEmployeeRequest) ([]entity.Employee, int64, error) {
 	var employee []entity.Employee
 	if err := db.Preload("User").

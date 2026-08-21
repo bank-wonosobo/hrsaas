@@ -37,3 +37,9 @@ push:
   expo:
     base_url: "https://exp.host/--/api/v2/push/send"
     access_token: "" # hanya diperlukan jika Enhanced Security diaktifkan di project Expo
+    
+face:
+  base_url: "http://103.127.133.201:5001"
+
+nasabah:
+  base_url: "https://ptkbm.com:8443"

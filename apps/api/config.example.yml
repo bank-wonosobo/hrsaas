@@ -37,3 +37,6 @@ push:
   expo:
     base_url: "https://exp.host/--/api/v2/push/send"
     access_token: "" # hanya diperlukan jika Enhanced Security diaktifkan di project Expo
+
+face:
+  base_url: "" # base URL service face recognition (Python), tanpa trailing slash (contoh: http://localhost:8000)

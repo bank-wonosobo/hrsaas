@@ -4,7 +4,6 @@ import (
 	authHttp "hrsaas/internal/modules/auth/delivery/http/admin"
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
-	deviceRepo "hrsaas/internal/modules/device/repository"
 	"hrsaas/pkg/middleware"
 	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
@@ -73,13 +72,12 @@ type AdminBootstrapConfig struct {
 }
 
 func BootstrapAdmin(cfg *AdminBootstrapConfig) {
-	api := cfg.App.Group("/api")
+	api := cfg.App.Group("/api/admin")
 
 	// ====== REPO =======
 	// module auth
 	userRepository := userRepo.NewUserRepository(cfg.Log)
 	sessionRepo := authRepo.NewSessionRepository(cfg.Log)
-	deviceRepository := deviceRepo.NewDeviceRepository(cfg.Log)
 
 	// module announcement
 	announcementRepository := announcementRepo.NewAnnouncementRepository(cfg.Log)
@@ -154,8 +152,6 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		sessionRepo,
 		companyRepository,
 		roleRepoitory,
-		deviceRepository,
-		cfg.PushNotif,
 	)
 
 	// module attendance
@@ -246,11 +242,38 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		positionRepository,
 		divisionRepository,
 	)
-	employeeDocsUseCase := employeeUc.NewEmployeeDocumentUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDocsRepository)
-	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeSalaryRepository)
-	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeAllowanceRepository, salaryComponentRepository)
-	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(cfg.DB, cfg.Log, cfg.Validator, employeeDeductionRepository, salaryComponentRepository)
-	sanctionUseCase := employeeUc.NewSantionUseCase(cfg.DB, cfg.Log, cfg.Validator, sanctionRepository)
+	employeeDocsUseCase := employeeUc.NewEmployeeDocumentUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeDocsRepository,
+	)
+	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeSalaryRepository,
+	)
+	employeeAllowanceUseCase := employeeUc.NewEmployeeAllowanceUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeAllowanceRepository,
+		salaryComponentRepository,
+	)
+	employeeDeductionUseCase := employeeUc.NewEmployeeDeductionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		employeeDeductionRepository,
+		salaryComponentRepository,
+	)
+	sanctionUseCase := employeeUc.NewSantionUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		sanctionRepository,
+	)
 	empSancUseCase := employeeUc.NewEmSancUseCase(
 		cfg.DB,
 		cfg.Log,
@@ -285,12 +308,26 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffTypeRepository,
 	)
 	// module payroll
-	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(cfg.DB, cfg.Log, cfg.Validator, salaryComponentRepository)
+	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		salaryComponentRepository,
+	)
 	payrollUseCase := payrollUc.NewPayrollUseCase(
-		cfg.DB, cfg.Log, cfg.Validator,
-		payrollRepository, payrollDetailRepository, payrollItemRepository,
-		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
-		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository, employeeDeductionRepository,
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		payrollRepository,
+		payrollDetailRepository,
+		payrollItemRepository,
+		payrollAdjustmentRepository,
+		payrollPaymentRepository,
+		payrollApprovalRepository,
+		employeeRepository,
+		employeeSalaryRepository,
+		employeeAllowanceRepository,
+		employeeDeductionRepository,
 	)
 	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(
 		cfg.DB,
@@ -347,16 +384,37 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 
 	// module employee
 	employeeController := employeeHttp.NewEmployeeController(employeeUseCase, cfg.Log)
-	employeeContractController := employeeHttp.NewEmployeeContractController(employeeContractUseCase, cfg.Log)
-	employeeDocsController := employeeHttp.NewEmployeeDocumentController(employeeDocsUseCase, cfg.Log)
-	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(employeeSalaryUseCase, cfg.Log)
-	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(employeeAllowanceUseCase, cfg.Log)
-	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(employeeDeductionUseCase, cfg.Log)
+	employeeContractController := employeeHttp.NewEmployeeContractController(
+		employeeContractUseCase,
+		cfg.Log,
+	)
+	employeeDocsController := employeeHttp.NewEmployeeDocumentController(
+		employeeDocsUseCase,
+		cfg.Log,
+	)
+	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(
+		employeeSalaryUseCase,
+		cfg.Log,
+	)
+	employeeAllowanceController := employeeHttp.NewEmployeeAllowanceController(
+		employeeAllowanceUseCase,
+		cfg.Log,
+	)
+	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(
+		employeeDeductionUseCase,
+		cfg.Log,
+	)
 	sanctionController := employeeHttp.NewSanctionController(sanctionUseCase, cfg.Log)
 	empSancController := employeeHttp.NewEmSancController(empSancUseCase, cfg.Log)
 	// module time off
-	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(timeOffBalanceUseCase, cfg.Log)
-	timeOffRequestController := timeOffHttp.NewTimeOffRequestController(timeOffRequestUseCase, cfg.Log)
+	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(
+		timeOffBalanceUseCase,
+		cfg.Log,
+	)
+	timeOffRequestController := timeOffHttp.NewTimeOffRequestController(
+		timeOffRequestUseCase,
+		cfg.Log,
+	)
 	timeOffTypeController := timeOffHttp.NewTimeOffTypeController(timeOffTypeUseCase, cfg.Log)
 	// module payroll
 	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)
