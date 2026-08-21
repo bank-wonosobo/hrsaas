@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"hrsaas/internal/modules/auth/entity"
+	deviceRepo "hrsaas/internal/modules/device/repository"
 	userEntity "hrsaas/internal/modules/user/entity"
 	"hrsaas/internal/modules/user/model"
 
@@ -12,6 +14,7 @@ import (
 	companyRepository "hrsaas/internal/modules/company/repository"
 	userRepo "hrsaas/internal/modules/user/repository"
 	"hrsaas/pkg/auth"
+	"hrsaas/pkg/pushnotification"
 
 	"time"
 
@@ -30,10 +33,22 @@ type AuthUseCase struct {
 	SessionRepository *repository.SessionRepository
 	CompanyRepository *companyRepository.CompanyRepository
 	RoleRepository    *userRepo.RoleRepository
+	DeviceRepository  *deviceRepo.DeviceRepository
+	PushClient        *pushnotification.ExpoClient
 	// S3Client          *pkg.S3Client
 }
 
-func NewAuthUseCase(db *gorm.DB, log *logrus.Logger, validate *validator.Validate, userRepository *userRepo.UserRepository, sessionRepository *repository.SessionRepository, companyRepository *companyRepository.CompanyRepository, roleRepository *userRepo.RoleRepository) *AuthUseCase {
+func NewAuthUseCase(
+	db *gorm.DB,
+	log *logrus.Logger,
+	validate *validator.Validate,
+	userRepository *userRepo.UserRepository,
+	sessionRepository *repository.SessionRepository,
+	companyRepository *companyRepository.CompanyRepository,
+	roleRepository *userRepo.RoleRepository,
+	deviceRepository *deviceRepo.DeviceRepository,
+	pushClient *pushnotification.ExpoClient,
+) *AuthUseCase {
 	return &AuthUseCase{
 		DB:                db,
 		Log:               log,
@@ -42,6 +57,8 @@ func NewAuthUseCase(db *gorm.DB, log *logrus.Logger, validate *validator.Validat
 		CompanyRepository: companyRepository,
 		UserRepository:    userRepository,
 		RoleRepository:    roleRepository,
+		DeviceRepository:  deviceRepository,
+		PushClient:        pushClient,
 	}
 }
 
@@ -167,9 +184,22 @@ func (c *AuthUseCase) Register(ctx context.Context, request *model.RegisterUserR
 }
 
 /*
-Login User
+Login User (Admin)
 */
 func (c *AuthUseCase) Login(ctx context.Context, request *model.LoginUserRequest) (*model.LoginUserResponse, error) {
+	return c.login(ctx, request, 24*time.Hour)
+}
+
+/*
+Login User (Client)
+
+Client sessions have no expiry, so ExpiredAt is left unset.
+*/
+func (c *AuthUseCase) LoginClient(ctx context.Context, request *model.LoginUserRequest) (*model.LoginUserResponse, error) {
+	return c.login(ctx, request, 0)
+}
+
+func (c *AuthUseCase) login(ctx context.Context, request *model.LoginUserRequest, ttl time.Duration) (*model.LoginUserResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
@@ -214,7 +244,9 @@ func (c *AuthUseCase) Login(ctx context.Context, request *model.LoginUserRequest
 		Token:     token,
 		IPAddress: &request.Ip,
 		UserAgent: &request.UserAgent,
-		ExpiredAt: time.Now().Add(24 * time.Hour).UnixMilli(),
+	}
+	if ttl > 0 {
+		session.ExpiredAt = time.Now().Add(ttl).UnixMilli()
 	}
 
 	if err := c.SessionRepository.Create(tx, session); err != nil {
@@ -227,10 +259,59 @@ func (c *AuthUseCase) Login(ctx context.Context, request *model.LoginUserRequest
 		return nil, fiber.ErrInternalServerError
 	}
 
+	c.notifyLogin(user, session)
+
 	return &model.LoginUserResponse{
 		User:  *model.UserToResponse(user),
 		Token: token,
 	}, nil
+}
+
+// notifyLogin best-effort pushes a "new login" alert to the user's other
+// registered devices after a successful login. It runs detached from the
+// request context so a slow/failing Expo call never delays or fails the
+// login response — errors are only logged.
+func (c *AuthUseCase) notifyLogin(user *userEntity.User, session *entity.Session) {
+	if c.DeviceRepository == nil || c.PushClient == nil {
+		return
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		devices, err := c.DeviceRepository.FindActiveByUserId(c.DB, user.ID, "expo")
+		if err != nil {
+			c.Log.WithError(err).Warn("Gagal mengambil device untuk notifikasi login")
+			return
+		}
+		if len(devices) == 0 {
+			return
+		}
+
+		ip := "tidak diketahui"
+		if session.IPAddress != nil && *session.IPAddress != "" {
+			ip = *session.IPAddress
+		}
+
+		messages := make([]pushnotification.Message, 0, len(devices))
+		for _, device := range devices {
+			messages = append(messages, pushnotification.Message{
+				To:        device.PushToken,
+				Title:     "Login Berhasil",
+				Body:      fmt.Sprintf("Akun Anda baru saja login dari IP %s", ip),
+				ChannelID: "bw_akses_plus",
+				Data: map[string]any{
+					"type":       "login",
+					"session_id": session.ID,
+				},
+			})
+		}
+
+		if _, err := c.PushClient.Send(ctx, messages...); err != nil {
+			c.Log.WithError(err).Warn("Gagal mengirim push notification login")
+		}
+	}()
 }
 
 /*

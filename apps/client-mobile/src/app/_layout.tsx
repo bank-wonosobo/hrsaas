@@ -1,5 +1,6 @@
 import BackButton from "@/components/shared/back-bottom";
 import { AuthProvider, useAuth } from "@/context/auth-context";
+import { NotificationProvider } from "@/context/notification-context";
 import { ToastProvider } from "@/context/toast-context";
 import {
   Inter_100Thin,
@@ -153,7 +154,9 @@ export default function RootLayout() {
       style={{ flex: 1 }}
     >
       <AuthProvider>
-        <RootNavigation />
+        <NotificationProvider>
+          <RootNavigation />
+        </NotificationProvider>
       </AuthProvider>
     </KeyboardAvoidingView>
   );

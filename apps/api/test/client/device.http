@@ -1,0 +1,67 @@
+### ============================================================================
+### Devices — HRIS Client (mobile) API
+### ============================================================================
+# Requires the VS Code "REST Client" extension (or a compatible .http runner).
+#
+# POST /api/devices only requires the caller to be logged in (no specific
+# permission) — every employee can register their own device, same as
+# GET /users/_current. Served by cmd/client (internal/bootstrap/client.go).
+#
+# How to run:
+#   1. `make run-client` (defaults to port 9000, same as config.yml's
+#      app.port — override APP_PORT if you're also running `make run-admin`
+#      on this machine, they can't share a port).
+#   2. Fill in @email / @password below.
+#   3. Click "Send Request" on "Login" first. REST Client automatically stores
+#      the `token` session cookie and replays it on every request below.
+### ============================================================================
+
+@baseUrl = http://localhost:9000/api
+@email = admin@company.com
+@password =Password123!
+
+### ── Auth ──────────────────────────────────────────────────────────────────
+
+### Login
+# @name login
+POST {{baseUrl}}/_login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Logout
+DELETE {{baseUrl}}/users/_logout
+
+
+### ============================================================================
+### Devices
+### ============================================================================
+
+### Register this device (called right after login)
+POST {{baseUrl}}/devices
+Content-Type: application/json
+
+{
+  "push_token": "ExponentPushToken[8LtzZrL-4suvWdevvDxdj3]",
+  "device_id": "device-123",
+  "app_version": "1.0.0",
+  "provider": "expo",
+  "platform": "android",
+  "device_name": "Samsung A55"
+}
+
+### Re-register the same device (same push_token) — reassigns instead of duplicating
+POST {{baseUrl}}/devices
+Content-Type: application/json
+
+{
+  "push_token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxx]",
+  "device_id": "device-123",
+  "app_version": "1.0.1",
+  "provider": "expo",
+  "platform": "android",
+  "device_name": "Samsung A55"
+}

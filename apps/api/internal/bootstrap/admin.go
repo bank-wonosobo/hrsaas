@@ -4,7 +4,9 @@ import (
 	authHttp "hrsaas/internal/modules/auth/delivery/http/admin"
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
+	deviceRepo "hrsaas/internal/modules/device/repository"
 	"hrsaas/pkg/middleware"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
 	upload "hrsaas/pkg/upload"
 
@@ -27,10 +29,6 @@ import (
 	employeeHttp "hrsaas/internal/modules/employee/delivery/http/admin"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	employeeUc "hrsaas/internal/modules/employee/usecase"
-
-	notificationHttp "hrsaas/internal/modules/notification/delivery/http/admin"
-	notificationRepo "hrsaas/internal/modules/notification/repository"
-	notificationUc "hrsaas/internal/modules/notification/usecase"
 
 	payrollHttp "hrsaas/internal/modules/payroll/delivery/http/admin"
 	payrollRepo "hrsaas/internal/modules/payroll/repository"
@@ -71,6 +69,7 @@ type AdminBootstrapConfig struct {
 	Config    *viper.Viper
 	S3Client  *pkg.S3Client
 	Upload    *upload.UploadUseCase
+	PushNotif *pushnotification.ExpoClient
 }
 
 func BootstrapAdmin(cfg *AdminBootstrapConfig) {
@@ -80,6 +79,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	// module auth
 	userRepository := userRepo.NewUserRepository(cfg.Log)
 	sessionRepo := authRepo.NewSessionRepository(cfg.Log)
+	deviceRepository := deviceRepo.NewDeviceRepository(cfg.Log)
 
 	// module announcement
 	announcementRepository := announcementRepo.NewAnnouncementRepository(cfg.Log)
@@ -117,13 +117,6 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeSalaryRepository := employeeRepo.NewEmployeeSalaryRepository(cfg.Log)
 	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
 	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
-	// module notification
-	notificationRepository := notificationRepo.NewNotificationRepository(cfg.Log)
-	notificationTargetRepository := notificationRepo.NewNotificationTargetRepository(cfg.Log)
-	notificationRecipientRepository := notificationRepo.NewNotificationRecipientRepository(cfg.Log)
-	notificationDeliveryRepository := notificationRepo.NewNotificationDeliveryRepository(cfg.Log)
-	notificationTemplateRepository := notificationRepo.NewNotificationTemplateRepository(cfg.Log)
-	notificationPreferenceRepository := notificationRepo.NewNotificationPreferenceRepository(cfg.Log)
 	// module payroll
 	salaryComponentRepository := payrollRepo.NewSalaryComponentRepository(cfg.Log)
 	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
@@ -161,6 +154,8 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		sessionRepo,
 		companyRepository,
 		roleRepoitory,
+		deviceRepository,
+		cfg.PushNotif,
 	)
 
 	// module attendance
@@ -265,20 +260,6 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		employeeRepository,
 		cfg.S3Client,
 	)
-	// module notification
-	notificationUseCase := notificationUc.NewNotificationUseCase(
-		cfg.DB,
-		cfg.Log,
-		cfg.Validator,
-		notificationRepository,
-		notificationTargetRepository,
-		notificationRecipientRepository,
-		notificationDeliveryRepository,
-		notificationTemplateRepository,
-		notificationPreferenceRepository,
-	)
-	notificationTemplateUseCase := notificationUc.NewNotificationTemplateUseCase(cfg.DB, cfg.Log, cfg.Validator, notificationTemplateRepository)
-	notificationPreferenceUseCase := notificationUc.NewNotificationPreferenceUseCase(cfg.DB, cfg.Log, cfg.Validator, notificationPreferenceRepository)
 	// module time off
 	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(
 		cfg.DB,
@@ -373,10 +354,6 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeDeductionController := employeeHttp.NewEmployeeDeductionController(employeeDeductionUseCase, cfg.Log)
 	sanctionController := employeeHttp.NewSanctionController(sanctionUseCase, cfg.Log)
 	empSancController := employeeHttp.NewEmSancController(empSancUseCase, cfg.Log)
-	// module notification
-	notificationController := notificationHttp.NewNotificationController(notificationUseCase, cfg.Log)
-	notificationTemplateController := notificationHttp.NewNotificationTemplateController(notificationTemplateUseCase, cfg.Log)
-	notificationPreferenceController := notificationHttp.NewNotificationPreferenceController(notificationPreferenceUseCase, cfg.Log)
 	// module time off
 	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(timeOffBalanceUseCase, cfg.Log)
 	timeOffRequestController := timeOffHttp.NewTimeOffRequestController(timeOffRequestUseCase, cfg.Log)
@@ -435,10 +412,6 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeSalaryController.RegisterRoutes(api, protected)
 	employeeAllowanceController.RegisterRoutes(api, protected)
 	employeeDeductionController.RegisterRoutes(api, protected)
-	// module notification
-	notificationController.RegisterRoutes(api, protected)
-	notificationTemplateController.RegisterRoutes(api, protected)
-	notificationPreferenceController.RegisterRoutes(api, protected)
 	// module payroll
 	salaryController.RegisterRoutes(api, protected)
 	payrollController.RegisterRoutes(api, protected)

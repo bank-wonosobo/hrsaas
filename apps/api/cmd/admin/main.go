@@ -7,6 +7,7 @@ import (
 	"hrsaas/pkg/database"
 	"hrsaas/pkg/fiber"
 	"hrsaas/pkg/logger"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
 
 	"github.com/go-playground/validator/v10"
@@ -23,6 +24,8 @@ func main() {
 
 	s3 := pkg.NewS3Client(config)
 
+	expoClient := pushnotification.NewExpoClient(config)
+
 	bootstrap.BootstrapAdmin(&bootstrap.AdminBootstrapConfig{
 		App:       app,
 		DB:        db,
@@ -30,6 +33,7 @@ func main() {
 		Validator: validator.New(),
 		Config:    config,
 		S3Client:  s3,
+		PushNotif: expoClient,
 	})
 
 	addr := fmt.Sprintf("%s:%d", config.GetString("app.host"), config.GetInt("app.port"))

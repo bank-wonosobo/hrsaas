@@ -70,6 +70,10 @@ func setDefaults(config *viper.Viper) {
 	config.SetDefault("redis.password", "")
 	config.SetDefault("redis.db", 0)
 
+	// Push notification defaults
+	config.SetDefault("push.expo.base_url", "https://exp.host/--/api/v2/push/send")
+	config.SetDefault("push.expo.access_token", "")
+
 	// Monitoring defaults
 	config.SetDefault("monitoring.enabled", true)
 	config.SetDefault("monitoring.port", 9090)

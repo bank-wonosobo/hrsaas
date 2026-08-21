@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	dbHost     = "192.168.3.13"
-	dbPort     = 5434
-	dbUser     = "dev"
-	dbPassword = "dev_rahasiasekali"
+	dbHost     = "localhost"
+	dbPort     = 5432
+	dbUser     = "postgres"
+	dbPassword = "postgres"
 	dbName     = "hr_saas"
 	dbSSL      = "disable"
 	dbTZ       = "Asia/Jakarta"

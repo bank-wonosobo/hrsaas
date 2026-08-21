@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068019105267",
+    "project_id": "bwakses-plus",
+    "storage_bucket": "bwakses-plus.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068019105267:android:86c5aa2869a3e48e296686",
+        "android_client_info": {
+          "package_name": "id.co.bankwonosobo.bwaksesplus.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbXbCOtJbBuH-g-7gaj9q6mRLu097pfXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

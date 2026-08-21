@@ -54,6 +54,9 @@ seed:
 run-expo:
 	cd apps/client-mobile && npx expo start
 
+run-expo-build-dev:
+	cd apps/client-mobile && bun run build:dev:android
+
 ## Jalankan admin-panel (Next.js)
 run-dev-admin-panel:
 	cd apps/admin-panel && bun run dev

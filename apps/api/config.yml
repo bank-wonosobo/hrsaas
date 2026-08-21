@@ -32,3 +32,8 @@ s3:
   access_key: "453ce78d7559fa4720aa5f164108af0a"
   secret_key: "186829944f018834af8b664642f1f61fea8d1bf4a6dcb26470218341e267cf4c"
   public_url: "https://r2.bankwonosobo.co.id" # base URL publik untuk public_bucket
+
+push:
+  expo:
+    base_url: "https://exp.host/--/api/v2/push/send"
+    access_token: "" # hanya diperlukan jika Enhanced Security diaktifkan di project Expo

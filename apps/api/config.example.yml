@@ -32,3 +32,8 @@ s3:
   access_key: ""
   secret_key: ""
   public_url: "" # base URL publik untuk public_bucket
+
+push:
+  expo:
+    base_url: "https://exp.host/--/api/v2/push/send"
+    access_token: "" # hanya diperlukan jika Enhanced Security diaktifkan di project Expo

@@ -1,0 +1,40 @@
+### ============================================================================
+### Auth — HRIS Admin & Client API
+### ============================================================================
+# Requires the VS Code "REST Client" extension (or a compatible .http runner).
+#
+# Admin auth is served by cmd/admin (internal/bootstrap/admin.go), mounted
+# under /api/admin. Client auth is served by cmd/client
+# (internal/bootstrap/client.go), mounted under /api — same LoginUserRequest/
+# LoginUserResponse payloads, different usecase (AuthUseCase.Login vs
+# AuthUseCase.LoginClient) and no client-side /_register.
+#
+# How to run:
+#   1. `make run-admin` (defaults to port 9000, same as config.yml's
+#      app.port) and/or `make run-client` — override APP_PORT if running
+#      both on this machine at once, they can't share a port.
+#   2. Fill in @email / @password below.
+#   3. Click "Send Request" on "Login" first. REST Client automatically stores
+#      the `token` session cookie and replays it on every request below.
+### ============================================================================
+
+@clientBaseUrl = http://localhost:9000/api
+@email = admin@company.com
+@password = Password123!
+
+### ============================================================================
+### Client
+### ============================================================================
+
+### Login
+# @name clientLogin
+POST {{clientBaseUrl}}/_login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+# Note: there is no client-side logout route — only admin registers
+# DELETE /users/_logout (auth_router.go, admin package).

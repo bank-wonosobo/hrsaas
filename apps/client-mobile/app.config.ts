@@ -5,11 +5,13 @@ type AppEnv = "development" | "staging" | "production";
 const APP_ENV = (process.env.APP_ENV ?? "development") as AppEnv;
 
 // Single source of truth for version
-const APP_VERSION = "1.4.1";
+const APP_VERSION = "1.5.0";
 
-// Single source of truth for Google Maps API key (falls back to env var if set)
-const GOOGLE_MAPS_API_KEY =
-  process.env.GOOGLE_MAPS_API_KEY ?? "AIzaSyCgiZW-tMOXOHS18Yv-50LN-wqfE8R2HSE";
+// Single source of truth for Google Maps API keys (fall back to env vars if set)
+const GOOGLE_MAPS_API_KEY_IOS =
+  process.env.GOOGLE_MAPS_API_KEY_IOS ?? process.env.GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY_ANDROID =
+  process.env.GOOGLE_MAPS_API_KEY_ANDROID ?? process.env.GOOGLE_MAPS_API_KEY;
 
 const envConfig: Record<
   AppEnv,
@@ -52,7 +54,7 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
       ITSAppUsesNonExemptEncryption: false,
     },
     config: {
-      googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+      googleMapsApiKey: GOOGLE_MAPS_API_KEY_IOS,
     },
   },
   android: {
@@ -64,7 +66,7 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
     },
     config: {
       googleMaps: {
-        apiKey: GOOGLE_MAPS_API_KEY,
+        apiKey: GOOGLE_MAPS_API_KEY_ANDROID,
       },
     },
     predictiveBackGestureEnabled: false,
@@ -75,6 +77,7 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
       // "android.permission.ACCESS_FINE_LOCATION",
     ],
     package: androidPackage,
+    googleServicesFile: "./google-services.json",
   },
   web: {
     output: "static",
@@ -105,29 +108,6 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
         barcodeScannerEnabled: true,
       },
     ],
-    // [
-    //   "expo-camera",
-    //   {
-    //     cameraPermission: "Allow $(PRODUCT_NAME) to access your camera",
-    //     microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone",
-    //     recordAudioAndroid: true,
-    //   },
-    // ],
-    // [
-    //   "expo-location",
-    //   {
-    //     locationAlwaysAndWhenInUsePermission:
-    //       "Allow $(PRODUCT_NAME) to use your location.",
-    //   },
-    // ],
-    // [
-    //   "expo-navigation-bar",
-    //   {
-    //     enforceContrast: true,
-    //     barStyle: "dark-content",
-    //     visibility: "visible",
-    //   },
-    // ],
     [
       "expo-font",
       {
@@ -147,8 +127,14 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
     [
       "react-native-maps",
       {
-        androidGoogleMapsApiKey: GOOGLE_MAPS_API_KEY,
-        iosGoogleMapsApiKey: GOOGLE_MAPS_API_KEY,
+        androidGoogleMapsApiKey: GOOGLE_MAPS_API_KEY_ANDROID,
+        iosGoogleMapsApiKey: GOOGLE_MAPS_API_KEY_IOS,
+      },
+    ],
+    [
+      "expo-notifications",
+      {
+        sounds: ["./assets/sounds/notification.wav"],
       },
     ],
   ],
