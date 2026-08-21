@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"hrsaas/internal/modules/auth/model"
+	employeeModel "hrsaas/internal/modules/employee/model"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -34,4 +35,17 @@ func HasRole(ctx *fiber.Ctx, roleName string) bool {
 		}
 	}
 	return false
+}
+
+func GetEmployee(ctx *fiber.Ctx) *employeeModel.EmployeeResponse {
+	employee, _ := ctx.Locals("employee").(*employeeModel.EmployeeResponse)
+	return employee
+}
+
+func GetEmployeeId(ctx *fiber.Ctx) string {
+	employee := GetEmployee(ctx)
+	if employee == nil {
+		return ""
+	}
+	return employee.ID
 }

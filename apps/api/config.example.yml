@@ -32,3 +32,6 @@ s3:
   access_key: ""
   secret_key: ""
   public_url: "" # base URL publik untuk public_bucket
+
+face:
+  base_url: "" # base URL service face recognition (Python), tanpa trailing slash (contoh: http://localhost:8000)

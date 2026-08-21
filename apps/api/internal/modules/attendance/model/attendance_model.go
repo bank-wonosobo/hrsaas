@@ -37,18 +37,18 @@ type AttendanceLogResponse struct {
 }
 
 type CheckInAttendanceRequest struct {
-	CompanyID  string                `json:"-" form:"-" validate:"required,uuid4"`
-	EmployeeID string                `json:"-" form:"employee_id" validate:"required,uuid4"`
-	Lat        float64               `json:"lat" form:"lat" validate:"required"`
-	Lng        float64               `json:"lng" form:"lng" validate:"required"`
+	CompanyID  string                `json:"-"           form:"-"           validate:"required,uuid4"`
+	EmployeeID string                `json:"-"           form:"employee_id" validate:"required,uuid4"`
+	Lat        float64               `json:"lat"         form:"lat"         validate:"required"`
+	Lng        float64               `json:"lng"         form:"lng"         validate:"required"`
 	DeviceInfo string                `json:"device_info" form:"device_info" validate:"required"`
-	IsAllowed  bool                  `json:"is_allowed" form:"is_allowed"`
-	File       *multipart.FileHeader `json:"-" form:"-" validate:"required"`
+	IsAllowed  bool                  `json:"is_allowed"  form:"is_allowed"`
+	File       *multipart.FileHeader `json:"-"           form:"-"           validate:"required"`
 }
 
 type RegisterFaceRequest struct {
-	EmployeeID string `json:"-" validate:"required,uuid4"`
-	CompanyID  string `json:"-" validate:"required,uuid4"`
+	UserId    string `json:"-"          validate:"required,uuid4"`
+	CompanyID string `json:"-"          validate:"required,uuid4"`
 	// File       *multipart.FileHeader `json:"-" validate:"required"`
 	ObjectKey string `json:"object_key" validate:"required"`
 }
@@ -70,30 +70,30 @@ type UpdateAttendanceRequest struct {
 	TotalWorkMinutes  *int    `json:"total_work_minutes,omitempty"`
 	TotalBreakMinutes *int    `json:"total_break_minutes,omitempty"`
 	IsAllowed         *bool   `json:"is_allowed,omitempty"`
-	Status            *string `json:"status,omitempty" validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
+	Status            *string `json:"status,omitempty"              validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
 }
 
 type SearchAttendanceRequest struct {
-	CompanyID  string `json:"-" validate:"required,uuid4"`
+	CompanyID  string `json:"-"                     validate:"required,uuid4"`
 	EmployeeID string `json:"employee_id,omitempty" validate:"omitempty,uuid4"`
-	Date       string `json:"date,omitempty" validate:"omitempty,max=20"`
-	StartDate  string `json:"start_date,omitempty" validate:"omitempty,max=20"`
-	EndDate    string `json:"end_date,omitempty" validate:"omitempty,max=20"`
-	Status     string `json:"status,omitempty" validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
+	Date       string `json:"date,omitempty"        validate:"omitempty,max=20"`
+	StartDate  string `json:"start_date,omitempty"  validate:"omitempty,max=20"`
+	EndDate    string `json:"end_date,omitempty"    validate:"omitempty,max=20"`
+	Status     string `json:"status,omitempty"      validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
 	IsApproved *bool  `json:"is_approved,omitempty"`
-	Page       int    `json:"page,omitempty" validate:"min=1"`
-	Size       int    `json:"size,omitempty" validate:"min=1,max=100"`
+	Page       int    `json:"page,omitempty"        validate:"min=1"`
+	Size       int    `json:"size,omitempty"        validate:"min=1,max=100"`
 }
 
 type SearchAttendanceLogRequest struct {
-	CompanyID    string `json:"-" validate:"required,uuid4"`
+	CompanyID    string `json:"-"                       validate:"required,uuid4"`
 	AttendanceID string `json:"attendance_id,omitempty" validate:"omitempty,uuid4"`
-	EmployeeID   string `json:"employee_id,omitempty" validate:"omitempty,uuid4"`
-	Type         string `json:"type,omitempty" validate:"omitempty,oneof=CHECK_IN CHECK_OUT BREAK_IN BREAK_OUT"`
-	Date         string `json:"date,omitempty" validate:"omitempty,max=20"`
+	EmployeeID   string `json:"employee_id,omitempty"   validate:"omitempty,uuid4"`
+	Type         string `json:"type,omitempty"          validate:"omitempty,oneof=CHECK_IN CHECK_OUT BREAK_IN BREAK_OUT"`
+	Date         string `json:"date,omitempty"          validate:"omitempty,max=20"`
 	IsApproved   *bool  `json:"is_approved,omitempty"`
-	Page         int    `json:"page,omitempty" validate:"min=1"`
-	Size         int    `json:"size,omitempty" validate:"min=1,max=100"`
+	Page         int    `json:"page,omitempty"          validate:"min=1"`
+	Size         int    `json:"size,omitempty"          validate:"min=1,max=100"`
 }
 
 type AttendanceSheet struct {

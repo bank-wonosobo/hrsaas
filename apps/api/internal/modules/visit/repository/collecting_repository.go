@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+
 	"hrsaas/internal/modules/visit/entity"
 	"hrsaas/internal/modules/visit/model"
 	"hrsaas/pkg/repository"
@@ -30,14 +32,22 @@ func NewCollectingRepository(log *logrus.Logger, baseURL string) *CollectingRepo
 	}
 }
 
-func (r *CollectingRepository) SearchNasabah(ctx context.Context, req *model.SearchNasabahRequest) ([]model.NasabahData, error) {
+func (r *CollectingRepository) SearchNasabah(
+	ctx context.Context,
+	req *model.SearchNasabahRequest,
+) ([]model.NasabahData, error) {
 	data, err := json.Marshal(req)
 	if err != nil {
 		r.Log.WithError(err).Error("Failed to marshal request")
 		return nil, fiber.ErrInternalServerError
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/bwakses/apirem", bytes.NewBuffer(data))
+	httpReq, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		r.baseURL+"/bwakses/apirem",
+		bytes.NewBuffer(data),
+	)
 	if err != nil {
 		r.Log.WithError(err).Error("Failed to create request")
 		return nil, err
@@ -53,7 +63,10 @@ func (r *CollectingRepository) SearchNasabah(ctx context.Context, req *model.Sea
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		r.Log.Errorf("External API returned status: %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		r.Log.WithField("payload", string(data)).
+			WithField("body", string(body)).
+			Errorf("External API returned status: %d", resp.StatusCode)
 		return nil, fiber.ErrInternalServerError
 	}
 
@@ -65,13 +78,19 @@ func (r *CollectingRepository) SearchNasabah(ctx context.Context, req *model.Sea
 
 	if result.RC != "00" {
 		r.Log.Errorf("External API returned RC: %s", result.RC)
-		return nil, fiber.NewError(fiber.StatusInternalServerError, "Gagal mendapatkan data dari server core")
+		return nil, fiber.NewError(
+			fiber.StatusInternalServerError,
+			"Gagal mendapatkan data dari server core",
+		)
 	}
 
 	return result.Data, nil
 }
 
-func (r *CollectingRepository) List(db *gorm.DB, request *model.SearchRemidialVisitRequest) ([]entity.RemidialVisit, int64, error) {
+func (r *CollectingRepository) List(
+	db *gorm.DB,
+	request *model.SearchRemidialVisitRequest,
+) ([]entity.RemidialVisit, int64, error) {
 	var items []entity.RemidialVisit
 
 	query, err := r.FilterSearch(db.Model(&entity.RemidialVisit{}), request)
@@ -96,7 +115,10 @@ func (r *CollectingRepository) List(db *gorm.DB, request *model.SearchRemidialVi
 	return items, total, nil
 }
 
-func (r *CollectingRepository) FilterSearch(db *gorm.DB, request *model.SearchRemidialVisitRequest) (*gorm.DB, error) {
+func (r *CollectingRepository) FilterSearch(
+	db *gorm.DB,
+	request *model.SearchRemidialVisitRequest,
+) (*gorm.DB, error) {
 	query := db.Joins("LEFT JOIN employees e ON e.id = remidial_visit.employee_id")
 	if request.CompanyID != "" {
 		query = query.Where("remidial_visit.company_id = ?", request.CompanyID)
@@ -110,7 +132,6 @@ func (r *CollectingRepository) FilterSearch(db *gorm.DB, request *model.SearchRe
 	if request.NasabahName != "" {
 		query = query.Where("remidial_visit.nasabah_name ILIKE ?", "%"+request.NasabahName+"%")
 	}
-	// created_at disimpan sebagai epoch milli, jadi tanggal filter perlu dikonversi dulu.
 	if request.StartDate != "" {
 		startDate, err := time.ParseInLocation("2006-01-02", request.StartDate, time.Local)
 		if err != nil {

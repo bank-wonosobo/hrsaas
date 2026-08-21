@@ -2,87 +2,93 @@
 
 ## Login Page
 
-- POST Login
+- POST Login ✅
 
 ## Home Page
 
-- GET All Announcement
-- GET Current Attendance
-- GET Current User
+- GET All Announcement ✅
+- GET Current Attendance ✅
+- GET Current User ✅
 
 ## Attendance Page
 
-- GET All Current Attendance
+- GET All Current Attendance ✅
+- GET Current Attendance Today ✅
 
 ## Clock-in / Clock-out Page (Area Presensi)
 
-- GET Current User
-- GET Current Shift
-- GET Current Office Location
+- GET Current User ✅
+- GET Current Shift ✅
+- GET Current Office Location ✅
 
 ## Clock-in / Clock-out Page (Selfie Presensi)
 
-- POST Check-in
+- POST Register-face ✅
+- POST Clock-in ✅
+- POST Break-in ✅
+- POST Break-out ✅
+- POST Clock-out ✅
+- POST Lend-App
 
 ## Izin & Cuti Page
 
-- GET All Current Time Off Balance
-- GET All Current Time Off
+- GET All Current Time Off Balance ✅
+- GET All Current Time Off ✅
 
 ## Pengajuan Izin & Cuti Page
 
-- POST Time off
+- POST Time off ✅
 
 ## Persetujuan Cuti Page
 
-- GET All Current Time Off Approval
+- GET All Current Time Off Approval ✅
 
 ## Sanksi Karyawan Page
 
-- GET All Current Sanction
+- GET All Current Sanction ✅
 
 ## Kunjungan Client Paga
 
-- GET All Current Client Visit
+- GET All Current Client Visit ✅
 
 ## Tambah Kunjungan Client Page
 
-- POST Client Visit
+- POST Client Visit ✅
 
 ## Penagihan Kredit Page
 
-- GET All Current Credit Collection
+- GET All Current Credit Collection ✅
 
 ## Cari Kredit Page
 
-- GET Search Credit Colection
+- GET Search Credit Colection ✅
 
 ## Tambah Penagihan Kredit Page
 
-- POST Credit Collection
+- POST Credit Collection ✅
 
 ## Document Karyawan Page
 
-- GET All Current Employee Docs
+- GET All Current Employee Docs ✅
 
 ## Data Karyawan Page
 
-- GET All Employee
+- GET All Employee ✅
 
 ## Profile PAge
 
-- GET Current User
-- DELETE Logout
+- GET Current User ✅
+- DELETE Logout ✅
 
 ## Data Diri Page
 
-- GET Current Employee
+- GET Current Employee ✅
 
 ## Riwayat Contract
 
-- GET Current Employee Contracts
+- GET Current Employee Contracts ✅
 
 ## Pendidikan & Pelatihan
 
-- GET All Current Employee Education
-- GET All Current Employee Pelatihan
+- GET All Current Employee Education ✅
+- GET All Current Employee Pelatihan ✅
