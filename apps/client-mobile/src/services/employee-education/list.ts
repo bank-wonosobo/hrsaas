@@ -10,14 +10,12 @@ export type ListEmployeeEducationParams = {
 export const listEmployeeEducations = async (
   params: ListEmployeeEducationParams,
 ): Promise<PaginatedData<EmployeeEducation>> => {
-  const response = await api.get("/employee-educations/_current", {
+  const response = await api.get("/employee-educations", {
     params,
   });
 
   if (response.status !== 200) {
-    throw new Error(
-      response.data?.error || "Gagal memuat riwayat pendidikan",
-    );
+    throw new Error(response.data?.error || "Gagal memuat riwayat pendidikan");
   }
 
   return {

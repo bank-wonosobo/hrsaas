@@ -10,10 +10,8 @@ export type ListVisitParams = {
   size?: number;
 };
 
-export const listVisits = async (
-  params: ListVisitParams,
-): Promise<Visit[]> => {
-  const response = await api.get("/visits/_current", { params });
+export const listVisits = async (params: ListVisitParams): Promise<Visit[]> => {
+  const response = await api.get("/visits", { params });
 
   if (response.status !== 200) {
     throw new Error(response.data?.error || "Gagal memuat data kunjungan");

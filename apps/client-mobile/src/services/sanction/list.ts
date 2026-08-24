@@ -15,7 +15,7 @@ export type ListSanctionParams = {
 export const listSanctions = async (
   params: ListSanctionParams,
 ): Promise<PaginatedData<EmployeeSanction>> => {
-  const response = await api.get("/employee-sanctions/_current", { params });
+  const response = await api.get("/employee-sanctions", { params });
 
   if (response.status !== 200) {
     throw new Error(response.data?.error || "Gagal memuat data sanksi");
