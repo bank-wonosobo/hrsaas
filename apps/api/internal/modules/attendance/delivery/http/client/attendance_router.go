@@ -21,6 +21,6 @@ func (c *AttendanceController) RegisterRoutes(
 	route.Post("/lend/check-in", client(c.LendCheckIn)...)
 	route.Post("/lend/check-out", client(c.LendCheckOut)...)
 	route.Post("/_current/register-face", client(c.RegisterFaceCurrent)...)
-	route.Post("/_current/face", client(c.FaceStatusCurrent)...)
+	route.Get("/_current/face", client(c.FaceStatusCurrent)...)
 
 }

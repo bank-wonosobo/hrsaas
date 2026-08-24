@@ -38,6 +38,7 @@
 ## Pengajuan Izin & Cuti Page
 
 - POST Time off ✅
+- GET All time off type
 
 ## Persetujuan Cuti Page
 
