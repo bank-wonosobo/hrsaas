@@ -8,7 +8,6 @@ import (
 	"hrsaas/pkg/fiber"
 	"hrsaas/pkg/logger"
 	pkg "hrsaas/pkg/s3"
-	upload "hrsaas/pkg/upload"
 	"hrsaas/pkg/validator"
 )
 
@@ -32,7 +31,6 @@ func main() {
 		Validator: validate,
 		Config:    config,
 		S3Client:  s3,
-		Upload:    upload.NewUploadUseCase(logger, validate, s3, config),
 	})
 
 	addr := fmt.Sprintf("%s:%d", config.GetString("app.host"), config.GetInt("app.port"))
