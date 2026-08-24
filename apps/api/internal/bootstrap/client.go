@@ -10,9 +10,9 @@ import (
 	authHttp "hrsaas/internal/modules/auth/delivery/http/client"
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
+	"hrsaas/internal/modules/upload"
 	"hrsaas/pkg/middleware"
 	pkg "hrsaas/pkg/s3"
-	upload "hrsaas/pkg/upload"
 
 	announcementHttp "hrsaas/internal/modules/announcement/delivery/http/client"
 	announcementRepo "hrsaas/internal/modules/announcement/repository"
@@ -27,6 +27,10 @@ import (
 	employeeHttp "hrsaas/internal/modules/employee/delivery/http/client"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	employeeUc "hrsaas/internal/modules/employee/usecase"
+
+	deviceHttp "hrsaas/internal/modules/device/delivery/http/client"
+	deviceRepo "hrsaas/internal/modules/device/repository"
+	deviceUc "hrsaas/internal/modules/device/usecase"
 
 	timeOffHttp "hrsaas/internal/modules/time_off/delivery/http/client"
 	timeOffRepo "hrsaas/internal/modules/time_off/repository"
@@ -92,6 +96,9 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 
 	// module user
 	roleRepoitory := userRepo.NewRoleRepository(cfg.Log)
+
+	// module device
+	deviceRepository := deviceRepo.NewDeviceRepository(cfg.Log)
 
 	// module visit
 	visitRepository := visitRepo.NewVisitRepository(cfg.Log)
@@ -230,6 +237,12 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		userRepository,
 		roleRepoitory,
 	)
+	deviceUseCase := deviceUc.NewDeviceUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		deviceRepository,
+	)
 
 	// module visit
 	visitUseCase := visitUc.NewVisitUseCase(
@@ -303,6 +316,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 
 	// module user
 	userController := userHttp.NewUserController(userUseCase, cfg.Log)
+	deviceController := deviceHttp.NewDeviceController(deviceUseCase, cfg.Log)
 
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
@@ -339,6 +353,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 
 	// module user
 	userController.RegisterRoutes(api, authMiddleware)
+	deviceController.RegisterRoutes(api, authMiddleware)
 
 	// module visit
 	visitController.RegisterRoutes(api, client)

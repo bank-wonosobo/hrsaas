@@ -4,10 +4,10 @@ import (
 	authHttp "hrsaas/internal/modules/auth/delivery/http/admin"
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
+	"hrsaas/internal/modules/upload"
 	"hrsaas/pkg/middleware"
 	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
-	upload "hrsaas/pkg/upload"
 
 	announcementHttp "hrsaas/internal/modules/announcement/delivery/http/admin"
 	announcementRepo "hrsaas/internal/modules/announcement/repository"

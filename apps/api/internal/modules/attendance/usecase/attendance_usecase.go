@@ -13,12 +13,13 @@ import (
 	"hrsaas/internal/modules/attendance/repository"
 	employeeEntity "hrsaas/internal/modules/employee/entity"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
+	"hrsaas/internal/modules/upload"
 	userEntity "hrsaas/internal/modules/user/entity"
 	userRepo "hrsaas/internal/modules/user/repository"
 	distances "hrsaas/pkg/distance"
 	excel "hrsaas/pkg/excel"
 	face "hrsaas/pkg/face_recognition"
-	upload "hrsaas/pkg/upload"
+
 	"mime/multipart"
 	"time"
 

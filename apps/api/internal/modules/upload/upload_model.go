@@ -1,4 +1,4 @@
-package pkg
+package upload
 
 import "mime/multipart"
 
