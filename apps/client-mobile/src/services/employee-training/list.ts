@@ -10,7 +10,7 @@ export type ListEmployeeTrainingParams = {
 export const listEmployeeTrainings = async (
   params: ListEmployeeTrainingParams,
 ): Promise<PaginatedData<EmployeeTraining>> => {
-  const response = await api.get("/employee-trainings/_current", {
+  const response = await api.get("/employee-trainings", {
     params,
   });
 

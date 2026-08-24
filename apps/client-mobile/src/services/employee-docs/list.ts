@@ -10,7 +10,7 @@ export type ListEmployeeDocumentParams = {
 export const listEmployeeDocuments = async (
   params: ListEmployeeDocumentParams,
 ): Promise<PaginatedData<EmployeeDocument>> => {
-  const response = await api.get("/employee-docs/_current", { params });
+  const response = await api.get("/employee-docs", { params });
 
   if (response.status !== 200) {
     throw new Error(response.data?.error || "Gagal memuat dokumen karyawan");

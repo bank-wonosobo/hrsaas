@@ -10,7 +10,7 @@ export type ListAttendanceParams = {
 export const listAttendance = async (
   params: ListAttendanceParams,
 ): Promise<PaginatedData<Attendance>> => {
-  const response = await api.get("/attendances/_current", { params });
+  const response = await api.get("/attendances", { params });
 
   return {
     data: response.data?.data ?? [],
