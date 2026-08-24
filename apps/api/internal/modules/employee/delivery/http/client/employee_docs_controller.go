@@ -49,3 +49,19 @@ func (c *EmployeeDocumentController) ListCurrent(ctx *fiber.Ctx) error {
 		Paging: paging,
 	})
 }
+
+func (c *EmployeeDocumentController) UpdateCurrent(ctx *fiber.Ctx) error {
+	request := new(model.UpdateEmployeeDocumentRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+	request.ID = ctx.Params("doc_id")
+
+	result, err := c.UseCase.Update(ctx.UserContext(), request)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeDocumentResponse]{Data: result})
+}

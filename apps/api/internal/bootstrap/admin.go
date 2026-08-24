@@ -72,7 +72,7 @@ type AdminBootstrapConfig struct {
 }
 
 func BootstrapAdmin(cfg *AdminBootstrapConfig) {
-	api := cfg.App.Group("/api/admin")
+	api := cfg.App.Group("/api")
 
 	// ====== REPO =======
 	// module auth
@@ -103,8 +103,10 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeRepository := employeeRepo.NewEmployeeRepository(cfg.Log)
 	employeeContractRepository := employeeRepo.NewEmployeeContractRepository(cfg.Log)
 	employeeDocsRepository := employeeRepo.NewEmployeeDocumentRepository(cfg.Log)
+	employeeEducationRepository := employeeRepo.NewEmployeeEducationRepository(cfg.Log)
 	sanctionRepository := employeeRepo.NewSanctionRepository(cfg.Log)
 	employeeSancRepository := employeeRepo.NewEmSancRepository(cfg.Log)
+	emoloyeeTrainRepository := employeeRepo.NewEmployeeTrainingRepository(cfg.Log)
 
 	// module time_off
 	timeOffApprovalRepository := timeOffRepo.NewTimeOffApprovalRepository(cfg.Log)
@@ -248,6 +250,9 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Validator,
 		employeeDocsRepository,
 	)
+	employeeEducationUseCase := employeeUc.NewEmployeeEducationUseCase(
+		cfg.DB, cfg.Log, cfg.Validator, employeeEducationRepository,
+	)
 	employeeSalaryUseCase := employeeUc.NewEmployeeSalaryUseCase(
 		cfg.DB,
 		cfg.Log,
@@ -282,6 +287,10 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		sanctionRepository,
 		employeeRepository,
 		cfg.S3Client,
+	)
+
+	employeeTrainUseCase := employeeUc.NewEmployeeTrainingUseCase(
+		cfg.DB, cfg.Log, cfg.Validator, emoloyeeTrainRepository,
 	)
 	// module time off
 	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(
@@ -392,6 +401,11 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		employeeDocsUseCase,
 		cfg.Log,
 	)
+
+	employeeEducationController := employeeHttp.NewEmployeeEducationController(
+		employeeEducationUseCase,
+		cfg.Log,
+	)
 	employeeSalaryController := employeeHttp.NewEmployeeSalaryController(
 		employeeSalaryUseCase,
 		cfg.Log,
@@ -406,6 +420,10 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	)
 	sanctionController := employeeHttp.NewSanctionController(sanctionUseCase, cfg.Log)
 	empSancController := employeeHttp.NewEmSancController(empSancUseCase, cfg.Log)
+	employeeTrainController := employeeHttp.NewEmployeeTrainingController(
+		employeeTrainUseCase,
+		cfg.Log,
+	)
 	// module time off
 	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(
 		timeOffBalanceUseCase,
@@ -459,8 +477,10 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeController.RegisterRoutes(api, protected)
 	employeeContractController.RegisterRoutes(api, protected)
 	employeeDocsController.RegisterRoutes(api, protected)
+	employeeEducationController.RegisterRoutes(api, protected)
 	sanctionController.RegisterRoutes(api, protected)
 	empSancController.RegisterRoutes(api, protected)
+	employeeTrainController.RegisterRoutes(api, protected)
 
 	// module time off
 	timeOffBalanceController.RegisterRoutes(api, protected)

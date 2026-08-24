@@ -26,7 +26,6 @@ func NewEmSancController(
 	}
 }
 
-// SearchCurrent memuat sanksi yang tercatat atas karyawan yang sedang login.
 func (c *EmSancController) SearchCurrent(ctx *fiber.Ctx) error {
 	request := new(model.SearchEmSancRequest)
 	request.CompanyID = auth.GetCompanyId(ctx)

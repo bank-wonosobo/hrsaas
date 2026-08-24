@@ -10,7 +10,7 @@ func (c *EmployeeDocumentController) RegisterRoutes(
 	router fiber.Router,
 	protected middleware.ProtectedMiddleware,
 ) {
-	route := router.Group("/employee-documents")
+	route := router.Group("/employee-docs")
 
 	route.Get("/", protected("EMPLOYEE_DOCUMENTS", c.List)...)
 	route.Post("/", protected("EMPLOYEE_DOCUMENTS", c.Create)...)
