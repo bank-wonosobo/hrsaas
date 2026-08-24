@@ -18,7 +18,6 @@ const (
 )
 
 // Message is one Expo push notification.
-// See https://docs.expo.dev/push-notifications/sending-notifications/#formats
 type Message struct {
 	To        string         `json:"to"`
 	Title     string         `json:"title,omitempty"`
@@ -49,7 +48,6 @@ type expoResponse struct {
 	} `json:"errors,omitempty"`
 }
 
-// ExpoClient sends push notifications through Expo's push service.
 type ExpoClient struct {
 	httpClient  *http.Client
 	baseURL     string
