@@ -235,6 +235,10 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		employeeContractRepository,
 	)
 
+	timeOffTypeUseCase := timeOffUc.NewTimeOffTypeUseCase(
+		cfg.DB, cfg.Log, cfg.Validator, timeOffTypeRepository,
+	)
+
 	// module user
 	userUseCase := userUc.NewUserUseCase(
 		cfg.DB,
@@ -319,6 +323,9 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		timeOffRequestUseCase,
 		cfg.Log,
 	)
+	timeOffTypeController := timeOffHttp.NewTimeOffTypeController(
+		timeOffTypeUseCase, cfg.Log,
+	)
 
 	// module user
 	userController := userHttp.NewUserController(userUseCase, cfg.Log)
@@ -357,6 +364,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	timeOffApprovalController.RegisterRoutes(api, client)
 	timeOffBalanceController.RegisterRoutes(api, client)
 	timeOffRequestController.RegisterRoutes(api, client)
+	timeOffTypeController.RegisterRoutes(api, client)
 
 	// module user
 	userController.RegisterRoutes(api, authMiddleware)

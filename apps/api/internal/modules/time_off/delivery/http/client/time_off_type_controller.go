@@ -1,0 +1,51 @@
+package client
+
+import (
+	"hrsaas/internal/modules/time_off/model"
+	"hrsaas/internal/modules/time_off/usecase"
+	"hrsaas/pkg/response"
+	"math"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
+)
+
+type TimeOffTypeController struct {
+	TypeUseCase *usecase.TimeOffTypeUseCase
+	Log         *logrus.Logger
+}
+
+func NewTimeOffTypeController(
+	typeUseCase *usecase.TimeOffTypeUseCase,
+	log *logrus.Logger,
+) *TimeOffTypeController {
+	return &TimeOffTypeController{
+		TypeUseCase: typeUseCase,
+		Log:         log,
+	}
+}
+
+// TODO: Support pagination if types grow large.
+func (c *TimeOffTypeController) ListTypes(ctx *fiber.Ctx) error {
+	request := &model.SearchTimeOffTypeRequest{
+		Name: ctx.Query("name", ""),
+		Page: ctx.QueryInt("page", 1),
+		Size: ctx.QueryInt("size", 10),
+	}
+
+	result, total, err := c.TypeUseCase.ListTypes(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to list time off types")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[[]model.TimeOffTypeResponse]{
+		Data: result,
+		Paging: &response.PageMetadata{
+			Page:      request.Page,
+			Size:      request.Size,
+			TotalItem: total,
+			TotalPage: int64(math.Ceil(float64(total) / float64(request.Size))),
+		},
+	})
+}
