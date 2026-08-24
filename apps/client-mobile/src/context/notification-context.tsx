@@ -7,6 +7,7 @@ import { Alert, Platform } from "react-native";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -79,9 +80,16 @@ async function registerForPushNotificationsAsync() {
   let token;
 
   if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "Default",
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#FF231F7C",
+    });
+
     await Notifications.setNotificationChannelAsync("bw_akses_plus", {
-      name: "A channel is needed for the permissions prompt to appear",
-      importance: Notifications.AndroidImportance.HIGH,
+      name: "BW Akses Plus",
+      importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: "#FF231F7C",
       sound: "notification.wav",

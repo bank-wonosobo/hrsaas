@@ -13,7 +13,12 @@ export const listAttendance = async (
   const response = await api.get("/attendances/_current", { params });
 
   return {
-    data: response.data.data,
-    paging: response.data.paging,
+    data: response.data?.data ?? [],
+    paging: response.data?.paging ?? {
+      page: params.page ?? 1,
+      size: params.size ?? 10,
+      total_item: 0,
+      total_page: 1,
+    },
   };
 };

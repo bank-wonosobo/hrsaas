@@ -1,9 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -31,8 +34,30 @@ export default function BottomSheet({
 }: Props) {
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      },
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setKeyboardHeight(0);
+      },
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const close = () => {
+    Keyboard.dismiss();
     Animated.timing(translateY, {
       toValue: SCREEN_HEIGHT,
       duration: CLOSE_DURATION,
@@ -52,6 +77,8 @@ export default function BottomSheet({
         stiffness: 180,
         mass: 0.6,
       }).start();
+    } else {
+      setKeyboardHeight(0);
     }
   }, [visible]);
 
@@ -81,6 +108,11 @@ export default function BottomSheet({
     }),
   ).current;
 
+  const dynamicMaxHeight =
+    keyboardHeight > 0
+      ? SCREEN_HEIGHT - keyboardHeight - 40
+      : SCREEN_HEIGHT * 0.85;
+
   return (
     <Modal
       visible={visible}
@@ -89,14 +121,20 @@ export default function BottomSheet({
       statusBarTranslucent
       onRequestClose={close}
     >
-      <View className="flex-1 justify-end bg-black/30">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        className="flex-1 justify-end bg-black/30"
+      >
         <Pressable className="absolute inset-0" onPress={close} />
         <Animated.View
           style={{
             transform: [{ translateY }],
             paddingBottom: insets.bottom + 16,
+            marginBottom: Platform.OS === "android" ? keyboardHeight : 0,
+            maxHeight: dynamicMaxHeight,
           }}
-          className="rounded-t-3xl bg-white px-4 pt-3 max-h-[80%]"
+          className="rounded-t-3xl bg-white px-4 pt-3"
         >
           <View {...panResponder.panHandlers} className="items-center pb-3">
             <View className="h-1.5 w-12 rounded-full bg-gray-200" />
@@ -106,11 +144,14 @@ export default function BottomSheet({
               </Text>
             )}
           </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {children}
           </ScrollView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
