@@ -14,4 +14,5 @@ func (c *EmployeeController) RegisterRoutes(
 
 	route.Get("/", client(c.ListEmployee)...)
 	route.Get("/_current", client(c.GetCurrent)...)
+	route.Put("/_current", client(c.UpdateCurrent)...)
 }

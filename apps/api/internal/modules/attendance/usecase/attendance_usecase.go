@@ -143,10 +143,10 @@ func (c *AttendanceUseCase) RegisterFace(
 
 func (c *AttendanceUseCase) FaceStatus(
 	ctx context.Context,
-	id, companyID string,
+	userID, companyID string,
 ) (*model.FaceStatusResponse, error) {
 	employee := new(employeeEntity.Employee)
-	if err := c.EmployeeRepository.FindByIdAndCompany(c.DB.WithContext(ctx), employee, id, companyID); err != nil {
+	if err := c.EmployeeRepository.FindByUserIdAndCompany(c.DB.WithContext(ctx), employee, userID, companyID); err != nil {
 		c.Log.WithError(err).Error("Failed to find employee by ID")
 		return nil, fiber.ErrNotFound
 	}
@@ -158,9 +158,9 @@ func (c *AttendanceUseCase) FaceStatus(
 	}, nil
 }
 
-func (c *AttendanceUseCase) DeleteFace(ctx context.Context, id, companyID string) error {
+func (c *AttendanceUseCase) DeleteFace(ctx context.Context, UserID, companyID string) error {
 	employee := new(employeeEntity.Employee)
-	if err := c.EmployeeRepository.FindByIdAndCompany(c.DB.WithContext(ctx), employee, id, companyID); err != nil {
+	if err := c.EmployeeRepository.FindByUserIdAndCompany(c.DB.WithContext(ctx), employee, UserID, companyID); err != nil {
 		c.Log.WithError(err).Error("Failed to find employee by ID")
 		return fiber.ErrNotFound
 	}
