@@ -13,4 +13,5 @@ func (c *EmployeeTrainingController) RegisterRoutes(
 	route := router.Group("/employee-trainings")
 
 	route.Get("/", client(c.ListCurrent)...)
+	route.Put("/:training_id", client(c.UpdateCurrent)...)
 }

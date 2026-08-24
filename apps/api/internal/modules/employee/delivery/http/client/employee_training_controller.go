@@ -12,15 +12,15 @@ import (
 )
 
 type EmployeeTrainingController struct {
-	UseCase *usecase.EmployeeTrainingUseCase
-	Log     *logrus.Logger
+	EmployeeTrainingUseCase *usecase.EmployeeTrainingUseCase
+	Log                     *logrus.Logger
 }
 
 func NewEmployeeTrainingController(
 	useCase *usecase.EmployeeTrainingUseCase,
 	log *logrus.Logger,
 ) *EmployeeTrainingController {
-	return &EmployeeTrainingController{UseCase: useCase, Log: log}
+	return &EmployeeTrainingController{EmployeeTrainingUseCase: useCase, Log: log}
 }
 
 // ListCurrent memuat riwayat pelatihan milik karyawan yang sedang login.
@@ -32,7 +32,7 @@ func (c *EmployeeTrainingController) ListCurrent(ctx *fiber.Ctx) error {
 		Size:       ctx.QueryInt("size", 10),
 	}
 
-	result, total, err := c.UseCase.List(ctx.UserContext(), request)
+	result, total, err := c.EmployeeTrainingUseCase.List(ctx.UserContext(), request)
 	if err != nil {
 		c.Log.WithError(err).Error("failed to list current employee trainings")
 		return err
@@ -49,4 +49,20 @@ func (c *EmployeeTrainingController) ListCurrent(ctx *fiber.Ctx) error {
 		Data:   result,
 		Paging: paging,
 	})
+}
+
+func (c *EmployeeTrainingController) UpdateCurrent(ctx *fiber.Ctx) error {
+	request := new(model.UpdateEmployeeTrainingRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+	request.ID = ctx.Params("training_id")
+
+	result, err := c.EmployeeTrainingUseCase.Update(ctx.UserContext(), request)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeTrainingResponse]{Data: result})
 }

@@ -13,4 +13,5 @@ func (c *EmployeeDocumentController) RegisterRoutes(
 	route := router.Group("/employee-docs")
 
 	route.Get("/", client(c.ListCurrent)...)
+	route.Put("/:doc_id", client(c.UpdateCurrent)...)
 }

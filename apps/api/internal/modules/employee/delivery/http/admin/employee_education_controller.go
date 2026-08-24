@@ -1,4 +1,4 @@
-package client
+package admin
 
 import (
 	"hrsaas/internal/modules/employee/model"
@@ -23,17 +23,32 @@ func NewEmployeeEducationController(
 	return &EmployeeEducationController{UseCase: useCase, Log: log}
 }
 
-func (c *EmployeeEducationController) ListCurrent(ctx *fiber.Ctx) error {
+func (c *EmployeeEducationController) Create(ctx *fiber.Ctx) error {
+	request := new(model.CreateEmployeeEducationRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+	request.CompanyID = auth.GetCompanyId(ctx)
+
+	result, err := c.UseCase.Create(ctx.UserContext(), request)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeEducationResponse]{Data: result})
+}
+
+func (c *EmployeeEducationController) List(ctx *fiber.Ctx) error {
 	request := &model.SearchEmployeeEducationRequest{
 		CompanyID:  auth.GetCompanyId(ctx),
-		EmployeeID: auth.GetEmployeeId(ctx),
+		EmployeeID: ctx.Query("employee_id", ""),
 		Page:       ctx.QueryInt("page", 1),
 		Size:       ctx.QueryInt("size", 10),
 	}
 
 	result, total, err := c.UseCase.List(ctx.UserContext(), request)
 	if err != nil {
-		c.Log.WithError(err).Error("failed to list current employee educations")
 		return err
 	}
 
@@ -50,7 +65,16 @@ func (c *EmployeeEducationController) ListCurrent(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *EmployeeEducationController) UpdateCurrent(ctx *fiber.Ctx) error {
+func (c *EmployeeEducationController) Detail(ctx *fiber.Ctx) error {
+	result, err := c.UseCase.Detail(ctx.UserContext(), ctx.Params("education_id"))
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeEducationResponse]{Data: result})
+}
+
+func (c *EmployeeEducationController) Update(ctx *fiber.Ctx) error {
 	request := new(model.UpdateEmployeeEducationRequest)
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.WithError(err).Error("failed to parse request body")
@@ -64,4 +88,13 @@ func (c *EmployeeEducationController) UpdateCurrent(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.JSON(response.WebResponse[*model.EmployeeEducationResponse]{Data: result})
+}
+
+func (c *EmployeeEducationController) Delete(ctx *fiber.Ctx) error {
+	id := ctx.Params("education_id")
+	if err := c.UseCase.Delete(ctx.UserContext(), id); err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[bool]{Data: true})
 }
