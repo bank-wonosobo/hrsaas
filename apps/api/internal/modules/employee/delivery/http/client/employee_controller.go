@@ -57,3 +57,24 @@ func (c *EmployeeController) GetCurrent(ctx *fiber.Ctx) error {
 		Data: auth.GetEmployee(ctx),
 	})
 }
+
+func (c *EmployeeController) UpdateCurrent(ctx *fiber.Ctx) error {
+	request := new(model.UpdateEmployeeRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+
+	request.ID = auth.GetEmployeeId(ctx)
+	companyID := auth.GetCompanyId(ctx)
+
+	result, err := c.EmployeeUseCase.Update(ctx.UserContext(), companyID, request)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to update current employee")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeResponse]{
+		Data: result,
+	})
+}
