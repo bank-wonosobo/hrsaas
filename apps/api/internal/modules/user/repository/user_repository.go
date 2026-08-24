@@ -26,7 +26,11 @@ func (r *UserRepository) CountByEmail(db *gorm.DB, email string) (int64, error) 
 	return total, err
 }
 
-func (r *UserRepository) CountByEmailExcludeID(db *gorm.DB, email string, userID string) (int64, error) {
+func (r *UserRepository) CountByEmailExcludeID(
+	db *gorm.DB,
+	email string,
+	userID string,
+) (int64, error) {
 	var total int64
 	err := db.Model(new(entity.User)).
 		Where("email = ?", email).
@@ -35,7 +39,12 @@ func (r *UserRepository) CountByEmailExcludeID(db *gorm.DB, email string, userID
 	return total, err
 }
 
-func (r *UserRepository) FindByEmail(db *gorm.DB, entity *entity.User, email string, preloads ...string) error {
+func (r *UserRepository) FindByEmail(
+	db *gorm.DB,
+	entity *entity.User,
+	email string,
+	preloads ...string,
+) error {
 	query := db
 
 	for _, preload := range preloads {
@@ -45,10 +54,13 @@ func (r *UserRepository) FindByEmail(db *gorm.DB, entity *entity.User, email str
 	return query.Where("email = ?", email).Take(entity).Error
 }
 
-func (r *UserRepository) Search(db *gorm.DB, request *model.SearchUserRequest) ([]entity.User, int64, error) {
+func (r *UserRepository) Search(
+	db *gorm.DB,
+	request *model.SearchUserRequest,
+) ([]entity.User, int64, error) {
 	var users []entity.User
 
-	query := db.Model(&entity.User{}).Preload("Roles")
+	query := db.Model(&entity.User{}).Preload("Employee").Preload("Roles")
 	if request.Key != "" {
 		key := "%" + request.Key + "%"
 		query = query.Where("name ILIKE ? OR email ILIKE ?", key, key)
