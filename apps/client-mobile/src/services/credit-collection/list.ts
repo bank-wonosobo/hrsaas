@@ -13,7 +13,7 @@ export type ListCreditCollectionParams = {
 export const listCreditCollection = async (
   params: ListCreditCollectionParams,
 ): Promise<PaginatedData<CreditCollectionVisitRecord>> => {
-  const response = await api.get("/remidial-visits/_current", { params });
+  const response = await api.get("/collecting/_current", { params });
 
   return {
     data: response.data.data,

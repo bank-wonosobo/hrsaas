@@ -10,7 +10,6 @@ import (
 	authHttp "hrsaas/internal/modules/auth/delivery/http/client"
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
-	"hrsaas/internal/modules/upload"
 	"hrsaas/pkg/middleware"
 	pkg "hrsaas/pkg/s3"
 
@@ -23,10 +22,12 @@ import (
 	attendanceUc "hrsaas/internal/modules/attendance/usecase"
 
 	companyRepo "hrsaas/internal/modules/company/repository"
+	"hrsaas/internal/modules/upload"
 
 	employeeHttp "hrsaas/internal/modules/employee/delivery/http/client"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	employeeUc "hrsaas/internal/modules/employee/usecase"
+	uploadHttp "hrsaas/internal/modules/upload/delivery/http/client"
 
 	deviceHttp "hrsaas/internal/modules/device/delivery/http/client"
 	deviceRepo "hrsaas/internal/modules/device/repository"
@@ -52,11 +53,16 @@ type ClientBootstrapConfig struct {
 	Validator *validator.Validate
 	Config    *viper.Viper
 	S3Client  *pkg.S3Client
-	Upload    *upload.UploadUseCase
 }
 
 func BootstrapClient(cfg *ClientBootstrapConfig) {
 	api := cfg.App.Group("/api")
+	uploadUseCase := upload.NewUploadUseCase(
+		cfg.Log,
+		cfg.Validator,
+		cfg.S3Client,
+		cfg.Config,
+	)
 
 	// ====== REPO =======
 
@@ -140,7 +146,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		attendanceLogRepository,
 		employeeRepository,
 		userRepository,
-		cfg.Upload,
+		uploadUseCase,
 		cfg.Config.GetString("face.base_url"),
 	)
 	shiftUseCase := attendanceUc.NewShiftUseCase(
@@ -321,6 +327,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := visitHttp.NewCollectingController(collectingUseCase, cfg.Log)
+	uploadController := uploadHttp.NewUploadController(uploadUseCase, cfg.Log)
 
 	// ====== MIDDLEWARE =======
 	authMiddleware, client := middleware.NewClient(authUseCase, employeeUseCase)
@@ -358,4 +365,5 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController.RegisterRoutes(api, client)
 	collectingController.RegisterRoutes(api, client)
+	uploadController.RegisterRoutes(api, authMiddleware)
 }

@@ -7,7 +7,7 @@ import {
 export const searchCredit = async (
   search: SearchCreditCustomer,
 ): Promise<CreditCustomer[]> => {
-  const response = await api.post("/remidial-visits/search-nasabah", {
+  const response = await api.post("/collecting/_search-nasabah", {
     kodecabang: "01",
     cif: search.cif,
     nama: search.nama,

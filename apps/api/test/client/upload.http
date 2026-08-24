@@ -1,0 +1,28 @@
+### ============================================================================
+### Upload — HRIS Client API
+### ============================================================================
+# Requires the VS Code "REST Client" extension (or a compatible .http runner).
+# Click "Send Request" on "Login" first so the session cookie is reused.
+
+@baseUrl = http://localhost:9000/api
+@email = admin@company.com
+@password = Password123!
+
+### Login
+# @name login
+POST {{baseUrl}}/_login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Generate upload URL
+POST {{baseUrl}}/upload/generate-url
+Content-Type: application/json
+
+{
+  "mime_type": "image/jpeg",
+  "is_public": true
+}

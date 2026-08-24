@@ -7,9 +7,47 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:1068019105267:android:636ea94461768574296686",
+        "android_client_info": {
+          "package_name": "id.co.bankwonosobo.bwaksesplus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbXbCOtJbBuH-g-7gaj9q6mRLu097pfXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:1068019105267:android:86c5aa2869a3e48e296686",
         "android_client_info": {
           "package_name": "id.co.bankwonosobo.bwaksesplus.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbXbCOtJbBuH-g-7gaj9q6mRLu097pfXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068019105267:android:15c6a3d8705231b9296686",
+        "android_client_info": {
+          "package_name": "id.co.bankwonosobo.bwaksesplus.staging"
         }
       },
       "oauth_client": [],

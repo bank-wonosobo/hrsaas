@@ -6,7 +6,7 @@ import { CreditCollectionVisit } from "@/schema/credit-collection-schema";
 export const visitCreditCollection = async (
   data: CreditCollectionVisit,
 ): Promise<ResponseData<Auth>> => {
-  const response = await api.post("/remidial-visits", data);
+  const response = await api.post("/collecting", data);
 
   if (response.status !== 200) {
     throw new Error(response.data.error || "Login failed");

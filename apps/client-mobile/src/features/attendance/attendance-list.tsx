@@ -31,9 +31,10 @@ export default function AttendaceList({ ListHeaderComponent }: Props) {
   useEffect(() => {
     if (!data || isPlaceholderData) return;
     setItems((prev) => {
-      if (page === 1) return data.data;
+      const list = data.data ?? [];
+      if (page === 1) return list;
       const existingIds = new Set(prev.map((item) => item.id));
-      const newItems = data.data.filter((item) => !existingIds.has(item.id));
+      const newItems = list.filter((item) => !existingIds.has(item.id));
       return [...prev, ...newItems];
     });
     setRefreshing(false);
@@ -49,8 +50,9 @@ export default function AttendaceList({ ListHeaderComponent }: Props) {
   };
 
   const handleLoadMore = () => {
-    if (isFetching || !data) return;
-    if (page < data.paging.total_page) {
+    if (isFetching || !data?.paging) return;
+    const totalPage = data.paging.total_page ?? 1;
+    if (page < totalPage) {
       setPage((prev) => prev + 1);
     }
   };

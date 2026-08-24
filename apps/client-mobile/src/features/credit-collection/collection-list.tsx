@@ -37,9 +37,11 @@ export default function CollectionList() {
   useEffect(() => {
     if (!data || isPlaceholderData) return;
     setItems((prev) => {
-      if (page === 1) return data.data;
+      if (page === 1) return data.data ?? [];
       const existingIds = new Set(prev.map((item) => item.id));
-      const newItems = data.data.filter((item) => !existingIds.has(item.id));
+      const newItems = (data.data ?? []).filter(
+        (item) => !existingIds.has(item.id),
+      );
       return [...prev, ...newItems];
     });
     setRefreshing(false);
@@ -55,7 +57,7 @@ export default function CollectionList() {
   };
 
   const handleLoadMore = () => {
-    if (isFetching || !data) return;
+    if (isFetching || !data?.paging) return;
     if (page < data.paging.total_page) {
       setPage((prev) => prev + 1);
     }
@@ -84,7 +86,7 @@ export default function CollectionList() {
         ListHeaderComponent={
           items.length > 0 ? (
             <CollectionCard
-              totalVisits={data?.paging.total_item ?? items.length}
+              totalVisits={data?.paging?.total_item ?? items.length}
               totalSetoran={totalSetoran}
             />
           ) : null

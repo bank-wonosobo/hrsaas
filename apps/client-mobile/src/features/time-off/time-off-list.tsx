@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { TabList, Tabs, TabTrigger } from "@/components/ui/tabs";
 import { useCurrentTimeOff } from "@/hooks/time-off/use-current-time-off";
 import { TimeOffRequest } from "@/schema/time-off-schema";
@@ -71,7 +72,7 @@ export default function TimeOffList({ ListHeaderComponent }: Props) {
   };
 
   const handleLoadMore = () => {
-    if (isFetching || !data) return;
+    if (isFetching || !data?.paging) return;
     if (page < data.paging.total_page) {
       setPage((prev) => prev + 1);
     }

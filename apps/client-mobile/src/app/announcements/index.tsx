@@ -44,8 +44,8 @@ export default function AnnouncementsPage() {
   };
 
   const handleLoadMore = () => {
-    if (isFetching || !data) return;
-    if (page < data.paging.total_page) {
+    if (isFetching || !data?.paging) return;
+    if (page < (data.paging.total_page ?? 1)) {
       setPage((prev) => prev + 1);
     }
   };
