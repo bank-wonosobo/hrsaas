@@ -4,7 +4,7 @@ import { GenerateSignUrl, SignUrl } from "@/schema/upload-schema";
 export const generateSignUrl = async (
   request: GenerateSignUrl,
 ): Promise<SignUrl> => {
-  const response = await api.post("/generate-url", {
+  const response = await api.post("/upload/generate-url", {
     mime_type: request.mime_type,
     is_public: request.is_public,
   });
