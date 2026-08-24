@@ -10,7 +10,7 @@ services:
     volumes:
       - ./config/admin-api.config.yml:/app/config.yml:ro
     networks:
-      - hrsaas-net
+      - hrsaas-admin-net
 
   client-api:
     image: ghcr.io/bank-wonosobo/hrsaas/client-api:${TAG:-development}
@@ -21,7 +21,7 @@ services:
     volumes:
       - ./config/client-api.config.yml:/app/config.yml:ro
     networks:
-      - hrsaas-net
+      - hrsaas-client-net
 
   admin-panel:
     image: ghcr.io/bank-wonosobo/hrsaas/admin-panel:${TAG:-development}
@@ -30,7 +30,7 @@ services:
     ports:
       - "${ADMIN_PANEL_PORT:-3000}:3000"
     networks:
-      - hrsaas-net
+      - hrsaas-admin-net
 
   cloudflared-admin-api:
     image: cloudflare/cloudflared:latest
@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CF_ADMIN_API_TOKEN}
     networks:
-      - hrsaas-net
+      - hrsaas-admin-net
 
   cloudflared-client-api:
     image: cloudflare/cloudflared:latest
@@ -46,7 +46,7 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CF_CLIENT_API_TOKEN}
     networks:
-      - hrsaas-net
+      - hrsaas-client-net
 
   cloudflared-admin-panel:
     image: cloudflare/cloudflared:latest
@@ -54,9 +54,13 @@ services:
     restart: unless-stopped
     command: tunnel --no-autoupdate run --token ${CF_ADMIN_PANEL_TOKEN}
     networks:
-      - hrsaas-net
+      - hrsaas-admin-net
 
 networks:
-  hrsaas-net:
-    name: hrsaas-net
+  hrsaas-admin-net:
+    name: hrsaas-admin-net
+    driver: bridge
+
+  hrsaas-client-net:
+    name: hrsaas-client-net
     driver: bridge
