@@ -6,7 +6,7 @@ export const assignPermissions = async (
   roleId: string,
   permissions: string[],
 ): Promise<ResponseData<Role>> => {
-  const response = await api.post(`/roles/${roleId}/_assign-permissions`, {
+  const response = await api.patch(`/roles/${roleId}/_assign-permissions`, {
     permissions,
   });
 

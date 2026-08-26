@@ -13,6 +13,7 @@ export const UserSchema = z.object({
   roles: z.array(RoleSchema).optional(),
   permissions: z.array(z.object({ name: z.string() })).optional(),
   company_id: z.string(),
+  image_url: z.string().optional(),
   created_at: z.number(),
   updated_at: z.number(),
 });
