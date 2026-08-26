@@ -11,6 +11,7 @@ func (c *AnnouncementController) RegisterRoutes(
 	protected middleware.ProtectedMiddleware) {
 	route := router.Group("/announcements")
 	route.Post("/", protected("ANNOUNCEMENTS", c.Create)...)
+	route.Get("/", protected("ANNOUNCEMENTS", c.List)...)
 	route.Put("/:announce_id", protected("ANNOUNCEMENTS", c.Update)...)
 	route.Delete("/:announce_id", protected("ANNOUNCEMENTS", c.Delete)...)
 }
