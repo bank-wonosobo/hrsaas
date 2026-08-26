@@ -60,7 +60,7 @@ func (r *UserRepository) Search(
 ) ([]entity.User, int64, error) {
 	var users []entity.User
 
-	query := db.Model(&entity.User{}).Preload("Employee").Preload("Roles")
+	query := db.Model(&entity.User{})
 	if request.Key != "" {
 		key := "%" + request.Key + "%"
 		query = query.Where("name ILIKE ? OR email ILIKE ?", key, key)
