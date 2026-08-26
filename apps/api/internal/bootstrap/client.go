@@ -27,7 +27,6 @@ import (
 	employeeHttp "hrsaas/internal/modules/employee/delivery/http/client"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	employeeUc "hrsaas/internal/modules/employee/usecase"
-	uploadHttp "hrsaas/internal/modules/upload/delivery/http/client"
 
 	deviceHttp "hrsaas/internal/modules/device/delivery/http/client"
 	deviceRepo "hrsaas/internal/modules/device/repository"
@@ -44,6 +43,8 @@ import (
 	visitHttp "hrsaas/internal/modules/visit/delivery/http/client"
 	visitRepo "hrsaas/internal/modules/visit/repository"
 	visitUc "hrsaas/internal/modules/visit/usecase"
+
+	uploadHttp "hrsaas/internal/modules/upload/delivery/http"
 )
 
 type ClientBootstrapConfig struct {
@@ -132,6 +133,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		cfg.Validator,
 		announcementRepository,
 		employeeRepository,
+		cfg.S3Client,
 	)
 
 	// module attendance
@@ -334,6 +336,8 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := visitHttp.NewCollectingController(collectingUseCase, cfg.Log)
+
+	// module upload
 	uploadController := uploadHttp.NewUploadController(uploadUseCase, cfg.Log)
 
 	// ====== MIDDLEWARE =======
@@ -373,5 +377,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController.RegisterRoutes(api, client)
 	collectingController.RegisterRoutes(api, client)
+
+	// module upload
 	uploadController.RegisterRoutes(api, authMiddleware)
 }

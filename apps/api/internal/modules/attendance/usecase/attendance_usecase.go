@@ -98,19 +98,6 @@ func (c *AttendanceUseCase) RegisterFace(
 		return nil, err
 	}
 
-	//
-	// image, err := readMultipart(request.File)
-	// if err != nil {
-	// 	c.Log.WithError(err).Error("Failed to read face image")
-	// 	return nil, fiber.ErrBadRequest
-	// }
-
-	// image, err = resizeImage(image, 1080) // compress dulu
-	// if err != nil {
-	// 	c.Log.WithError(err).Error("Failed to resize image")
-	// 	return nil, fiber.ErrBadRequest
-	// }
-
 	if err := face.RegisterFace(c.FaceServiceURL+"/register", employee.ID, request.ObjectKey, image); err != nil {
 		c.Log.WithError(err).Error("Failed to register face")
 		return nil, fiber.NewError(fiber.StatusBadGateway, "Gagal mendaftarkan wajah")
