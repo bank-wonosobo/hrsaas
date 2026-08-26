@@ -3,6 +3,7 @@
 import { PageSelector } from "@/components/shared/page-selector/page-selector";
 import { Pagination } from "@/components/shared/pagination/pagination";
 import Button from "@/components/ui/button/button";
+import ImageViewer from "@/components/ui/image-viewer/image-viewer";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,8 +19,12 @@ function UserCard({ user, onDetail }: { user: User; onDetail: () => void }) {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center gap-4">
       {/* Avatar */}
-      <div className="h-11 w-11 rounded-full bg-gray-100 flex items-center justify-center text-lg font-semibold flex-shrink-0">
-        {user.name.charAt(0).toUpperCase()}
+      <div className="h-11 w-11 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-lg font-semibold flex-shrink-0">
+        {user.image_url ? (
+          <ImageViewer width={60} height={60} circle src={user.image_url} />
+        ) : (
+          user.name.charAt(0).toUpperCase()
+        )}
       </div>
 
       {/* Info */}

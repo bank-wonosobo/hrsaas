@@ -28,12 +28,17 @@ export default function ProfileEmployee({ id }: Props): React.ReactNode {
       {/* profile card */}
       <div className="p-6 bg-white border rounded-2xl h-fit w-[270px]">
         <div className="flex justify-center items-center flex-col gap-4 border-b pb-3">
-          <ImageViewer
-            width={100}
-            height={100}
-            circle
-            src="https://www.gravatar.com/avatar/2c7d99fe281ecd3bcd65ab915bac6dd5?s=250"
-          />
+          {employee?.user.image_url ? (
+            <ImageViewer
+              width={100}
+              height={100}
+              circle
+              src={employee?.user.image_url}
+            />
+          ) : (
+            employee?.fullname.charAt(0).toUpperCase()
+          )}
+
           <h2 className="font-semibold text-2xl text-center">
             {employee?.fullname}
           </h2>
