@@ -19,6 +19,7 @@ import (
 	distances "hrsaas/pkg/distance"
 	excel "hrsaas/pkg/excel"
 	face "hrsaas/pkg/face_recognition"
+	timedifference "hrsaas/pkg/time_difference"
 
 	"mime/multipart"
 	"time"
@@ -305,14 +306,9 @@ func (c *AttendanceUseCase) Export(
 		var lateCheckIn string = "-"
 		if attendance.CheckInTime > 0 {
 			tIn := time.UnixMilli(attendance.CheckInTime)
-			expectedIn := time.Date(tIn.Year(), tIn.Month(), tIn.Day(), 7, 45, 0, 0, tIn.Location())
-			diffIn := tIn.Sub(expectedIn)
-			if diffIn > 0 {
-				hours := int(diffIn.Hours())
-				minutes := int(diffIn.Minutes()) % 60
-				if hours > 0 || minutes > 0 {
-					lateCheckIn = fmt.Sprintf("%02d jam %02d menit", hours, minutes)
-				}
+			diffStr, _ := timedifference.GetTimeDifference("07:45:00", tIn.Format("15:04:05"))
+			if diffStr != "" {
+				lateCheckIn = diffStr
 			}
 		}
 
@@ -320,28 +316,21 @@ func (c *AttendanceUseCase) Export(
 		var catatan string
 		if attendance.CheckOutTime > 0 {
 			tOut := time.UnixMilli(attendance.CheckOutTime)
-			hourOut := 17
+			expectedOutStr := "17:00:00"
 			if tOut.Weekday() == time.Saturday {
-				hourOut = 12
+				expectedOutStr = "12:00:00"
 			}
-			expectedOut := time.Date(
-				tOut.Year(),
-				tOut.Month(),
-				tOut.Day(),
-				hourOut,
-				0,
-				0,
-				0,
-				tOut.Location(),
+			diffStr, _ := timedifference.GetTimeDifference(tOut.Format("15:04:05"), expectedOutStr)
+			if diffStr != "" {
+				lateCheckOut = diffStr
+			}
+		}
+
+		if attendance.TotalBreakMinutes > 60 {
+			catatan = fmt.Sprintf(
+				"Jam istirahat terlampau: %d menit",
+				attendance.TotalBreakMinutes-60,
 			)
-			diffOut := expectedOut.Sub(tOut)
-			if diffOut > 0 {
-				hours := int(diffOut.Hours())
-				minutes := int(diffOut.Minutes()) % 60
-				if hours > 0 || minutes > 0 {
-					lateCheckOut = fmt.Sprintf("%02d jam %02d menit", hours, minutes)
-				}
-			}
 		}
 
 		row := model.AttendanceRow{
