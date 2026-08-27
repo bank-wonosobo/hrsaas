@@ -85,6 +85,10 @@ function RootNavigation() {
                 options={{ title: "Sanksi Karyawan" }}
               />
               <Stack.Screen
+                name="salary/index"
+                options={{ title: "Slip Gaji" }}
+              />
+              <Stack.Screen
                 name="profile/personal"
                 options={{ title: "Data Diri" }}
               />

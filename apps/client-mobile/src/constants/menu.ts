@@ -103,7 +103,7 @@ export const MENUS: Menu[] = [
     id: "payroll",
     title: "Slip Gaji",
     icon: Wallet,
-    route: "/employees",
+    route: "/salary" as Href,
   },
   {
     id: "employees",
