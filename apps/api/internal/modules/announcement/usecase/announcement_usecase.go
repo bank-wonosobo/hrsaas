@@ -141,6 +141,14 @@ func (c *AnnouncementUsecase) Detail(
 	defer tx.Rollback()
 
 	announcement := new(entity.Announcement)
+	if announcement.FileUrl != nil {
+		presignClient := s3.NewPresignClient(c.S3Client.Client)
+		url, err := c.S3Client.GenerateDownloadURL(presignClient, *announcement.FileUrl)
+		if err != nil {
+			return nil, err
+		}
+		announcement.FileUrl = &url
+	}
 	if err := c.AnnouncementRepo.FindByIdAndCompany(tx, announcement, id, companyID, "Employee"); err != nil {
 		c.Log.WithError(err).Error("Announcement not found")
 		return nil, fiber.ErrNotFound
