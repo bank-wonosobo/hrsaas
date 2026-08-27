@@ -24,7 +24,6 @@ func NewSalaryController(payrollUseCase *usecase.PayrollUseCase, log *logrus.Log
 func (c *SalaryController) GetCurrent(ctx *fiber.Ctx) error {
 	result, err := c.PayrollUseCase.CurrentByEmployee(
 		ctx.UserContext(),
-		auth.GetCompanyId(ctx),
 		auth.GetEmployeeId(ctx),
 	)
 	if err != nil {
@@ -32,7 +31,7 @@ func (c *SalaryController) GetCurrent(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.JSON(response.WebResponse[*model.PayrollDetailResponse]{Data: result})
+	return ctx.JSON(response.WebResponse[[]model.PayrollDetailResponse]{Data: result})
 }
 
 func (c *SalaryController) RegisterRoutes(router fiber.Router, client middleware.ClientMiddleware) {

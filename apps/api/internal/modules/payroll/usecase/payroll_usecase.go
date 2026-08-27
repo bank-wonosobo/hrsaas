@@ -176,26 +176,28 @@ func (c *PayrollUseCase) DetailByDetailID(ctx context.Context, detailID string) 
 	return response, nil
 }
 
-func (c *PayrollUseCase) CurrentByEmployee(ctx context.Context, companyID, employeeID string) (*model.PayrollDetailResponse, error) {
+func (c *PayrollUseCase) CurrentByEmployee(ctx context.Context, employeeID string) ([]model.PayrollDetailResponse, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
-	now := time.Now()
-	item, err := c.DetailRepo.FindCurrentByEmployee(tx, companyID, employeeID, int(now.Month()), now.Year())
+	items, err := c.DetailRepo.ListByEmployee(tx, employeeID)
 	if err != nil {
-		c.Log.WithError(err).Error("Current payroll detail not found")
+		c.Log.WithError(err).Error("Failed to find employee payroll details")
 		return nil, fiber.ErrNotFound
 	}
 
-	response := model.PayrollDetailToResponse(item)
-	c.attachEmployeeSummaries(tx, []model.PayrollDetailResponse{*response})
+	responses := model.PayrollDetailsToResponse(items)
+	if len(responses) == 0 {
+		return nil, fiber.ErrNotFound
+	}
+	c.attachEmployeeSummaries(tx, responses)
 
 	if err := tx.Commit().Error; err != nil {
 		c.Log.WithError(err).Error("Failed to commit transaction")
 		return nil, fiber.ErrInternalServerError
 	}
 
-	return response, nil
+	return responses, nil
 }
 
 // Calculate generates payroll_details and payroll_items for every active employee
