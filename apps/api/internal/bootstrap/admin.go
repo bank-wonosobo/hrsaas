@@ -53,6 +53,8 @@ import (
 	visitRepo "hrsaas/internal/modules/visit/repository"
 	visitUc "hrsaas/internal/modules/visit/usecase"
 
+	uploadHttp "hrsaas/internal/modules/upload/delivery/http"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -73,6 +75,13 @@ type AdminBootstrapConfig struct {
 
 func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	api := cfg.App.Group("/api")
+
+	uploadUseCase := upload.NewUploadUseCase(
+		cfg.Log,
+		cfg.Validator,
+		cfg.S3Client,
+		cfg.Config,
+	)
 
 	// ====== REPO =======
 	// module auth
@@ -143,6 +152,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Validator,
 		announcementRepository,
 		employeeRepository,
+		cfg.S3Client,
 	)
 
 	// module auth
@@ -445,7 +455,8 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
 
-	// module salary
+	// module upload
+	uploadController := uploadHttp.NewUploadController(uploadUseCase, cfg.Log)
 
 	// ====== MIDDLEWARE =======
 	authMiddleware, protected := middleware.NewProtected(authUseCase)
@@ -498,5 +509,6 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	visitController.RegisterRoutes(api, protected)
 	collectingController.RegisterRoutes(api, protected)
 
-	// module salary
+	// module upload
+	uploadController.RegisterRoutes(api, authMiddleware)
 }

@@ -7,8 +7,10 @@ import (
 	"hrsaas/internal/modules/announcement/repository"
 	employeeEntity "hrsaas/internal/modules/employee/entity"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
+	pkg "hrsaas/pkg/s3"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
@@ -21,6 +23,7 @@ type AnnouncementUsecase struct {
 	Validate           *validator.Validate
 	AnnouncementRepo   *repository.AnnouncementRepository
 	EmployeeRepository *employeeRepo.EmployeeRepository
+	S3Client           *pkg.S3Client
 }
 
 func NewAnnouncementUsecase(
@@ -29,6 +32,7 @@ func NewAnnouncementUsecase(
 	validate *validator.Validate,
 	announcementRepo *repository.AnnouncementRepository,
 	employeeRepository *employeeRepo.EmployeeRepository,
+	s3Client *pkg.S3Client,
 ) *AnnouncementUsecase {
 	return &AnnouncementUsecase{
 		DB:                 db,
@@ -36,6 +40,7 @@ func NewAnnouncementUsecase(
 		Validate:           validate,
 		AnnouncementRepo:   announcementRepo,
 		EmployeeRepository: employeeRepository,
+		S3Client:           s3Client,
 	}
 }
 
@@ -66,6 +71,7 @@ func (c *AnnouncementUsecase) Create(
 		Title:      request.Title,
 		Category:   request.Category,
 		Content:    request.Content,
+		FileUrl:    request.FileUrl,
 	}
 
 	if err := c.AnnouncementRepo.Create(tx, announcement); err != nil {
@@ -108,8 +114,18 @@ func (c *AnnouncementUsecase) List(
 	}
 
 	responses := make([]model.AnnouncementResponse, len(announcements))
+	presignClient := s3.NewPresignClient(c.S3Client.Client)
+
 	for i, announcement := range announcements {
 		responses[i] = *model.NewAnnouncementResponse(&announcement)
+
+		if announcement.FileUrl != nil {
+			url, err := c.S3Client.GenerateDownloadURL(presignClient, *announcement.FileUrl)
+			if err != nil {
+				return nil, 0, err
+			}
+			responses[i].FileUrl = &url
+		}
 	}
 
 	return responses, total, nil
