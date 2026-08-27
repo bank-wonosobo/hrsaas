@@ -12,6 +12,7 @@ func (c *AnnouncementController) RegisterRoutes(
 	route := router.Group("/announcements")
 	route.Post("/", protected("ANNOUNCEMENTS", c.Create)...)
 	route.Get("/", protected("ANNOUNCEMENTS", c.List)...)
+	route.Get("/:announce_id", protected("ANNOUNCEMENTS", c.Detail)...)
 	route.Put("/:announce_id", protected("ANNOUNCEMENTS", c.Update)...)
 	route.Delete("/:announce_id", protected("ANNOUNCEMENTS", c.Delete)...)
 }
