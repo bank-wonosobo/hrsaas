@@ -267,7 +267,6 @@ export default function AnnouncementList({ search = {} }: Props) {
             )}
           </div>
         )}
-
       </Modal>
     </div>
   );

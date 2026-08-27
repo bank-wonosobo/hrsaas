@@ -53,6 +53,7 @@ func (c *DeviceUseCase) Register(ctx context.Context, request *model.RegisterDev
 		IsActive:   true,
 		LastSeenAt: &now,
 	}
+
 	if err := c.Repo.Upsert(tx, item); err != nil {
 		c.Log.WithError(err).Error("Failed to register device")
 		return nil, fiber.ErrInternalServerError

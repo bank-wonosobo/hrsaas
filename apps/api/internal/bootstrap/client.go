@@ -44,6 +44,10 @@ import (
 	visitRepo "hrsaas/internal/modules/visit/repository"
 	visitUc "hrsaas/internal/modules/visit/usecase"
 
+	payrollHttp "hrsaas/internal/modules/payroll/delivery/http/client"
+	payrollRepo "hrsaas/internal/modules/payroll/repository"
+	payrollUc "hrsaas/internal/modules/payroll/usecase"
+
 	uploadHttp "hrsaas/internal/modules/upload/delivery/http"
 )
 
@@ -92,6 +96,9 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	employeeDocsRepository := employeeRepo.NewEmployeeDocumentRepository(cfg.Log)
 	employeeEducationRepository := employeeRepo.NewEmployeeEducationRepository(cfg.Log)
 	employeeTrainingRepository := employeeRepo.NewEmployeeTrainingRepository(cfg.Log)
+	employeeSalaryRepository := employeeRepo.NewEmployeeSalaryRepository(cfg.Log)
+	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
+	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
 	sanctionRepository := employeeRepo.NewSanctionRepository(cfg.Log)
 	employeeSancRepository := employeeRepo.NewEmSancRepository(cfg.Log)
 
@@ -113,6 +120,14 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		cfg.Log,
 		cfg.Config.GetString("nasabah.base_url"),
 	)
+
+	// module payroll
+	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
+	payrollDetailRepository := payrollRepo.NewPayrollDetailRepository(cfg.Log)
+	payrollItemRepository := payrollRepo.NewPayrollItemRepository(cfg.Log)
+	payrollAdjustmentRepository := payrollRepo.NewPayrollAdjustmentRepository(cfg.Log)
+	payrollPaymentRepository := payrollRepo.NewPayrollPaymentRepository(cfg.Log)
+	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
 
 	// ====== USECASE =======
 	// module auth
@@ -241,6 +256,14 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		cfg.DB, cfg.Log, cfg.Validator, timeOffTypeRepository,
 	)
 
+	payrollUseCase := payrollUc.NewPayrollUseCase(
+		cfg.DB, cfg.Log, cfg.Validator,
+		payrollRepository, payrollDetailRepository, payrollItemRepository,
+		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
+		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository,
+		employeeDeductionRepository,
+	)
+
 	// module user
 	userUseCase := userUc.NewUserUseCase(
 		cfg.DB,
@@ -336,6 +359,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := visitHttp.NewCollectingController(collectingUseCase, cfg.Log)
+	salaryController := payrollHttp.NewSalaryController(payrollUseCase, cfg.Log)
 
 	// module upload
 	uploadController := uploadHttp.NewUploadController(uploadUseCase, cfg.Log)
@@ -377,6 +401,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController.RegisterRoutes(api, client)
 	collectingController.RegisterRoutes(api, client)
+	salaryController.RegisterRoutes(api, client)
 
 	// module upload
 	uploadController.RegisterRoutes(api, authMiddleware)

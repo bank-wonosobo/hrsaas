@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"errors"
+	"time"
+
 	"hrsaas/internal/modules/device/entity"
 	"hrsaas/pkg/repository"
 
@@ -18,10 +21,40 @@ func NewDeviceRepository(log *logrus.Logger) *DeviceRepository {
 	return &DeviceRepository{Log: log}
 }
 
-// Upsert registers a device's push token. push_token is globally unique, so
-// re-registering the same device (reinstall, re-login as a different user,
-// ...) reassigns it to the current user instead of creating a duplicate row.
+// Upsert updates an existing device when its device ID is known. A new device
+// gets a new row; the push-token conflict fallback keeps registrations without
+// a device ID idempotent.
 func (r *DeviceRepository) Upsert(db *gorm.DB, item *entity.UserDevice) error {
+	if item.DeviceID != nil && *item.DeviceID != "" {
+		var existing entity.UserDevice
+		err := db.Where("device_id = ?", *item.DeviceID).First(&existing).Error
+		if err == nil {
+			now := time.Now().UnixMilli()
+			if err := db.Model(&existing).Updates(map[string]interface{}{
+				"user_id":      item.UserID,
+				"device_name":  item.DeviceName,
+				"app_version":  item.AppVersion,
+				"push_token":   item.PushToken,
+				"provider":     item.Provider,
+				"platform":     item.Platform,
+				"is_active":    item.IsActive,
+				"last_seen_at": item.LastSeenAt,
+				"updated_at":   now,
+			}).Error; err != nil {
+				return err
+			}
+			item.ID = existing.ID
+			item.CreatedAt = existing.CreatedAt
+			item.UpdatedAt = now
+			return nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		return db.Create(item).Error
+	}
+
 	return db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "push_token"}},
 		DoUpdates: clause.AssignmentColumns([]string{

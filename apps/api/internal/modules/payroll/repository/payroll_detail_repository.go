@@ -32,6 +32,18 @@ func (r *PayrollDetailRepository) FindByID(db *gorm.DB, id string, withRelations
 	return &item, nil
 }
 
+func (r *PayrollDetailRepository) FindCurrentByEmployee(db *gorm.DB, companyID, employeeID string, month, year int) (*entity.PayrollDetail, error) {
+	var item entity.PayrollDetail
+	err := db.
+		Joins("JOIN payrolls ON payrolls.id = payroll_details.payroll_id").
+		Where("payrolls.company_id = ?", companyID).
+		Where("payroll_details.employee_id = ?", employeeID).
+		Where("payrolls.period_month = ? AND payrolls.period_year = ?", month, year).
+		Preload("Items").Preload("Adjustments").Preload("Payments").
+		Take(&item).Error
+	return &item, err
+}
+
 func (r *PayrollDetailRepository) ListByPayroll(db *gorm.DB, payrollID string) ([]entity.PayrollDetail, error) {
 	var items []entity.PayrollDetail
 	err := db.

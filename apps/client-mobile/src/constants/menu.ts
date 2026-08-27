@@ -3,13 +3,16 @@ import {
   BanknoteArrowDown,
   BookAlert,
   Calendar1,
+  Coffee,
   FileStack,
   LucideIcon,
   MapPinned,
   MessageCircleCheck,
   SquareArrowDown,
   SquareArrowUp,
+  TimerOff,
   Users,
+  Wallet,
 } from "lucide-react-native";
 
 export interface Menu {
@@ -22,7 +25,7 @@ export interface Menu {
 export const MENUS: Menu[] = [
   {
     id: "check-in",
-    title: "Check-in",
+    title: "Masuk Kerja",
     icon: SquareArrowDown,
     route: {
       pathname: "/attendances/area",
@@ -33,13 +36,31 @@ export const MENUS: Menu[] = [
   },
   {
     id: "check-out",
-    title: "Check-out",
+    title: "Selesai Kerja",
     icon: SquareArrowUp,
     route: {
       pathname: "/attendances/area",
       params: {
         type: "check-out",
       },
+    },
+  },
+  {
+    id: "break-in",
+    title: "Istirahat",
+    icon: Coffee,
+    route: {
+      pathname: "/attendances/area",
+      params: { type: "break-in" },
+    },
+  },
+  {
+    id: "break-out",
+    title: "Selesai Istirahat",
+    icon: TimerOff,
+    route: {
+      pathname: "/attendances/area",
+      params: { type: "break-out" },
     },
   },
   {
@@ -77,6 +98,12 @@ export const MENUS: Menu[] = [
     title: "Dokumen Karyawan",
     icon: FileStack,
     route: "/employee-docs",
+  },
+  {
+    id: "payroll",
+    title: "Slip Gaji",
+    icon: Wallet,
+    route: "/employees",
   },
   {
     id: "employees",

@@ -1,4 +1,6 @@
 import AttendanceCamera from "@/features/attendance/attendance-form";
+import { useBreakIn } from "@/hooks/attendance/use-breakin";
+import { useBreakOut } from "@/hooks/attendance/use-breakout";
 import { useClockIn } from "@/hooks/attendance/use-clockin";
 import { useClockOut } from "@/hooks/attendance/use-clockout";
 
@@ -16,6 +18,8 @@ export default function AttendanceSelfie() {
 
   const clockInMutation = useClockIn();
   const clockOutMutation = useClockOut();
+  const breakInMutation = useBreakIn();
+  const breakOutMutation = useBreakOut();
 
   const handleAttendance = (data: ClockInReq, photo: PhotoResult) => {
     if (type === "check-in") {
@@ -31,11 +35,24 @@ export default function AttendanceSelfie() {
         photo,
       });
     }
+
+    if (type === "break-in") {
+      breakInMutation.mutate({ data, photo });
+    }
+
+    if (type === "break-out") {
+      breakOutMutation.mutate({ data, photo });
+    }
   };
 
   return (
     <AttendanceCamera
-      loading={clockInMutation.isPending || clockOutMutation.isPending}
+      loading={
+        clockInMutation.isPending ||
+        clockOutMutation.isPending ||
+        breakInMutation.isPending ||
+        breakOutMutation.isPending
+      }
       coordinate={{ lat: Number(lat), lng: Number(lng) }}
       onSubmit={handleAttendance}
     />
