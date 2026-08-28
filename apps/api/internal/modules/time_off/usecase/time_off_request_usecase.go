@@ -237,6 +237,18 @@ func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
 		return
 	}
 
+	var employee struct {
+		Fullname string `gorm:"column:fullname"`
+	}
+	if err := c.DB.WithContext(ctx).
+		Table("employees").
+		Select("fullname").
+		Where("id = ?", employeeID).
+		Take(&employee).Error; err != nil {
+		c.Log.WithError(err).Error("Failed to fetch employee for time off notification")
+		return
+	}
+
 	employeeIDs := make([]string, 0, len(approvals)+1)
 	employeeIDs = append(employeeIDs, employeeID)
 	for _, approval := range approvals {
@@ -272,7 +284,7 @@ func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
 		messages = append(messages, pushnotification.Message{
 			To:    device.PushToken,
 			Title: "Pengajuan Cuti Baru",
-			Body:  fmt.Sprintf("Pengajuan cuti %d hari menunggu persetujuan", request.RequestedDays),
+			Body:  fmt.Sprintf("Pengajuan cuti dari %s selama %d hari menunggu persetujuan", employee.Fullname, request.RequestedDays),
 			Data: map[string]any{
 				"type":                "time_off_request",
 				"time_off_request_id": request.ID,
