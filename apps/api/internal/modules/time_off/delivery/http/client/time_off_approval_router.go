@@ -13,4 +13,6 @@ func (c *TimeOffApprovalController) RegisterRoutes(
 	route := router.Group("/time-off-approvals")
 
 	route.Get("/", client(c.ListCurrent)...)
+	route.Patch("/:approval_id", client(c.DecideShort)...)
+
 }
