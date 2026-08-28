@@ -74,6 +74,17 @@ func (r *DeviceRepository) FindActiveByUserId(db *gorm.DB, userId string, provid
 	return devices, err
 }
 
+func (r *DeviceRepository) FindActiveByUserIds(db *gorm.DB, userIds []string, provider string) ([]entity.UserDevice, error) {
+	var devices []entity.UserDevice
+	if len(userIds) == 0 {
+		return devices, nil
+	}
+	err := db.
+		Where("user_id IN ? AND is_active = ? AND provider = ?", userIds, true, provider).
+		Find(&devices).Error
+	return devices, err
+}
+
 // FindActiveByProvider returns all active devices registered with a push provider.
 func (r *DeviceRepository) FindActiveByProvider(db *gorm.DB, provider string) ([]entity.UserDevice, error) {
 	var devices []entity.UserDevice

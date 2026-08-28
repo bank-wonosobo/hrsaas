@@ -36,12 +36,18 @@ export default function FormCollection({
       pinjaman: creditCustomer,
     },
   });
+  const totalPaid = form.watch("total_paid");
 
   return (
     <View className="bg-white rounded-xl p-4 mb-10">
       {!!form.formState.errors.img_url?.message && (
         <Text className="mb-4 text-xs text-red-500">
           {form.formState.errors.img_url.message}
+        </Text>
+      )}
+      {totalPaid === 0 && (
+        <Text className="mb-4 text-xs text-gray-500">
+          Jika tidak ada pembayaran, kolom komitmen wajib diisi.
         </Text>
       )}
       <Controller

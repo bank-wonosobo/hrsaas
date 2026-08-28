@@ -5,7 +5,7 @@ type AppEnv = "development" | "staging" | "production";
 const APP_ENV = (process.env.APP_ENV ?? "development") as AppEnv;
 
 // Single source of truth for version
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.2";
 
 // Single source of truth for Google Maps API keys (fall back to env vars if set)
 const GOOGLE_MAPS_API_KEY_IOS =

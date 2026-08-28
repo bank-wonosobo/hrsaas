@@ -2,7 +2,6 @@ import { Announcement } from "@/schema/announcement-schema";
 import {
   BookOpen,
   CalendarFold,
-  ChevronRight,
   Clock,
   GraduationCap,
   LucideIcon,
@@ -28,7 +27,10 @@ const categoryIcons: Record<string, LucideIcon> = {
   Training: GraduationCap,
 };
 
-const categoryStyle: Record<string, { bg: string; text: string; icon: string }> = {
+const categoryStyle: Record<
+  string,
+  { bg: string; text: string; icon: string }
+> = {
   Event: { bg: "bg-blue-50", text: "text-blue-600", icon: "#2563eb" },
   Maintenance: { bg: "bg-amber-50", text: "text-amber-600", icon: "#d97706" },
   Pengumuman: { bg: "bg-primary/10", text: "text-primary", icon: "#3f9aae" },
@@ -67,7 +69,7 @@ export default function AnnouncementItem({ announcement, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      className="active:bg-gray-50 p-3 flex-row items-center gap-3 rounded-2xl border border-gray-100 bg-white shadow-sm shadow-black/5"
+      className="active:bg-gray-50 p-3 flex-row items-center gap-3 rounded-2xl border border-gray-100 bg-white"
     >
       <View
         className={`h-14 w-14 items-center justify-center rounded-2xl ${style.bg}`}
@@ -105,7 +107,7 @@ export default function AnnouncementItem({ announcement, onPress }: Props) {
         </View>
       </View>
 
-      <ChevronRight size={18} strokeWidth={2} color="#d1d5dc" />
+      {/* <ChevronRight size={18} strokeWidth={2} color="#d1d5dc" /> */}
     </Pressable>
   );
 }

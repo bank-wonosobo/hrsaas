@@ -323,6 +323,8 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffBalanceRepository,
 		timeOffApprovalRepository,
 		employeeContractRepository,
+		deviceRepo.NewDeviceRepository(cfg.Log),
+		cfg.PushNotif,
 	)
 	timeOffTypeUseCase := timeOffUc.NewTimeOffTypeUseCase(
 		cfg.DB,

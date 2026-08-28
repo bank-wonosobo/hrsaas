@@ -92,7 +92,7 @@ export default function TimeOffCard({ balances, isLoading }: Props) {
             className="flex-row items-center justify-center gap-1 mt-4"
           >
             <Text className="text-white/70 text-xs font-poppins-light">
-              1 jenis cuti, klik untuk detail cuti
+              {balances?.length} jenis cuti, klik untuk detail cuti
             </Text>
             <ChevronRight color="#fff" size={12} />
           </Pressable>
@@ -101,16 +101,18 @@ export default function TimeOffCard({ balances, isLoading }: Props) {
       <AppModal
         title="Saldo Cuti"
         visible={open}
+        animationType="fade"
         onClose={() => setOpen(!open)}
       >
         {balances?.length === 0 ? (
           <View
             style={{ flex: 1 }}
-            className="items-center justify-center gap-8"
+            className="items-center justify-center gap-2"
           >
             <Inbox size={32} color="#eee" />
-            <Text className="font-poppins-medium text-gray-300">
-              Tidak ada data saldo cuti
+            <Text className="font-poppins-regular text-xs text-gray-300 text-center">
+              Tidak ada data saldo cuti, silahkan menghubungi admin untuk
+              mendapatkan saldo cuti
             </Text>
           </View>
         ) : (

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	deviceRepo "hrsaas/internal/modules/device/repository"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	"hrsaas/internal/modules/time_off/entity"
 	"hrsaas/internal/modules/time_off/model"
 	"hrsaas/internal/modules/time_off/repository"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/time"
 	"sort"
 	"strings"
@@ -28,6 +30,8 @@ type TimeOffRequestUseCase struct {
 	TimeOffBalanceRepo   *repository.TimeOffBalanceRepository
 	TimeOffApprovalRepo  *repository.TimeOffApprovalRepository
 	EmployeeContractRepo *employeeRepo.EmployeeContractRepository
+	DeviceRepo           *deviceRepo.DeviceRepository
+	PushClient           *pushnotification.ExpoClient
 }
 
 func NewTimeOffRequestUseCase(
@@ -39,6 +43,8 @@ func NewTimeOffRequestUseCase(
 	timeOffBalanceRepo *repository.TimeOffBalanceRepository,
 	timeOffApprovalRepo *repository.TimeOffApprovalRepository,
 	employeeContractRepo *employeeRepo.EmployeeContractRepository,
+	deviceRepository *deviceRepo.DeviceRepository,
+	pushClient *pushnotification.ExpoClient,
 ) *TimeOffRequestUseCase {
 	return &TimeOffRequestUseCase{
 		DB:                   db,
@@ -49,10 +55,13 @@ func NewTimeOffRequestUseCase(
 		TimeOffBalanceRepo:   timeOffBalanceRepo,
 		TimeOffApprovalRepo:  timeOffApprovalRepo,
 		EmployeeContractRepo: employeeContractRepo,
+		DeviceRepo:           deviceRepository,
+		PushClient:           pushClient,
 	}
 }
 
 // TODO: Validate business rules (quota, overlapping dates) before insert.
+
 func (c *TimeOffRequestUseCase) CreateRequest(
 	ctx context.Context,
 	employeeID string,
@@ -213,7 +222,71 @@ func (c *TimeOffRequestUseCase) CreateRequest(
 		return nil, fiber.ErrInternalServerError
 	}
 
+	c.sendTimeOffRequestPush(ctx, employeeID, approvals, item)
+
 	return model.TimeOffRequestToResponse(item), nil
+}
+
+func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
+	ctx context.Context,
+	employeeID string,
+	approvals []entity.TimeOffApproval,
+	request *entity.TimeOffRequest,
+) {
+	if c.PushClient == nil || c.DeviceRepo == nil {
+		return
+	}
+
+	employeeIDs := make([]string, 0, len(approvals)+1)
+	employeeIDs = append(employeeIDs, employeeID)
+	for _, approval := range approvals {
+		employeeIDs = append(employeeIDs, approval.ApproverId)
+	}
+
+	var recipients []struct {
+		UserID string `gorm:"column:user_id"`
+	}
+	if err := c.DB.WithContext(ctx).Table("employees").
+		Select("DISTINCT user_id").
+		Where("id IN ?", employeeIDs).
+		Find(&recipients).Error; err != nil {
+		c.Log.WithError(err).Error("Failed to fetch users for time off notification")
+		return
+	}
+	if len(recipients) == 0 {
+		return
+	}
+
+	userIDs := make([]string, len(recipients))
+	for i, recipient := range recipients {
+		userIDs[i] = recipient.UserID
+	}
+	devices, err := c.DeviceRepo.FindActiveByUserIds(c.DB.WithContext(ctx), userIDs, "expo")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to fetch devices for time off notification")
+		return
+	}
+
+	messages := make([]pushnotification.Message, 0, len(devices))
+	for _, device := range devices {
+		messages = append(messages, pushnotification.Message{
+			To:    device.PushToken,
+			Title: "Pengajuan Cuti Baru",
+			Body:  fmt.Sprintf("Pengajuan cuti %d hari menunggu persetujuan", request.RequestedDays),
+			Data: map[string]any{
+				"type":                "time_off_request",
+				"time_off_request_id": request.ID,
+			},
+			Sound:     "default",
+			ChannelID: "bw_akses_plus",
+		})
+	}
+	if len(messages) == 0 {
+		return
+	}
+	if _, err := c.PushClient.Send(ctx, messages...); err != nil {
+		c.Log.WithError(err).Error("Failed to send time off push notification")
+	}
 }
 
 // TODO: Add authorization scoping for admin vs current-user list.

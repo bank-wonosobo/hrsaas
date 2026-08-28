@@ -253,6 +253,8 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		timeOffBalanceRepository,
 		timeOffApprovalRepository,
 		employeeContractRepository,
+		deviceRepository,
+		pushnotification.NewExpoClient(cfg.Config),
 	)
 
 	timeOffTypeUseCase := timeOffUc.NewTimeOffTypeUseCase(

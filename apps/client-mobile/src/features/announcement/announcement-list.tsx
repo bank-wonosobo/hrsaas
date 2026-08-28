@@ -6,6 +6,7 @@ import AnnouncementItem from "./announcement-item";
 export default function AnnouncementList() {
   const router = useRouter();
   const { data, isLoading } = useAnnouncements({ page: 1, size: 4 });
+  console.log(data);
   const items = data?.data ?? [];
 
   return (
