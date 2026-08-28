@@ -5,8 +5,10 @@ import (
 	"hrsaas/internal/modules/announcement/entity"
 	"hrsaas/internal/modules/announcement/model"
 	"hrsaas/internal/modules/announcement/repository"
+	deviceRepo "hrsaas/internal/modules/device/repository"
 	employeeEntity "hrsaas/internal/modules/employee/entity"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
 	"strings"
 
@@ -23,6 +25,8 @@ type AnnouncementUsecase struct {
 	Validate           *validator.Validate
 	AnnouncementRepo   *repository.AnnouncementRepository
 	EmployeeRepository *employeeRepo.EmployeeRepository
+	DeviceRepository   *deviceRepo.DeviceRepository
+	PushClient         *pushnotification.ExpoClient
 	S3Client           *pkg.S3Client
 }
 
@@ -33,6 +37,8 @@ func NewAnnouncementUsecase(
 	announcementRepo *repository.AnnouncementRepository,
 	employeeRepository *employeeRepo.EmployeeRepository,
 	s3Client *pkg.S3Client,
+	deviceRepository *deviceRepo.DeviceRepository,
+	pushClient *pushnotification.ExpoClient,
 ) *AnnouncementUsecase {
 	return &AnnouncementUsecase{
 		DB:                 db,
@@ -40,6 +46,8 @@ func NewAnnouncementUsecase(
 		Validate:           validate,
 		AnnouncementRepo:   announcementRepo,
 		EmployeeRepository: employeeRepository,
+		DeviceRepository:   deviceRepository,
+		PushClient:         pushClient,
 		S3Client:           s3Client,
 	}
 }
@@ -86,7 +94,43 @@ func (c *AnnouncementUsecase) Create(
 		return nil, fiber.ErrInternalServerError
 	}
 
+	c.sendAnnouncementPush(ctx, announcement)
+
 	return model.NewAnnouncementResponse(announcement), nil
+}
+
+func (c *AnnouncementUsecase) sendAnnouncementPush(ctx context.Context, announcement *entity.Announcement) {
+	if c.PushClient == nil || c.DeviceRepository == nil {
+		return
+	}
+
+	devices, err := c.DeviceRepository.FindActiveByProvider(c.DB.WithContext(ctx), "expo")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to fetch registered devices for announcement notification")
+		return
+	}
+	if len(devices) == 0 {
+		return
+	}
+
+	messages := make([]pushnotification.Message, 0, len(devices))
+	for _, device := range devices {
+		messages = append(messages, pushnotification.Message{
+			To:    device.PushToken,
+			Title: announcement.Title,
+			Body:  announcement.Content,
+			Data: map[string]any{
+				"type":            "announcement",
+				"announcement_id": announcement.ID,
+			},
+			Sound:     "default",
+			ChannelID: "bw_akses_plus",
+		})
+	}
+
+	if _, err := c.PushClient.Send(ctx, messages...); err != nil {
+		c.Log.WithError(err).Error("Failed to send announcement push notification")
+	}
 }
 
 // List Announcements

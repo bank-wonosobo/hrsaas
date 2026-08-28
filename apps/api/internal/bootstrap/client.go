@@ -11,6 +11,7 @@ import (
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
 	"hrsaas/pkg/middleware"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
 
 	announcementHttp "hrsaas/internal/modules/announcement/delivery/http/client"
@@ -149,6 +150,8 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		announcementRepository,
 		employeeRepository,
 		cfg.S3Client,
+		deviceRepository,
+		pushnotification.NewExpoClient(cfg.Config),
 	)
 
 	// module attendance
