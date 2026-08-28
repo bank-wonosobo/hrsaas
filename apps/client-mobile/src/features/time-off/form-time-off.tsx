@@ -3,7 +3,6 @@ import DateRangePicker, { DateRange } from "@/components/ui/date-range-picker";
 import FormField from "@/components/ui/form-field";
 import Input from "@/components/ui/input";
 import Select from "@/components/ui/select";
-import { useToast } from "@/context/toast-context";
 import { useZodForm } from "@/hooks/common/use-form";
 import { useCreateTimeOff } from "@/hooks/time-off/use-create-time-off";
 import { useTimeOffTypes } from "@/hooks/time-off/use-time-off-types";
@@ -28,7 +27,6 @@ function toDateStr(date: Date): string {
 export default function FormTimeOff() {
   const [range, setRange] = useState<DateRange>({ from: null, to: null });
   const [photo, setPhoto] = useState<PhotoResult | null>(null);
-  const { showToast } = useToast();
   const generateSignUrl = useGenerateSignUrl();
   const { data: types, isLoading: loadingTypes } = useTimeOffTypes();
   const { mutate: createTimeOff, isPending } = useCreateTimeOff();
@@ -63,11 +61,7 @@ export default function FormTimeOff() {
     form.formState.errors.end_date?.message;
 
   const onSubmit = (data: CreateTimeOffRequest) => {
-    if (!photo) {
-      showToast("Silakan ambil foto terlebih dahulu", "error");
-      return;
-    }
-    if (!generateSignUrl.data) {
+    if (photo && !generateSignUrl.data) {
       if (generateSignUrl.isError) {
         generateSignUrl.mutate({ mime_type: "image/jpeg", is_public: false });
       }

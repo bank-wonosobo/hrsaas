@@ -46,7 +46,7 @@ export default function AnnouncementDetailPage() {
     <ScrollView className="flex-1 bg-gray-50" contentContainerClassName="p-4">
       <View className="bg-white rounded-2xl p-4 gap-3 border border-gray-100">
         <Badge variant="primary">{announcement.category}</Badge>
-        <Text className="font-poppins-semibold text-lg text-secondary">
+        <Text className="font-poppins-semibold text-lg text-secondary min-w-0">
           {announcement.title}
         </Text>
         <View className="flex-row items-center gap-4 border-b border-gray-100 pb-3">

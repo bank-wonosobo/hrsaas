@@ -26,8 +26,5 @@ export function useSearchCredit() {
 
       return result;
     },
-    onError(err) {
-      console.log(err.message, "error");
-    },
   });
 }

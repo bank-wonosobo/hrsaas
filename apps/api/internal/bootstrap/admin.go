@@ -307,6 +307,15 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.DB, cfg.Log, cfg.Validator, emoloyeeTrainRepository,
 	)
 	// module time off
+	timeOffApprovalUseCase := timeOffUc.NewTimeOffApprovalUseCase(
+		cfg.DB,
+		cfg.Log,
+		cfg.Validator,
+		timeOffRequestRepository,
+		timeOffTypeRepository,
+		timeOffBalanceRepository,
+	)
+
 	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(
 		cfg.DB,
 		cfg.Log,
@@ -441,6 +450,9 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Log,
 	)
 	// module time off
+	timeOffApprovalController := timeOffHttp.NewTimeOffApprovalController(
+		timeOffApprovalUseCase, cfg.Log,
+	)
 	timeOffBalanceController := timeOffHttp.NewTimeOffBalanceController(
 		timeOffBalanceUseCase,
 		cfg.Log,
@@ -500,6 +512,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeTrainController.RegisterRoutes(api, protected)
 
 	// module time off
+	timeOffApprovalController.RegisterRoutes(api, protected)
 	timeOffBalanceController.RegisterRoutes(api, protected)
 	timeOffRequestController.RegisterRoutes(api, protected)
 	timeOffTypeController.RegisterRoutes(api, protected)

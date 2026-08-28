@@ -19,7 +19,6 @@ export const useSignIn = () => {
       setTimeout(() => router.replace("/(tabs)/home"), 100);
     },
     onError: (error) => {
-      console.log(error);
       showToast("Email atau password salah", "error");
     },
   });

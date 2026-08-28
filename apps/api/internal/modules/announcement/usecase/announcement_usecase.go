@@ -163,7 +163,7 @@ func (c *AnnouncementUsecase) List(
 	for i, announcement := range announcements {
 		responses[i] = *model.NewAnnouncementResponse(&announcement)
 
-		if announcement.FileUrl != nil {
+		if announcement.FileUrl != nil && strings.TrimSpace(*announcement.FileUrl) != "" {
 			url, err := c.S3Client.GenerateDownloadURL(presignClient, *announcement.FileUrl)
 			if err != nil {
 				return nil, 0, err

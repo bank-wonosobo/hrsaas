@@ -18,7 +18,6 @@ export default function Home() {
       setRefreshing(false);
     }
   };
-
   return (
     <ScrollView
       className="flex-1 px-4 pt-12 bg-gray-50"
