@@ -30,17 +30,25 @@ func (r *DeviceRepository) Upsert(db *gorm.DB, item *entity.UserDevice) error {
 		err := db.Where("device_id = ?", *item.DeviceID).First(&existing).Error
 		if err == nil {
 			now := time.Now().UnixMilli()
-			if err := db.Model(&existing).Updates(map[string]interface{}{
-				"user_id":      item.UserID,
-				"device_name":  item.DeviceName,
-				"app_version":  item.AppVersion,
-				"push_token":   item.PushToken,
-				"provider":     item.Provider,
-				"platform":     item.Platform,
-				"is_active":    item.IsActive,
-				"last_seen_at": item.LastSeenAt,
-				"updated_at":   now,
-			}).Error; err != nil {
+			if err := db.Transaction(func(tx *gorm.DB) error {
+				// A token can belong to only one row. Remove its old owner before
+				// moving the token onto the known device.
+				if err := tx.Where("push_token = ? AND id <> ?", item.PushToken, existing.ID).
+					Delete(&entity.UserDevice{}).Error; err != nil {
+					return err
+				}
+				return tx.Model(&existing).Updates(map[string]interface{}{
+					"user_id":      item.UserID,
+					"device_name":  item.DeviceName,
+					"app_version":  item.AppVersion,
+					"push_token":   item.PushToken,
+					"provider":     item.Provider,
+					"platform":     item.Platform,
+					"is_active":    item.IsActive,
+					"last_seen_at": item.LastSeenAt,
+					"updated_at":   now,
+				}).Error
+			}); err != nil {
 				return err
 			}
 			item.ID = existing.ID
@@ -52,7 +60,13 @@ func (r *DeviceRepository) Upsert(db *gorm.DB, item *entity.UserDevice) error {
 			return err
 		}
 
-		return db.Create(item).Error
+		return db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "push_token"}},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"user_id", "device_id", "device_name", "app_version",
+				"provider", "platform", "is_active", "last_seen_at", "updated_at",
+			}),
+		}).Create(item).Error
 	}
 
 	return db.Clauses(clause.OnConflict{
