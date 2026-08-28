@@ -15,8 +15,5 @@ export const useUploadSignUrl = () => {
         mimeType: photo.mimeType,
       });
     },
-    onError(err) {
-      console.log(err.message, "error");
-    },
   });
 };

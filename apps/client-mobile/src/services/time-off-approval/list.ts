@@ -11,7 +11,7 @@ export type ListTimeOffApprovalParams = {
 export const listTimeOffApprovals = async (
   params: ListTimeOffApprovalParams,
 ): Promise<PaginatedData<TimeOffApproval>> => {
-  const response = await api.get("/time-off-approvals/_current", { params });
+  const response = await api.get("/time-off-approvals", { params });
 
   return {
     data: response.data.data,

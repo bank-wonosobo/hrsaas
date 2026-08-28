@@ -15,13 +15,18 @@ export const useCreateTimeOff = () => {
   return useMutation({
     mutationFn: async (request: {
       data: CreateTimeOffRequest;
-      photo: PhotoResult;
-      signUrl: SignUrl;
+      photo?: PhotoResult | null;
+      signUrl?: SignUrl;
     }) => {
-      await uploadSignUrl(request.signUrl.upload_url, request.photo);
+      let file_url: string | undefined;
+      if (request.photo && request.signUrl) {
+        await uploadSignUrl(request.signUrl.upload_url, request.photo);
+        file_url = request.signUrl.object_key;
+      }
+
       return createTimeOffService({
         ...request.data,
-        file_url: request.signUrl.object_key,
+        file_url,
       });
     },
     onSuccess: () => {

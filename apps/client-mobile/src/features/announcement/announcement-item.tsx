@@ -80,16 +80,15 @@ export default function AnnouncementItem({ announcement, onPress }: Props) {
       <View className="flex-1 items-start gap-1">
         <View className="flex-row items-center gap-2 self-stretch">
           <Text
-            className="font-poppins-medium text-md text-text flex-1"
-            numberOfLines={1}
+            className="font-poppins-medium text-sm text-text flex-1 min-w-0"
           >
             {announcement.title}
           </Text>
-          <View className={`px-2 py-0.5 rounded-full ${style.bg}`}>
+          {/* <View className={`px-2 py-0.5 rounded-full ${style.bg}`}>
             <Text className={`text-[10px] font-poppins-medium ${style.text}`}>
               {announcement.category}
             </Text>
-          </View>
+          </View> */}
         </View>
 
         <Text
