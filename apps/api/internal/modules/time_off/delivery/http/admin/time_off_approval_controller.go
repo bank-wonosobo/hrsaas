@@ -1,4 +1,4 @@
-package client
+package admin
 
 import (
 	"hrsaas/internal/modules/time_off/model"
