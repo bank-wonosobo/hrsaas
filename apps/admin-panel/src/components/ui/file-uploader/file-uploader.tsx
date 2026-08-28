@@ -1,6 +1,6 @@
 "use client";
 
-import { uploadFile } from "@/lib/upload";
+import { uploadFile, uploadFileWithSignedUrl } from "@/lib/upload";
 import { FileText, Loader2, Upload, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
@@ -9,6 +9,8 @@ interface Props {
   onChange: (url: string) => void;
   accept?: string;
   error?: string;
+  useSignedUrl?: boolean;
+  isPublic?: boolean;
 }
 
 export default function FileUploader({
@@ -16,6 +18,8 @@ export default function FileUploader({
   onChange,
   accept = "*/*",
   error,
+  useSignedUrl = false,
+  isPublic = false,
 }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -27,7 +31,9 @@ export default function FileUploader({
       setFileName(file.name);
       setIsUploading(true);
       try {
-        const url = await uploadFile(file);
+        const url = useSignedUrl
+          ? await uploadFileWithSignedUrl(file, isPublic)
+          : await uploadFile(file);
         onChange(url);
       } catch {
         setFileName("");
@@ -35,7 +41,7 @@ export default function FileUploader({
         setIsUploading(false);
       }
     },
-    [onChange],
+    [isPublic, onChange, useSignedUrl],
   );
 
   const handleDrop = useCallback(

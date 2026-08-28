@@ -33,7 +33,7 @@ export default function AppModal({
       {...props}
     >
       <View className="flex-1 items-center justify-center bg-black/20 px-5">
-        <View className="w-full max-w-md h-[80%] rounded-2xl bg-white p-5 overflow-hidden">
+        <View className="w-full max-w-md max-h-[80%] rounded-2xl bg-white p-5 overflow-hidden">
           <View className="flex flex-row justify-between items-center mb-5">
             {title && (
               <Text className="font-google-flex text-xl font-bold text-gray-900">
@@ -47,10 +47,7 @@ export default function AppModal({
               <X strokeWidth={2.4} size={16} color="black" />
             </Pressable>
           </View>
-          <ScrollView
-            className="w-full"
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView className="w-full" showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
         </View>

@@ -11,6 +11,7 @@ import (
 	authRepo "hrsaas/internal/modules/auth/repository"
 	authUc "hrsaas/internal/modules/auth/usecase"
 	"hrsaas/pkg/middleware"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
 
 	announcementHttp "hrsaas/internal/modules/announcement/delivery/http/client"
@@ -27,7 +28,6 @@ import (
 	employeeHttp "hrsaas/internal/modules/employee/delivery/http/client"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	employeeUc "hrsaas/internal/modules/employee/usecase"
-	uploadHttp "hrsaas/internal/modules/upload/delivery/http/client"
 
 	deviceHttp "hrsaas/internal/modules/device/delivery/http/client"
 	deviceRepo "hrsaas/internal/modules/device/repository"
@@ -44,6 +44,12 @@ import (
 	visitHttp "hrsaas/internal/modules/visit/delivery/http/client"
 	visitRepo "hrsaas/internal/modules/visit/repository"
 	visitUc "hrsaas/internal/modules/visit/usecase"
+
+	payrollHttp "hrsaas/internal/modules/payroll/delivery/http/client"
+	payrollRepo "hrsaas/internal/modules/payroll/repository"
+	payrollUc "hrsaas/internal/modules/payroll/usecase"
+
+	uploadHttp "hrsaas/internal/modules/upload/delivery/http"
 )
 
 type ClientBootstrapConfig struct {
@@ -91,6 +97,9 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	employeeDocsRepository := employeeRepo.NewEmployeeDocumentRepository(cfg.Log)
 	employeeEducationRepository := employeeRepo.NewEmployeeEducationRepository(cfg.Log)
 	employeeTrainingRepository := employeeRepo.NewEmployeeTrainingRepository(cfg.Log)
+	employeeSalaryRepository := employeeRepo.NewEmployeeSalaryRepository(cfg.Log)
+	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
+	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
 	sanctionRepository := employeeRepo.NewSanctionRepository(cfg.Log)
 	employeeSancRepository := employeeRepo.NewEmSancRepository(cfg.Log)
 
@@ -113,6 +122,14 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		cfg.Config.GetString("nasabah.base_url"),
 	)
 
+	// module payroll
+	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
+	payrollDetailRepository := payrollRepo.NewPayrollDetailRepository(cfg.Log)
+	payrollItemRepository := payrollRepo.NewPayrollItemRepository(cfg.Log)
+	payrollAdjustmentRepository := payrollRepo.NewPayrollAdjustmentRepository(cfg.Log)
+	payrollPaymentRepository := payrollRepo.NewPayrollPaymentRepository(cfg.Log)
+	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
+
 	// ====== USECASE =======
 	// module auth
 	authUseCase := authUc.NewAuthUseCase(
@@ -132,6 +149,9 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		cfg.Validator,
 		announcementRepository,
 		employeeRepository,
+		cfg.S3Client,
+		deviceRepository,
+		pushnotification.NewExpoClient(cfg.Config),
 	)
 
 	// module attendance
@@ -233,10 +253,20 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		timeOffBalanceRepository,
 		timeOffApprovalRepository,
 		employeeContractRepository,
+		deviceRepository,
+		pushnotification.NewExpoClient(cfg.Config),
 	)
 
 	timeOffTypeUseCase := timeOffUc.NewTimeOffTypeUseCase(
 		cfg.DB, cfg.Log, cfg.Validator, timeOffTypeRepository,
+	)
+
+	payrollUseCase := payrollUc.NewPayrollUseCase(
+		cfg.DB, cfg.Log, cfg.Validator,
+		payrollRepository, payrollDetailRepository, payrollItemRepository,
+		payrollAdjustmentRepository, payrollPaymentRepository, payrollApprovalRepository,
+		employeeRepository, employeeSalaryRepository, employeeAllowanceRepository,
+		employeeDeductionRepository,
 	)
 
 	// module user
@@ -334,6 +364,9 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := visitHttp.NewCollectingController(collectingUseCase, cfg.Log)
+	salaryController := payrollHttp.NewSalaryController(payrollUseCase, cfg.Log)
+
+	// module upload
 	uploadController := uploadHttp.NewUploadController(uploadUseCase, cfg.Log)
 
 	// ====== MIDDLEWARE =======
@@ -373,5 +406,8 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 	// module visit
 	visitController.RegisterRoutes(api, client)
 	collectingController.RegisterRoutes(api, client)
+	salaryController.RegisterRoutes(api, client)
+
+	// module upload
 	uploadController.RegisterRoutes(api, authMiddleware)
 }

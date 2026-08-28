@@ -1,4 +1,6 @@
 import * as SecureStore from "expo-secure-store";
+import * as Application from "expo-application";
+import { Platform } from "react-native";
 
 const DEVICE_ID_KEY = "device_id";
 
@@ -17,9 +19,27 @@ function createDeviceId(): string {
     .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
 }
 
-// Persists a random UUID as this installation's stable device identifier,
-// since neither iOS nor Android expose one without extra native modules.
-export async function getDeviceId(): Promise<string> {
+let deviceIdPromise: Promise<string> | undefined;
+
+export function getDeviceId(): Promise<string> {
+  if (!deviceIdPromise) {
+    deviceIdPromise = resolveDeviceId();
+  }
+  return deviceIdPromise;
+}
+
+async function resolveDeviceId(): Promise<string> {
+  if (Platform.OS === "android") {
+    return Application.getAndroidId();
+  }
+
+  if (Platform.OS === "ios") {
+    const iosId = await Application.getIosIdForVendorAsync();
+    if (iosId) {
+      return iosId;
+    }
+  }
+
   let deviceId = await SecureStore.getItemAsync(DEVICE_ID_KEY);
   if (!deviceId) {
     deviceId = createDeviceId();

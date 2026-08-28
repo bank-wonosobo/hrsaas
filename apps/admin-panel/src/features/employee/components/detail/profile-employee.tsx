@@ -36,7 +36,9 @@ export default function ProfileEmployee({ id }: Props): React.ReactNode {
               src={employee?.user.image_url}
             />
           ) : (
-            employee?.fullname.charAt(0).toUpperCase()
+            <div className="h-12 w-12 rounded-full bg-zinc-100 text-zinc-700 font-semibold flex items-center justify-center text-sm shrink-0 overflow-hidden">
+              {employee?.fullname.charAt(0).toUpperCase()}
+            </div>
           )}
 
           <h2 className="font-semibold text-2xl text-center">

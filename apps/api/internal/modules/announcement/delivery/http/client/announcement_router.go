@@ -9,4 +9,5 @@ func (c *AnnouncementController) RegisterRoutes(
 	route := router.Group("/announcements")
 
 	route.Get("/", authMiddleware, c.List)
+	route.Get("/:announce_id", authMiddleware, c.Detail)
 }

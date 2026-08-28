@@ -53,3 +53,18 @@ func (c *AnnouncementController) List(ctx *fiber.Ctx) error {
 		Paging: paging,
 	})
 }
+
+func (c *AnnouncementController) Detail(ctx *fiber.Ctx) error {
+	id := ctx.Params("announce_id")
+	companyID := auth.GetCompanyId(ctx)
+
+	result, err := c.AnnouncementUsecase.Detail(ctx.UserContext(), id, companyID)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to get announcement detail")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.AnnouncementResponse]{
+		Data: result,
+	})
+}

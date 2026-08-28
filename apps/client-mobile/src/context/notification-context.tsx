@@ -1,6 +1,7 @@
 import { useAuth } from "@/context/auth-context";
 import { registerPushTokenService } from "@/services/notification/register-push-token";
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Alert, Platform } from "react-native";
@@ -31,6 +32,7 @@ export function NotificationProvider({
   children: React.ReactNode;
 }) {
   const { token: authToken } = useAuth();
+  const router = useRouter();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] =
     useState<Notifications.Notification | null>(null);
@@ -48,7 +50,14 @@ export function NotificationProvider({
 
     const responseListener =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log(response);
+        const data = response.notification.request.content.data as {
+          type?: string;
+          announcement_id?: string;
+        };
+
+        if (data.type === "announcement" && data.announcement_id) {
+          router.push(`/announcements/${data.announcement_id}`);
+        }
       });
 
     return () => {

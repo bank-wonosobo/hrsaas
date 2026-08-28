@@ -1,8 +1,15 @@
 import Badge from "@/components/ui/badge";
 import { useAnnouncementDetail } from "@/hooks/announcement/use-announcement-detail";
 import { useLocalSearchParams } from "expo-router";
-import { Calendar, User } from "lucide-react-native";
-import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { Calendar, FileText, User } from "lucide-react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 function formatDate(dateMs: number) {
   return new Date(dateMs).toLocaleDateString("id-ID", {
@@ -59,6 +66,17 @@ export default function AnnouncementDetailPage() {
         <Text className="font-poppins-regular text-sm text-text leading-6">
           {announcement.content}
         </Text>
+        {!!announcement.file_url && (
+          <Pressable
+            onPress={() => Linking.openURL(announcement.file_url!)}
+            className="flex-row items-center gap-2 border-t border-dashed border-gray-200 pt-3"
+          >
+            <FileText size={14} color="#3f9aae" />
+            <Text className="font-poppins-medium text-xs text-primary">
+              Lihat Dokumen
+            </Text>
+          </Pressable>
+        )}
       </View>
     </ScrollView>
   );

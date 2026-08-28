@@ -1,5 +1,17 @@
+import { useTodayAttendance } from "@/hooks/attendance/use-today-attendance";
+import { formatTime } from "@/lib/utils/format-time";
 import { Clock, Coffee, LogIn, LogOut } from "lucide-react-native";
-import { Text, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
+
+function formatDuration(minutes?: number) {
+  if (!minutes) return "--";
+
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours <= 0) return `${mins}m`;
+  if (mins <= 0) return `${hours}j`;
+  return `${hours}j ${mins}m`;
+}
 
 function StatTile({
   icon,
@@ -26,6 +38,15 @@ function StatTile({
 }
 
 export default function AttendanceCard() {
+  const { data: attendance, isLoading } = useTodayAttendance();
+  const status = !attendance
+    ? "Belum Absen"
+    : attendance.check_out_time
+      ? "Selesai"
+      : attendance.status === "TERLAMBAT"
+        ? "Terlambat"
+        : "Sedang Bekerja";
+
   return (
     <View className="bg-primary w-full rounded-3xl mb-2 overflow-hidden shadow-lg shadow-secondary/40">
       {/* Decorative background blobs */}
@@ -38,9 +59,13 @@ export default function AttendanceCard() {
             Kehadiran Hari Ini
           </Text>
           <View className="flex-row items-center gap-1.5 bg-primary/20 px-2.5 py-1 rounded-full">
-            <View className="h-1.5 w-1.5 rounded-full bg-primary" />
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <View className="h-1.5 w-1.5 rounded-full bg-primary" />
+            )}
             <Text className="text-primary font-poppins-semibold text-[10px]">
-              Sedang Bekerja
+              {isLoading ? "Memuat..." : status}
             </Text>
           </View>
         </View>
@@ -48,25 +73,33 @@ export default function AttendanceCard() {
         <View className="flex-row gap-3 mb-3">
           <StatTile
             icon={<LogIn size={12} color="#fff" />}
-            label="Clock-in"
-            value="07.19"
+            label="Presensi Masuk"
+            value={
+              attendance?.check_in_time
+                ? formatTime(attendance.check_in_time)
+                : "--"
+            }
           />
           <StatTile
             icon={<LogOut size={12} color="#fff" />}
-            label="Clock-out"
-            value="--"
+            label="Presensi Keluar"
+            value={
+              attendance?.check_out_time
+                ? formatTime(attendance.check_out_time)
+                : "--"
+            }
           />
         </View>
         <View className="flex-row gap-3">
           <StatTile
             icon={<Clock size={12} color="#fff" />}
             label="Jam Kerja"
-            value="--"
+            value={formatDuration(attendance?.total_work_minutes)}
           />
           <StatTile
             icon={<Coffee size={12} color="#fff" />}
             label="Istirahat"
-            value="--"
+            value={formatDuration(attendance?.total_break_minutes)}
           />
         </View>
       </View>

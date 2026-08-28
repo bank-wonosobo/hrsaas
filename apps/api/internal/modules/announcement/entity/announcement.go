@@ -16,6 +16,7 @@ type Announcement struct {
 	Title      string                  `gorm:"column:title;not null"`
 	Category   string                  `gorm:"column:category;not null"`
 	Content    string                  `gorm:"column:content;not null"`
+	FileUrl    *string                 `gorm:"column:file_url"`
 	CreatedAt  int64                   `gorm:"column:created_at;autoCreateTime"`
 }
 

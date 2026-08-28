@@ -67,7 +67,7 @@ func (c *UserUseCase) Detail(ctx context.Context, id string) (*model.UserRespons
 	defer tx.Rollback()
 
 	user := new(entity.User)
-	if err := c.UserRepository.FindById(tx, user, id, "Roles", "Roles.Permissions", "Employee"); err != nil {
+	if err := c.UserRepository.FindById(tx, user, id, "Roles", "Roles.Permissions"); err != nil {
 		c.Log.WithError(err).Error("User tidak ditemukan")
 		return nil, fiber.ErrNotFound
 	}

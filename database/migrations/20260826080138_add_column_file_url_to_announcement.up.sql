@@ -1,0 +1,1 @@
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS file_url TEXT;
