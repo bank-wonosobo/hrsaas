@@ -2,7 +2,7 @@ import { api } from "@/lib/axios";
 import { TimeOffType } from "../schemas/time-off-type-schema";
 
 export const getAllTimeOffType = async (): Promise<TimeOffType[]> => {
-  const response = await api.get("/time-off-types");
+  const response = await api.get("/time-off-types?size=99");
 
   return response.data.data;
 };
