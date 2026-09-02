@@ -621,6 +621,7 @@ func (c *TimeOffRequestUseCase) buildApprovalsFromPositionChain(
 			Select("employee_id").
 			Where("is_active = ?", true).
 			Where("position_id = ?", parent.ID).
+			// Where("is_approver = ?", true).
 			// Where("division_id = ?", contract.DivisionID).
 			// Where("end_date IS NULL OR end_date >= ?", nowEpoch()).
 			Order("start_date DESC").

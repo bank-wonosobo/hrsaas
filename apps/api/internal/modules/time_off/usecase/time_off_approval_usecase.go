@@ -117,6 +117,21 @@ func (c *TimeOffApprovalUseCase) Decide(
 		return fiber.NewError(fiber.StatusBadRequest, "Approval already processed")
 	}
 
+	if action == "APPROVE" {
+		var pendingBefore int64
+		if err := tx.Table("time_off_approvals").
+			Where("time_off_request_id = ?", requestID).
+			Where("approval_order < ?", approval.ApprovalOrder).
+			Where("approval_status != ?", "APPROVED").
+			Count(&pendingBefore).Error; err != nil {
+			c.Log.WithError(err).Error("Failed to count preceding approvals")
+			return fiber.ErrInternalServerError
+		}
+		if pendingBefore > 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Approver sebelumnya belum approve")
+		}
+	}
+
 	actionStatus := "APPROVED"
 	if action == "REJECT" {
 		actionStatus = "REJECTED"
@@ -221,6 +236,21 @@ func (c *TimeOffApprovalUseCase) DecideByApprovalID(
 		return fiber.NewError(fiber.StatusBadRequest, "Approval already processed")
 	}
 
+	if action == "APPROVE" {
+		var pendingBefore int64
+		if err := tx.Table("time_off_approvals").
+			Where("time_off_request_id = ?", approval.TimeOffRequestId).
+			Where("approval_order < ?", approval.ApprovalOrder).
+			Where("approval_status != ?", "APPROVED").
+			Count(&pendingBefore).Error; err != nil {
+			c.Log.WithError(err).Error("Failed to count preceding approvals")
+			return fiber.ErrInternalServerError
+		}
+		if pendingBefore > 0 {
+			return fiber.NewError(fiber.StatusBadRequest, "Approver sebelumnya belum approve")
+		}
+	}
+
 	actionStatus := "APPROVED"
 	if action == "REJECT" {
 		actionStatus = "REJECTED"
@@ -304,11 +334,11 @@ func (c *TimeOffApprovalUseCase) ListApprovalsByApprover(
 
 	query := tx.Model(&entity.TimeOffApproval{}).
 		Where("approver_id = ?", approverID).
-		Where(`NOT EXISTS (
-			SELECT 1 FROM time_off_approvals prev
-			WHERE prev.time_off_request_id = time_off_approvals.time_off_request_id
-			AND prev.approval_order < time_off_approvals.approval_order
-			AND prev.approval_status != 'APPROVED')`).
+		// Where(`NOT EXISTS (
+		// 	SELECT 1 FROM time_off_approvals prev
+		// 	WHERE prev.time_off_request_id = time_off_approvals.time_off_request_id
+		// 	AND prev.approval_order < time_off_approvals.approval_order
+		// 	AND prev.approval_status != 'APPROVED')`).
 		Preload("Employee").
 		Preload("TimeOffRequest").
 		Preload("TimeOffRequest.Employee").
