@@ -32,17 +32,20 @@
     }
   },
   "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./bw-akses-plus-a183e3f2bf82.json",
-        "track": "internal",
-        "releaseStatus": "draft"
-      }
-    },
     "internal": {
       "android": {
-        "serviceAccountKeyPath": "./bw-akses-plus-a183e3f2bf82.json",
         "track": "internal"
+      }
+    },
+    "closed": {
+      "android": {
+        "track": "alpha"
+      }
+    },
+    "production": {
+      "android": {
+        "track": "production",
+        "releaseStatus": "draft"
       }
     }
   }

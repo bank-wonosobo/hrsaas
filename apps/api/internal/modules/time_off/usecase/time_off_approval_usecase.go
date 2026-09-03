@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"hrsaas/internal/modules/time_off/entity"
 	"hrsaas/internal/modules/time_off/model"
 	"hrsaas/internal/modules/time_off/repository"
+	"net/smtp"
 
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +25,7 @@ type TimeOffApprovalUseCase struct {
 	TimeOffRequestRepo *repository.TimeOffRequestRepository
 	TimeOffTypeRepo    *repository.TimeOffTypeRepository
 	TimeOffBalanceRepo *repository.TimeOffBalanceRepository
+	Config             *viper.Viper
 }
 
 func NewTimeOffApprovalUseCase(
@@ -31,6 +35,7 @@ func NewTimeOffApprovalUseCase(
 	timeOffRequestRepo *repository.TimeOffRequestRepository,
 	timeOffTypeRepo *repository.TimeOffTypeRepository,
 	timeOffBalanceRepo *repository.TimeOffBalanceRepository,
+	config *viper.Viper,
 ) *TimeOffApprovalUseCase {
 	return &TimeOffApprovalUseCase{
 		DB:                 db,
@@ -39,6 +44,7 @@ func NewTimeOffApprovalUseCase(
 		TimeOffRequestRepo: timeOffRequestRepo,
 		TimeOffTypeRepo:    timeOffTypeRepo,
 		TimeOffBalanceRepo: timeOffBalanceRepo,
+		Config:             config,
 	}
 }
 
@@ -196,7 +202,75 @@ func (c *TimeOffApprovalUseCase) Decide(
 		return fiber.ErrInternalServerError
 	}
 
+	go c.sendTimeOffDecisionEmail(context.WithoutCancel(ctx), requestID, actionStatus, request.ActionReason)
+
 	return nil
+}
+
+func (c *TimeOffApprovalUseCase) sendTimeOffDecisionEmail(
+	ctx context.Context,
+	requestID, status, reason string,
+) {
+	if c.Config == nil {
+		return
+	}
+
+	var recipient struct {
+		Email         string
+		Fullname      string
+		TimeOffType   string
+		RequestedDays int
+		StartDate     int64
+	}
+	if err := c.DB.WithContext(ctx).Table("time_off_requests r").
+		Select("u.email, e.fullname, t.name AS time_off_type, r.requested_days, r.start_date").
+		Joins("JOIN employees e ON e.id = r.employee_id").
+		Joins("JOIN users u ON u.id = e.user_id").
+		Joins("JOIN time_off_types t ON t.id = r.time_off_type_id").
+		Where("r.id = ?", requestID).
+		Take(&recipient).Error; err != nil {
+		c.Log.WithError(err).Error("Failed to fetch employee for time off decision email")
+		return
+	}
+	if strings.TrimSpace(recipient.Email) == "" {
+		return
+	}
+
+	statusText := "disetujui"
+	if status == "REJECTED" {
+		statusText = "ditolak"
+	}
+	subject := fmt.Sprintf("Pengajuan cuti %s", statusText)
+	body := fmt.Sprintf("Halo %s,\n\nPengajuan %s Anda selama %d hari mulai %s telah %s.\n",
+		recipient.Fullname,
+		recipient.TimeOffType,
+		recipient.RequestedDays,
+		time.UnixMilli(recipient.StartDate).Format("02/01/2006"),
+		statusText,
+	)
+	if status == "REJECTED" && strings.TrimSpace(reason) != "" {
+		body += fmt.Sprintf("Alasan: %s\n", reason)
+	}
+	body += "\nTerima kasih."
+
+	host := c.Config.GetString("mail.smtp.host")
+	port := c.Config.GetInt("mail.smtp.port")
+	from := c.Config.GetString("mail.smtp.from")
+	if host == "" || port == 0 || from == "" {
+		return
+	}
+
+	message := []byte("From: " + from + "\r\n" +
+		"To: " + recipient.Email + "\r\n" +
+		"Subject: " + subject + "\r\n" +
+		"Content-Type: text/plain; charset=UTF-8\r\n\r\n" + body)
+	var auth smtp.Auth
+	if username := c.Config.GetString("mail.smtp.username"); username != "" {
+		auth = smtp.PlainAuth("", username, c.Config.GetString("mail.smtp.password"), host)
+	}
+	if err := smtp.SendMail(fmt.Sprintf("%s:%d", host, port), auth, from, []string{recipient.Email}, message); err != nil {
+		c.Log.WithError(err).Error("Failed to send time off decision email")
+	}
 }
 
 // TODO: Consider audit logging for short decide path.

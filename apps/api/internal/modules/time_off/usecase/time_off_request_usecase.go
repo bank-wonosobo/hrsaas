@@ -222,7 +222,7 @@ func (c *TimeOffRequestUseCase) CreateRequest(
 		return nil, fiber.ErrInternalServerError
 	}
 
-	c.sendTimeOffRequestPush(ctx, employeeID, approvals, item)
+	c.sendTimeOffRequestPush(ctx, employeeID, approvals, timeOffType.Category, item)
 
 	return model.TimeOffRequestToResponse(item), nil
 }
@@ -231,6 +231,7 @@ func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
 	ctx context.Context,
 	employeeID string,
 	approvals []entity.TimeOffApproval,
+	requestType string,
 	request *entity.TimeOffRequest,
 ) {
 	if c.PushClient == nil || c.DeviceRepo == nil {
@@ -284,7 +285,7 @@ func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
 		messages = append(messages, pushnotification.Message{
 			To:    device.PushToken,
 			Title: "Pengajuan Cuti Baru",
-			Body:  fmt.Sprintf("Pengajuan cuti dari %s selama %d hari menunggu persetujuan", employee.Fullname, request.RequestedDays),
+			Body:  fmt.Sprintf("Pengajuan %s dari %s selama %d hari menunggu persetujuan", requestType, employee.Fullname, request.RequestedDays),
 			Data: map[string]any{
 				"type":                "time_off_request",
 				"time_off_request_id": request.ID,
