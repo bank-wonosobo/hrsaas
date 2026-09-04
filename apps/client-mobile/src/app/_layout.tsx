@@ -53,12 +53,15 @@ function RootNavigation() {
               />
               <Stack.Screen
                 name="attendances/area"
-                options={{ title: "Area Presensi " }}
+                options={{ title: "Area Presensi" }}
               />
-
               <Stack.Screen
                 name="attendances/selfie"
                 options={{ title: "Presensi" }}
+              />
+              <Stack.Screen
+                name="attendances/register-face"
+                options={{ title: "Daftarkan Wajah" }}
               />
               <Stack.Screen
                 name="time-offs/index"

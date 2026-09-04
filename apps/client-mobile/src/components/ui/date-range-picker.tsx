@@ -15,6 +15,7 @@ interface Props {
   placeholder?: string;
   error?: boolean;
   minDate?: Date;
+  maxDate?: Date;
 }
 
 const WEEKDAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -62,11 +63,13 @@ export default function DateRangePicker({
   placeholder = "Pilih periode cuti",
   error,
   minDate,
+  maxDate,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => value.from ?? new Date());
 
   const min = startOfDay(minDate ?? new Date());
+  const max = maxDate ? startOfDay(maxDate) : null;
 
   const days = useMemo(() => {
     const year = viewDate.getFullYear();
@@ -83,7 +86,7 @@ export default function DateRangePicker({
 
   const handlePickDay = (day: Date) => {
     const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-    if (day < min || isWeekend) return;
+    if (day < min || (max !== null && day > max) || isWeekend) return;
 
     if (!value.from || value.to) {
       onChange({ from: day, to: null });
@@ -179,7 +182,8 @@ export default function DateRangePicker({
             }
 
             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-            const disabled = day < min || isWeekend;
+            const disabled =
+              day < min || (max !== null && day > max) || isWeekend;
             const isFrom = value.from ? isSameDay(day, value.from) : false;
             const isTo = value.to ? isSameDay(day, value.to) : false;
             const inRange =

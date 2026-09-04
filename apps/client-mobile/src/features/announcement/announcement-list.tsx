@@ -13,8 +13,14 @@ export default function AnnouncementList() {
       <View className="mt-3 gap-2 bg-white p-3 rounded-2xl mb-14">
         <View className="flex-row items-center justify-between mb-1">
           <Text className="text-sm font-poppins-semibold">Pengumuman</Text>
-          <Pressable onPress={() => router.push("/announcements")}>
-            <Text className="text-xs font-poppins-medium text-primary">
+          <Pressable
+            onPress={() => router.push("/announcements")}
+            className="shrink-0"
+          >
+            <Text
+              className="text-xs font-poppins-medium text-primary"
+              numberOfLines={1}
+            >
               Lihat Semua
             </Text>
           </Pressable>

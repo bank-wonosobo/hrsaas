@@ -122,7 +122,7 @@ export default function Hero() {
                 })
               }
             >
-              {attendanceType === "check-in" ? "Check-in" : "Check-out"}
+              {attendanceType === "check-in" ? "Masuk Kerja" : "Selesai Kerja"}
             </Button>
 
             {breakAttendanceType && (
@@ -137,8 +137,8 @@ export default function Hero() {
                 }
               >
                 {breakAttendanceType === "break-in"
-                  ? "Break-in"
-                  : "Break-out"}
+                  ? "Istirahat"
+                  : "Selesai Istirahat"}
               </Button>
             )}
           </View>
