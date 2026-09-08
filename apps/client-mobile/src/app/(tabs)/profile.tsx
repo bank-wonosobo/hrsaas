@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import {
   FileText,
   GraduationCap,
+  Info,
   KeyRound,
   LogOut,
   Mail,
@@ -99,6 +100,12 @@ export default function ProfilePage() {
           icon={KeyRound}
           label="Ubah Kata Sandi"
           onPress={() => router.push("/profile/change-password")}
+        />
+        <View className="h-px bg-gray-100" />
+        <ProfileMenuItem
+          icon={Info}
+          label="Informasi Versi"
+          onPress={() => router.push("/profile/version")}
         />
         <View className="h-px bg-gray-100" />
         <ProfileMenuItem

@@ -5,7 +5,7 @@ type AppEnv = "development" | "staging" | "production";
 const APP_ENV = (process.env.APP_ENV ?? "development") as AppEnv;
 
 // Single source of truth for version
-const APP_VERSION = "1.6.5";
+const APP_VERSION = "1.6.7";
 
 // Single source of truth for Google Maps API keys (fall back to env vars if set)
 const GOOGLE_MAPS_API_KEY_IOS =
@@ -72,11 +72,10 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
       },
     },
     predictiveBackGestureEnabled: false,
-    permissions: [
-      // "android.permission.CAMERA",
-      // "android.permission.RECORD_AUDIO",
-      // "android.permission.ACCESS_COARSE_LOCATION",
-      // "android.permission.ACCESS_FINE_LOCATION",
+    permissions: [],
+    blockedPermissions: [
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
     ],
     package: androidPackage,
     googleServicesFile: "./google-services.json",

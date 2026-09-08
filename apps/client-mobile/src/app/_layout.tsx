@@ -108,6 +108,10 @@ function RootNavigation() {
                 options={{ title: "Ubah Kata Sandi" }}
               />
               <Stack.Screen
+                name="profile/version"
+                options={{ title: "Informasi Versi" }}
+              />
+              <Stack.Screen
                 name="announcements/index"
                 options={{ title: "Pengumuman" }}
               />
