@@ -189,6 +189,20 @@ func (c *TimeOffApprovalUseCase) Decide(
 			c.Log.WithError(err).Error("Failed to update time off request status")
 			return fiber.ErrInternalServerError
 		}
+
+		// reject all sibling approvals that are pending
+		if err := tx.Table("time_off_approvals").
+			Where("time_off_request_id = ?", requestID).
+			Where("id != ?", approval.ID).
+			Where("approval_status NOT IN ?", []string{"APPROVED", "REJECTED"}).
+			Updates(map[string]any{
+				"approval_status": "REJECTED",
+				"action_reason":   "Auto-rejected: another approver rejected this request",
+				"action_at":       request.ActionAt,
+			}).Error; err != nil {
+			c.Log.WithError(err).Error("Failed to auto-reject sibling approvals")
+			return fiber.ErrInternalServerError
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -306,6 +320,20 @@ func (c *TimeOffApprovalUseCase) DecideByApprovalID(
 			Where("id = ?", approval.TimeOffRequestId).
 			Update("request_status", "REJECTED").Error; err != nil {
 			c.Log.WithError(err).Error("Failed to update time off request status")
+			return fiber.ErrInternalServerError
+		}
+
+		// reject all sibling approvals that are pending
+		if err := tx.Table("time_off_approvals").
+			Where("time_off_request_id = ?", approval.TimeOffRequestId).
+			Where("id != ?", approval.ID).
+			Where("approval_status NOT IN ?", []string{"APPROVED", "REJECTED"}).
+			Updates(map[string]any{
+				"approval_status": "REJECTED",
+				"action_reason":   "Auto-rejected: another approver rejected this request",
+				"action_at":       request.ActionAt,
+			}).Error; err != nil {
+			c.Log.WithError(err).Error("Failed to auto-reject sibling approvals")
 			return fiber.ErrInternalServerError
 		}
 	}

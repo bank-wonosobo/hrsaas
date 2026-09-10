@@ -78,3 +78,17 @@ func (c *TimeOffRequestController) Create(ctx *fiber.Ctx) error {
 		Data: result,
 	})
 }
+
+// CancelRequest membatalkan pengajuan izin & cuti milik karyawan yang sedang login.
+func (c *TimeOffRequestController) CancelRequest(ctx *fiber.Ctx) error {
+	id := ctx.Params("time_off_request_id")
+
+	if err := c.RequestUseCase.CancelRequest(ctx.UserContext(), id, auth.GetEmployeeId(ctx)); err != nil {
+		c.Log.WithError(err).Error("failed to cancel time off request")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[any]{
+		Data: "Pengajuan izin & cuti berhasil dibatalkan",
+	})
+}

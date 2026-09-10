@@ -536,7 +536,6 @@ func (c *TimeOffRequestUseCase) buildApprovalsFromPositionChain(
 			Select("employee_id").
 			Where("is_active = ?", true).
 			Where("position_id = ?", parent.ID).
-			// Where("is_approver = ?", true).
 			// Where("division_id = ?", contract.DivisionID).
 			// Where("end_date IS NULL OR end_date >= ?", nowEpoch()).
 			Order("start_date DESC").
@@ -729,4 +728,57 @@ func (c *TimeOffRequestUseCase) resolveDepthFromRoot(
 	}
 
 	return 0, fmt.Errorf("position hierarchy exceeds max depth (%d) — possible cycle", maxDepth)
+}
+
+// cancelRequest allows an employee to cancel their own time off request if it is still pending.
+func (c *TimeOffRequestUseCase) CancelRequest(
+	ctx context.Context,
+	id string,
+	employeeID string,
+) error {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	item, err := c.TimeOffRequestRepo.FindByID(tx, id, false)
+	if err != nil {
+		c.Log.WithError(err).Error("Time off request not found")
+		return fiber.ErrNotFound
+	}
+
+	if item.EmployeeID != employeeID {
+		return fiber.NewError(
+			fiber.StatusForbidden,
+			"You are not authorized to cancel this request",
+		)
+	}
+
+	if item.RequestStatus == nil ||
+		strings.ToUpper(strings.TrimSpace(*item.RequestStatus)) != "PENDING" {
+		return fiber.NewError(
+			fiber.StatusBadRequest,
+			"Hanya pengajuan yang berstatus PENDING yang dapat dibatalkan",
+		)
+	}
+
+	if err := tx.Table("time_off_requests").
+		Where("id = ?", item.ID).
+		Update("request_status", "CANCELED").Error; err != nil {
+		c.Log.WithError(err).Error("Failed to cancel time off request")
+		return fiber.ErrInternalServerError
+	}
+
+	if err := tx.Table("time_off_approvals").
+		Where("time_off_request_id = ?", item.ID).
+		Where("approval_status = ?", "PENDING").
+		Update("approval_status", "CANCELED").Error; err != nil {
+		c.Log.WithError(err).Error("Failed to cancel pending approvals for time off request")
+		return fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return fiber.ErrInternalServerError
+	}
+
+	return nil
 }
