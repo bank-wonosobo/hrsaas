@@ -7,6 +7,7 @@ export const AnnouncementSchema = z.object({
   employee_name: z.string(),
   title: z.string(),
   category: z.string(),
+  file_url: z.string().optional(),
   content: z.string(),
   created_at: z.number(),
 });

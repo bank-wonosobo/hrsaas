@@ -176,6 +176,30 @@ func (c *PayrollUseCase) DetailByDetailID(ctx context.Context, detailID string) 
 	return response, nil
 }
 
+func (c *PayrollUseCase) CurrentByEmployee(ctx context.Context, employeeID string) ([]model.PayrollDetailResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	items, err := c.DetailRepo.ListByEmployee(tx, employeeID)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to find employee payroll details")
+		return nil, fiber.ErrNotFound
+	}
+
+	responses := model.PayrollDetailsToResponse(items)
+	if len(responses) == 0 {
+		return nil, fiber.ErrNotFound
+	}
+	c.attachEmployeeSummaries(tx, responses)
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return responses, nil
+}
+
 // Calculate generates payroll_details and payroll_items for every active employee
 // of the company, snapshotting their basic salary plus active allowances/deductions
 // in effect for the payroll period. It can only run once per payroll (from DRAFT);

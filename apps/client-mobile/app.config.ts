@@ -5,7 +5,7 @@ type AppEnv = "development" | "staging" | "production";
 const APP_ENV = (process.env.APP_ENV ?? "development") as AppEnv;
 
 // Single source of truth for version
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.7";
 
 // Single source of truth for Google Maps API keys (fall back to env vars if set)
 const GOOGLE_MAPS_API_KEY_IOS =
@@ -52,6 +52,8 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
     bundleIdentifier: bundleId,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      NSLocationWhenInUseUsageDescription:
+        "BW Akses+ menggunakan lokasi Anda untuk memverifikasi lokasi saat melakukan absensi dan memastikan Anda berada di lokasi kerja yang diizinkan.",
     },
     config: {
       googleMapsApiKey: GOOGLE_MAPS_API_KEY_IOS,
@@ -70,11 +72,10 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
       },
     },
     predictiveBackGestureEnabled: false,
-    permissions: [
-      // "android.permission.CAMERA",
-      // "android.permission.RECORD_AUDIO",
-      // "android.permission.ACCESS_COARSE_LOCATION",
-      // "android.permission.ACCESS_FINE_LOCATION",
+    permissions: [],
+    blockedPermissions: [
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
     ],
     package: androidPackage,
     googleServicesFile: "./google-services.json",
@@ -135,6 +136,19 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
       "expo-notifications",
       {
         sounds: ["./assets/sounds/notification.wav"],
+      },
+    ],
+    [
+      "expo-build-properties",
+      {
+        android: {
+          compileSdkVersion: 36,
+          targetSdkVersion: 36,
+          buildToolsVersion: "36.0.0",
+        },
+        ios: {
+          deploymentTarget: "16.4",
+        },
       },
     ],
   ],

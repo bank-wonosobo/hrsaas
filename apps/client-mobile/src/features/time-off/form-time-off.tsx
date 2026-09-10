@@ -6,13 +6,16 @@ import Select from "@/components/ui/select";
 import { useZodForm } from "@/hooks/common/use-form";
 import { useCreateTimeOff } from "@/hooks/time-off/use-create-time-off";
 import { useTimeOffTypes } from "@/hooks/time-off/use-time-off-types";
+import { useGenerateSignUrl } from "@/hooks/upload/generate-sign-url";
+import { PhotoResult } from "@/schema/photo-schema";
 import {
   CreateTimeOffRequest,
   CreateTimeOffRequestSchema,
 } from "@/schema/time-off-schema";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller } from "react-hook-form";
-import { View } from "react-native";
+import { Text, View } from "react-native";
+import CaptureTimeOff from "./capture-time-off";
 
 function toDateStr(date: Date): string {
   const y = date.getFullYear();
@@ -23,8 +26,14 @@ function toDateStr(date: Date): string {
 
 export default function FormTimeOff() {
   const [range, setRange] = useState<DateRange>({ from: null, to: null });
+  const [photo, setPhoto] = useState<PhotoResult | null>(null);
+  const generateSignUrl = useGenerateSignUrl();
   const { data: types, isLoading: loadingTypes } = useTimeOffTypes();
   const { mutate: createTimeOff, isPending } = useCreateTimeOff();
+
+  useEffect(() => {
+    generateSignUrl.mutate({ mime_type: "image/jpeg", is_public: false });
+  }, []);
 
   const options = types?.map((t) => ({ label: t.name, value: t.id })) ?? [];
 
@@ -52,7 +61,13 @@ export default function FormTimeOff() {
     form.formState.errors.end_date?.message;
 
   const onSubmit = (data: CreateTimeOffRequest) => {
-    createTimeOff(data);
+    if (photo && !generateSignUrl.data) {
+      if (generateSignUrl.isError) {
+        generateSignUrl.mutate({ mime_type: "image/jpeg", is_public: false });
+      }
+      return;
+    }
+    createTimeOff({ data, photo, signUrl: generateSignUrl.data });
   };
 
   return (
@@ -62,7 +77,7 @@ export default function FormTimeOff() {
         name="time_off_type_id"
         render={({ field, fieldState }) => (
           <FormField
-            label="Jenis Cuti"
+            label="Jenis Cuti / Izin"
             required
             error={fieldState.error?.message}
           >
@@ -77,25 +92,34 @@ export default function FormTimeOff() {
         )}
       />
 
-      <FormField label="Periode Cuti" required error={dateError}>
+      <FormField label="Periode Cuti / Izin" required error={dateError}>
         <DateRangePicker
           value={range}
           onChange={handleRangeChange}
           error={!!dateError}
+          minDate={(() => {
+            const date = new Date();
+            date.setDate(date.getDate() + 1);
+            return date;
+          })()}
         />
       </FormField>
+      <Text className="mb-4 text-xs text-gray-500">
+        Untuk pengajuan cuti selain hari Senin - Jumat, silakan melakukan
+        pengajuan melalui bagian SDM.
+      </Text>
 
       <Controller
         control={form.control}
         name="request_reason"
         render={({ field, fieldState }) => (
           <FormField
-            label="Alasan Cuti"
+            label="Alasan Cuti / Izin"
             required
             error={fieldState.error?.message}
           >
             <Input
-              placeholder="Tulis alasan pengajuan cuti"
+              placeholder="Tulis alasan pengajuan cuti / izin"
               value={field.value}
               onChangeText={field.onChange}
               error={fieldState.invalid}
@@ -107,14 +131,20 @@ export default function FormTimeOff() {
           </FormField>
         )}
       />
+      <CaptureTimeOff
+        photo={photo}
+        onCapture={setPhoto}
+        onRemove={() => setPhoto(null)}
+      />
 
       <Button
         loading={isPending}
         variant="secondary"
         fullWidth
+        className="mt-10"
         onPress={form.handleSubmit(onSubmit)}
       >
-        Ajukan Cuti
+        Ajukan
       </Button>
     </View>
   );

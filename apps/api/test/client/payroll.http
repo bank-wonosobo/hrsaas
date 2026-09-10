@@ -1,0 +1,23 @@
+### ============================================================================
+### Payroll — HRIS Client API
+### ============================================================================
+# Click "Send Request" on Login first. REST Client automatically stores the
+# token session cookie and replays it for the request below.
+
+@baseUrl = http://localhost:9000/api
+@email = admin@company.com
+@password = Password123!
+
+### Login
+# @name login
+POST {{baseUrl}}/_login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Get current salary for the logged-in employee
+# @name currentSalary
+GET {{baseUrl}}/salary/_current

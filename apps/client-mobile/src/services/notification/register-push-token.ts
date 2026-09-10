@@ -16,6 +16,7 @@ export const registerPushTokenService = async (
     provider: "expo",
     platform: Platform.OS,
     device_name: Device.deviceName ?? undefined,
+  }, {
   });
 
   if (response.status !== 200 && response.status !== 201) {

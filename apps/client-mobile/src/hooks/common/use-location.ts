@@ -23,7 +23,9 @@ export function useLocation(): UseLocationResult {
         const { status } = await Location.requestForegroundPermissionsAsync();
 
         if (status !== "granted") {
-          setError("Izin lokasi diperlukan untuk membuat visit");
+          setError(
+            "BW Akses+ menggunakan lokasi Anda untuk memverifikasi lokasi saat melakukan absensi dan memastikan aktivitas dilakukan dari lokasi yang diizinkan.",
+          );
           return;
         }
 

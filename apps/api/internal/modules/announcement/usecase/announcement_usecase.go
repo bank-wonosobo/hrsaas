@@ -5,8 +5,10 @@ import (
 	"hrsaas/internal/modules/announcement/entity"
 	"hrsaas/internal/modules/announcement/model"
 	"hrsaas/internal/modules/announcement/repository"
+	deviceRepo "hrsaas/internal/modules/device/repository"
 	employeeEntity "hrsaas/internal/modules/employee/entity"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
+	"hrsaas/pkg/pushnotification"
 	pkg "hrsaas/pkg/s3"
 	"strings"
 
@@ -23,6 +25,8 @@ type AnnouncementUsecase struct {
 	Validate           *validator.Validate
 	AnnouncementRepo   *repository.AnnouncementRepository
 	EmployeeRepository *employeeRepo.EmployeeRepository
+	DeviceRepository   *deviceRepo.DeviceRepository
+	PushClient         *pushnotification.ExpoClient
 	S3Client           *pkg.S3Client
 }
 
@@ -33,6 +37,8 @@ func NewAnnouncementUsecase(
 	announcementRepo *repository.AnnouncementRepository,
 	employeeRepository *employeeRepo.EmployeeRepository,
 	s3Client *pkg.S3Client,
+	deviceRepository *deviceRepo.DeviceRepository,
+	pushClient *pushnotification.ExpoClient,
 ) *AnnouncementUsecase {
 	return &AnnouncementUsecase{
 		DB:                 db,
@@ -40,6 +46,8 @@ func NewAnnouncementUsecase(
 		Validate:           validate,
 		AnnouncementRepo:   announcementRepo,
 		EmployeeRepository: employeeRepository,
+		DeviceRepository:   deviceRepository,
+		PushClient:         pushClient,
 		S3Client:           s3Client,
 	}
 }
@@ -86,7 +94,43 @@ func (c *AnnouncementUsecase) Create(
 		return nil, fiber.ErrInternalServerError
 	}
 
+	c.sendAnnouncementPush(ctx, announcement)
+
 	return model.NewAnnouncementResponse(announcement), nil
+}
+
+func (c *AnnouncementUsecase) sendAnnouncementPush(ctx context.Context, announcement *entity.Announcement) {
+	if c.PushClient == nil || c.DeviceRepository == nil {
+		return
+	}
+
+	devices, err := c.DeviceRepository.FindActiveByProvider(c.DB.WithContext(ctx), "expo")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to fetch registered devices for announcement notification")
+		return
+	}
+	if len(devices) == 0 {
+		return
+	}
+
+	messages := make([]pushnotification.Message, 0, len(devices))
+	for _, device := range devices {
+		messages = append(messages, pushnotification.Message{
+			To:    device.PushToken,
+			Title: announcement.Title,
+			Body:  announcement.Content,
+			Data: map[string]any{
+				"type":            "announcement",
+				"announcement_id": announcement.ID,
+			},
+			Sound:     "default",
+			ChannelID: "bw_akses_plus",
+		})
+	}
+
+	if _, err := c.PushClient.Send(ctx, messages...); err != nil {
+		c.Log.WithError(err).Error("Failed to send announcement push notification")
+	}
 }
 
 // List Announcements
@@ -119,7 +163,7 @@ func (c *AnnouncementUsecase) List(
 	for i, announcement := range announcements {
 		responses[i] = *model.NewAnnouncementResponse(&announcement)
 
-		if announcement.FileUrl != nil {
+		if announcement.FileUrl != nil && strings.TrimSpace(*announcement.FileUrl) != "" {
 			url, err := c.S3Client.GenerateDownloadURL(presignClient, *announcement.FileUrl)
 			if err != nil {
 				return nil, 0, err
@@ -144,6 +188,15 @@ func (c *AnnouncementUsecase) Detail(
 	if err := c.AnnouncementRepo.FindByIdAndCompany(tx, announcement, id, companyID, "Employee"); err != nil {
 		c.Log.WithError(err).Error("Announcement not found")
 		return nil, fiber.ErrNotFound
+	}
+
+	if announcement.FileUrl != nil {
+		presignClient := s3.NewPresignClient(c.S3Client.Client)
+		url, err := c.S3Client.GenerateDownloadURL(presignClient, *announcement.FileUrl)
+		if err != nil {
+			return nil, err
+		}
+		announcement.FileUrl = &url
 	}
 
 	if err := tx.Commit().Error; err != nil {

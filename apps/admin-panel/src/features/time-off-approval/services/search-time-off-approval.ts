@@ -8,7 +8,7 @@ import {
 export const searchTimeOffApproval = async (
   search: SearchTimeOffApproval,
 ): Promise<PaginatedData<TimeOffApproval>> => {
-  const response = await api.get("/time-off-approvals/_current", {
+  const response = await api.get("/time-off-approvals", {
     params: {
       employee_id: search.employee_id,
       status: search.status,

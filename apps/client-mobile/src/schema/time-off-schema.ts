@@ -63,6 +63,7 @@ export const CreateTimeOffRequestSchema = z
       .string()
       .min(3, "Alasan minimal 3 karakter")
       .max(255, "Alasan maksimal 255 karakter"),
+    file_url: z.string().optional(),
   })
   .refine((data) => data.end_date >= data.start_date, {
     message: "Tanggal selesai tidak boleh sebelum tanggal mulai",

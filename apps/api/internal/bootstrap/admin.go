@@ -13,6 +13,8 @@ import (
 	announcementRepo "hrsaas/internal/modules/announcement/repository"
 	announcementUc "hrsaas/internal/modules/announcement/usecase"
 
+	deviceRepo "hrsaas/internal/modules/device/repository"
+
 	attendanceHttp "hrsaas/internal/modules/attendance/delivery/http/admin"
 	attendanceRepo "hrsaas/internal/modules/attendance/repository"
 	attendanceUc "hrsaas/internal/modules/attendance/usecase"
@@ -153,6 +155,8 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		announcementRepository,
 		employeeRepository,
 		cfg.S3Client,
+		deviceRepo.NewDeviceRepository(cfg.Log),
+		cfg.PushNotif,
 	)
 
 	// module auth
@@ -310,6 +314,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffRequestRepository,
 		timeOffTypeRepository,
 		timeOffBalanceRepository,
+		cfg.Config,
 	)
 
 	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(
@@ -328,6 +333,8 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffBalanceRepository,
 		timeOffApprovalRepository,
 		employeeContractRepository,
+		deviceRepo.NewDeviceRepository(cfg.Log),
+		cfg.PushNotif,
 	)
 	timeOffTypeUseCase := timeOffUc.NewTimeOffTypeUseCase(
 		cfg.DB,

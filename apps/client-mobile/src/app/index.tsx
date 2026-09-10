@@ -13,11 +13,11 @@ export default function SignInPage() {
   };
 
   return (
-    <View className="flex-1 bg-secondary">
-      <View className="absolute -top-16 -left-24 h-64 w-64 rounded-full bg-primary/20" />
-      <View className="absolute top-16 -right-28 h-80 w-80 rounded-full bg-primary/10" />
+    <View className="flex-1 bg-primary">
+      <View className="absolute -top-16 -left-24 h-64 w-64 rounded-full bg-white/20" />
+      <View className="absolute top-16 -right-28 h-80 w-80 rounded-full bg-white/10" />
       <View className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-white/5" />
-      <View className="absolute -bottom-32 -right-20 h-72 w-72 rounded-full bg-primary/10" />
+      <View className="absolute -bottom-32 -right-20 h-72 w-72 rounded-full bg-white/10" />
 
       <ScrollView
         className="flex-1"
