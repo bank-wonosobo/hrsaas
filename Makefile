@@ -65,4 +65,6 @@ run-dev-admin-panel:
 tidy:
 	cd apps/api && go mod tidy
 
+run-web:
+	cd apps/web && bun run dev --open
 	
