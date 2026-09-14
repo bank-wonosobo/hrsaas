@@ -15,9 +15,9 @@ export default function CaptureTimeOff({ photo, onCapture, onRemove }: Props) {
 
   return (
     <View className="bg-white p-4 rounded-xl border border-gray-200">
-      <Text className="font-poppins-medium">Bukti Cuti</Text>
+      <Text className="font-poppins-medium">Bukti Cuti / Izin</Text>
       <Text className="mt-1 text-xs text-gray-500">
-        Foto bukti cuti dapat dilampirkan sebagai keterangan tambahan (opsional).
+        Foto bukti cuti / izin dapat dilampirkan sebagai keterangan tambahan (opsional).
       </Text>
       <View className="flex-row mt-2">
         {photo ? (

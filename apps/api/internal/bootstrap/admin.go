@@ -314,6 +314,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffRequestRepository,
 		timeOffTypeRepository,
 		timeOffBalanceRepository,
+		cfg.Config,
 	)
 
 	timeOffBalanceUseCase := timeOffUc.NewTimeOffBalanceUseCase(

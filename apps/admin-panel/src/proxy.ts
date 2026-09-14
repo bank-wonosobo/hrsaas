@@ -5,7 +5,8 @@ export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isAuthPage = pathname.startsWith("/sign-in");
-  const isPublicPage = pathname.startsWith("/privacy");
+  const isPublicPage =
+    pathname.startsWith("/privacy") || pathname.startsWith("/support");
 
   // belum login → hanya redirect kalau bukan halaman login atau publik
   if (!token && !isAuthPage && !isPublicPage) {

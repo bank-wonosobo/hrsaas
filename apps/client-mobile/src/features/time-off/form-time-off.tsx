@@ -92,16 +92,21 @@ export default function FormTimeOff() {
         )}
       />
 
-      <FormField label="Periode Cuti" required error={dateError}>
+      <FormField label="Periode Cuti / Izin" required error={dateError}>
         <DateRangePicker
           value={range}
           onChange={handleRangeChange}
           error={!!dateError}
+          minDate={(() => {
+            const date = new Date();
+            date.setDate(date.getDate() + 1);
+            return date;
+          })()}
         />
       </FormField>
       <Text className="mb-4 text-xs text-gray-500">
         Untuk pengajuan cuti selain hari Senin - Jumat, silakan melakukan
-        pangajuan melalui bagian SDM.
+        pengajuan melalui bagian SDM.
       </Text>
 
       <Controller
@@ -109,12 +114,12 @@ export default function FormTimeOff() {
         name="request_reason"
         render={({ field, fieldState }) => (
           <FormField
-            label="Alasan Cuti"
+            label="Alasan Cuti / Izin"
             required
             error={fieldState.error?.message}
           >
             <Input
-              placeholder="Tulis alasan pengajuan cuti"
+              placeholder="Tulis alasan pengajuan cuti / izin"
               value={field.value}
               onChangeText={field.onChange}
               error={fieldState.invalid}

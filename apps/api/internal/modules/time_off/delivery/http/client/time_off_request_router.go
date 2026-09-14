@@ -14,4 +14,5 @@ func (c *TimeOffRequestController) RegisterRoutes(
 
 	route.Get("/", client(c.ListCurrent)...)
 	route.Post("/", client(c.Create)...)
+	route.Put("/:time_off_request_id/cancel", client(c.CancelRequest)...)
 }
