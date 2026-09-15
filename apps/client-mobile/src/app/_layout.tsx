@@ -15,15 +15,28 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "@expo-google-fonts/poppins";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
 import { KeyboardAvoidingView, Platform, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect } from "react";
 import "../global.css"; //
 
 const queryClient = new QueryClient();
 
 function RootNavigation() {
   const { token, loading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (token && pathname === "/") {
+      router.replace("/(tabs)/home");
+    } else if (!token && pathname !== "/") {
+      router.replace("/");
+    }
+  }, [loading, pathname, router, token]);
 
   if (loading) {
     return null; // atau SplashScreen

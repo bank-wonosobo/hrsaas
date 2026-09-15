@@ -7,7 +7,14 @@ import {
   RefreshCw,
 } from "lucide-react-native";
 import { ReactNode, useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Linking,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 import Button from "../ui/button";
 
 interface CameraProps {
@@ -51,14 +58,36 @@ export default function Camera({
   }
 
   if (!permission.granted) {
+    if (permission.canAskAgain === false) {
+      return (
+        <View style={{ flex: 1 }} className="items-center justify-center gap-5 px-6">
+          <CameraOff size={40} color="#364153" />
+          <Text className="font-poppins-semibold text-center text-lg text-text">
+            Akses Kamera Diperlukan
+          </Text>
+          <Text className="font-poppins-regular text-center text-md text-text">
+            Akses kamera diperlukan untuk melakukan presensi. Silakan aktifkan
+            akses kamera melalui Settings.
+          </Text>
+          <Button onPress={() => Linking.openSettings()} fullWidth={false}>
+            Buka Pengaturan
+          </Button>
+        </View>
+      );
+    }
+
     return (
-      <View style={{ flex: 1 }} className="items-center justify-center gap-5">
+      <View style={{ flex: 1 }} className="items-center justify-center gap-5 px-6">
         <CameraOff size={40} color="#364153" />
-        <Text className="font-poppins-regular text-md text-center text-text">
-          Izin kamera diperlukan
+        <Text className="font-poppins-semibold text-center text-lg text-text">
+          Presensi
+        </Text>
+        <Text className="font-poppins-regular text-center text-md text-text">
+          Untuk melakukan presensi, aplikasi perlu menggunakan kamera untuk
+          mengambil foto wajah Anda.
         </Text>
         <Button onPress={requestPermission} fullWidth={false}>
-          Izinkan Kamera
+          Lanjutkan
         </Button>
       </View>
     );
