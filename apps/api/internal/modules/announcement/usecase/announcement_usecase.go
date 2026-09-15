@@ -190,7 +190,7 @@ func (c *AnnouncementUsecase) Detail(
 		return nil, fiber.ErrNotFound
 	}
 
-	if announcement.FileUrl != nil {
+	if announcement.FileUrl != nil && strings.TrimSpace(*announcement.FileUrl) != "" {
 		presignClient := s3.NewPresignClient(c.S3Client.Client)
 		url, err := c.S3Client.GenerateDownloadURL(presignClient, *announcement.FileUrl)
 		if err != nil {
