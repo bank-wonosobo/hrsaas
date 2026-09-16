@@ -85,6 +85,7 @@ export default function Layout() {
         name="profile"
         options={{
           title: "Profile",
+          headerShown: false,
           tabBarIcon: ({ focused }) => (
             <TabIcon focused={focused} icon={User2} />
           ),
