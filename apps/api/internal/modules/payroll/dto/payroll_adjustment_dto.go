@@ -1,7 +1,7 @@
-package model
+package dto
 
 import (
-	"hrsaas/internal/modules/payroll/entity"
+	"hrsaas/internal/modules/payroll_old/entity"
 )
 
 const (

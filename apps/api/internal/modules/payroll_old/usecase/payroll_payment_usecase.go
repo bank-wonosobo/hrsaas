@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"hrsaas/internal/modules/payroll/model"
-	"hrsaas/internal/modules/payroll/repository"
+	"hrsaas/internal/modules/payroll_old/model"
+	"hrsaas/internal/modules/payroll_old/repository"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"

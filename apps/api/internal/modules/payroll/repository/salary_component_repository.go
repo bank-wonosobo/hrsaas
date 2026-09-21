@@ -1,8 +1,8 @@
 package repository
 
 import (
+	"hrsaas/internal/modules/payroll/dto"
 	"hrsaas/internal/modules/payroll/entity"
-	"hrsaas/internal/modules/payroll/model"
 	"hrsaas/pkg/repository"
 
 	"github.com/sirupsen/logrus"
@@ -18,9 +18,8 @@ func NewSalaryComponentRepository(log *logrus.Logger) *SalaryComponentRepository
 	return &SalaryComponentRepository{Log: log}
 }
 
-func (r *SalaryComponentRepository) List(db *gorm.DB, request *model.SearchSalaryComponentRequest) ([]entity.SalaryComponent, int64, error) {
+func (r *SalaryComponentRepository) List(db *gorm.DB, request *dto.SearchSalaryComponentRequest) ([]entity.SalaryComponent, int64, error) {
 	var items []entity.SalaryComponent
-
 	query := db.Model(&entity.SalaryComponent{})
 	if request.Key != "" {
 		like := "%" + request.Key + "%"
@@ -37,11 +36,9 @@ func (r *SalaryComponentRepository) List(db *gorm.DB, request *model.SearchSalar
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
 	if err := query.Order("name ASC").Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
-
 	return items, total, nil
 }
 

@@ -20,12 +20,9 @@ type PayrollPayment struct {
 	UpdatedAt        int64   `gorm:"column:updated_at;autoUpdateTime:milli"`
 }
 
-// BeforeCreate hook to set UUID.
-func (p *PayrollPayment) BeforeCreate(tx *gorm.DB) (err error) {
+func (p *PayrollPayment) BeforeCreate(tx *gorm.DB) error {
 	p.ID = uuid.NewString()
 	return nil
 }
 
-func (p *PayrollPayment) TableName() string {
-	return "payroll_payments"
-}
+func (p *PayrollPayment) TableName() string { return "payroll_payments" }

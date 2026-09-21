@@ -8,6 +8,18 @@ import (
 
 var ErrInvalidTimeFormat = errors.New("invalid time format")
 
+var jakartaLocation = func() *time.Location {
+	location, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		return time.FixedZone("Asia/Jakarta", 7*60*60)
+	}
+	return location
+}()
+
+func JakartaLocation() *time.Location {
+	return jakartaLocation
+}
+
 // ParseTimeHHMMOrHHMMSS parses "15:04" and "15:04:05" into time.Time (UTC).
 func ParseTimeHHMMOrHHMMSS(value string) (time.Time, error) {
 	if value == "" {
@@ -106,14 +118,9 @@ func ParseDateToUnixMilli2(dateStr string) (int64, error) {
 	return t.UnixMilli(), nil
 }
 
-// ParseTimeToUnixMilli parses a wall-clock "15:04" string in the server
-// process's local timezone (time.Local, expected to be set to the business
-// timezone, e.g. Asia/Jakarta via the container's TZ env var). Callers that
-// read the value back must decode it with time.UnixMilli (which also
-// resolves in time.Local) so the hour/minute round-trips correctly — see
-// attendance_usecase.go.
+// ParseTimeToUnixMilli parses a wall-clock "15:04" string in Asia/Jakarta.
 func ParseTimeToUnixMilli(timeStr string) (int64, error) {
-	t, err := time.ParseInLocation("15:04", timeStr, time.Local)
+	t, err := time.ParseInLocation("15:04", timeStr, jakartaLocation)
 	if err != nil {
 		return 0, err
 	}

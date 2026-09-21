@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hrsaas/internal/modules/payroll/entity"
 	"log"
 	"time"
 
@@ -97,14 +98,78 @@ type employeeSeed struct {
 }
 
 var employees = []employeeSeed{
-	{"Budi Santoso", "direktur.utama@company.com", "EMP-001", "Laki-laki", "Direktur Utama", "Operasional", 25000000},
-	{"Siti Rahayu", "direktur.operasional@company.com", "EMP-002", "Perempuan", "Direktur Operasional", "Operasional", 20000000},
-	{"Andi Wijaya", "kadiv.operasional@company.com", "EMP-003", "Laki-laki", "Kadiv Operasional", "Operasional", 15000000},
-	{"Dewi Kusuma", "kabag.operasional@company.com", "EMP-004", "Perempuan", "Kabag Operasional", "Operasional", 10000000},
-	{"Reza Firmansyah", "staff.operasional@company.com", "EMP-005", "Laki-laki", "Staff Operasional", "Operasional", 6000000},
-	{"Hendra Saputra", "kadiv.bisnis@company.com", "EMP-006", "Laki-laki", "Kadiv Bisnis", "Bisnis", 15000000},
-	{"Ratna Sari", "kabag.bisnis@company.com", "EMP-007", "Perempuan", "Kabag Bisnis", "Bisnis", 10000000},
-	{"Fajar Nugroho", "staff.bisnis@company.com", "EMP-008", "Laki-laki", "Staff Bisnis", "Bisnis", 6000000},
+	{
+		"Budi Santoso",
+		"direktur.utama@company.com",
+		"EMP-001",
+		"Laki-laki",
+		"Direktur Utama",
+		"Operasional",
+		25000000,
+	},
+	{
+		"Siti Rahayu",
+		"direktur.operasional@company.com",
+		"EMP-002",
+		"Perempuan",
+		"Direktur Operasional",
+		"Operasional",
+		20000000,
+	},
+	{
+		"Andi Wijaya",
+		"kadiv.operasional@company.com",
+		"EMP-003",
+		"Laki-laki",
+		"Kadiv Operasional",
+		"Operasional",
+		15000000,
+	},
+	{
+		"Dewi Kusuma",
+		"kabag.operasional@company.com",
+		"EMP-004",
+		"Perempuan",
+		"Kabag Operasional",
+		"Operasional",
+		10000000,
+	},
+	{
+		"Reza Firmansyah",
+		"staff.operasional@company.com",
+		"EMP-005",
+		"Laki-laki",
+		"Staff Operasional",
+		"Operasional",
+		6000000,
+	},
+	{
+		"Hendra Saputra",
+		"kadiv.bisnis@company.com",
+		"EMP-006",
+		"Laki-laki",
+		"Kadiv Bisnis",
+		"Bisnis",
+		15000000,
+	},
+	{
+		"Ratna Sari",
+		"kabag.bisnis@company.com",
+		"EMP-007",
+		"Perempuan",
+		"Kabag Bisnis",
+		"Bisnis",
+		10000000,
+	},
+	{
+		"Fajar Nugroho",
+		"staff.bisnis@company.com",
+		"EMP-008",
+		"Laki-laki",
+		"Staff Bisnis",
+		"Bisnis",
+		6000000,
+	},
 }
 
 func id() string           { return uuid.NewString() }
@@ -123,19 +188,212 @@ func password(value string) string {
 	return string(result)
 }
 
+func seedSalaryComponents(db *gorm.DB) {
+	seeds := []entity.SalaryComponent{
+		{
+			Code:            "TUNJANGAN_MAKAN",
+			Name:            "TUNJANGAN MAKAN",
+			Type:            "EARNING",
+			CalculationType: "ATTENDANCE",
+		},
+		{
+			Code:            "TUNJANGAN_TRANSPORT",
+			Name:            "TUNJANGAN TRANSPORT",
+			Type:            "EARNING",
+			CalculationType: "ATTENDANCE",
+		},
+		{
+			Code:            "TUNJANGAN_ISTRI",
+			Name:            "TUNJANGAN ISTRI",
+			Type:            "EARNING",
+			CalculationType: "SALARY_PERCENTAGE",
+		},
+		{
+			Code:            "TUNJANGAN_ANAK",
+			Name:            "TUNJANGAN ANAK",
+			Type:            "EARNING",
+			CalculationType: "SALARY_PERCENTAGE",
+		},
+		{
+			Code:            "TUNJANGAN_JABATAN",
+			Name:            "TUNJANGAN JABATAN",
+			Type:            "EARNING",
+			CalculationType: "FIXED",
+		},
+		{
+			Code:            "TUNJANGAN_KESEHATAN",
+			Name:            "TUNJANGAN KESEHATAN",
+			Type:            "EARNING",
+			CalculationType: "SALARY_PERCENTAGE",
+		},
+		{
+			Code:            "TUNJANGAN_PANGAN",
+			Name:            "TUNJANGAN PANGAN",
+			Type:            "EARNING",
+			CalculationType: "FIXED",
+		},
+		{
+			Code:            "TUNJANGAN_PENSIUN",
+			Name:            "TUNJANGAN PENSIUN",
+			Type:            "EARNING",
+			CalculationType: "SALARY_PERCENTAGE",
+		},
+		{
+			Code:            "BPJS_KESEHATAN",
+			Name:            "BPJS KESEHATAN",
+			Type:            "DEDUCTION",
+			CalculationType: "FIXED",
+		},
+		{
+			Code:            "BPJS_JAMSOSTEK",
+			Name:            "BPJS JAMSOSTEK",
+			Type:            "DEDUCTION",
+			CalculationType: "FIXED",
+		},
+		{Code: "TAMARA", Name: "TAMARA", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "FUTSAL", Name: "FUTSAL", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "ZUMBA", Name: "ZUMBA", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{
+			Code:            "PINJAMAN_BAWON",
+			Name:            "PINJAMAN BAWON",
+			Type:            "DEDUCTION",
+			CalculationType: "FIXED",
+		},
+		{Code: "ZAKAT", Name: "ZAKAT", Type: "DEDUCTION", CalculationType: "GROSS_PERCENTAGE"},
+	}
+
+	for _, seed := range seeds {
+		var component entity.SalaryComponent
+		if db.Where("code = ?", seed.Code).First(&component).Error != nil {
+			seed.IsActive = true
+			mustCreate(db, &seed)
+			fmt.Println("Created salary component:", seed.Code)
+		}
+	}
+}
+
+type Attendance struct {
+	ID, CompanyID, EmployeeID, Status   string
+	Date, CheckInTime, CheckOutTime     int64
+	TotalWorkMinutes, TotalBreakMinutes int
+	CreatedAt, UpdatedAt                int64
+}
+
+func (Attendance) TableName() string { return "attendances" }
+
+type AttendanceLog struct {
+	ID, AttendanceID, Type, FaceImageURL, ReviewedBy, RejectReason, DeviceInfo string
+	Time, ReviewedAt, CreatedAt, UpdatedAt                                     int64
+	Lat, Lng, LocationDistance, FaceConfidence                                 float64
+	IsLocationVerified, IsFaceVerified, IsApproved                             bool
+}
+
+func (AttendanceLog) TableName() string { return "attendance_logs" }
+
+func seedPendingLogs(db *gorm.DB, companyID, reviewerID string) {
+	wib := time.FixedZone("WIB", 7*60*60)
+	today := time.Now().In(wib)
+
+	var emps []Employee
+	if err := db.Where("company_id = ?", companyID).
+		Order("employee_number").Limit(5).Find(&emps).Error; err != nil {
+		log.Fatalf("seed find employees error: %v", err)
+	}
+
+	// review: "" = pending, "APPROVED", "REJECTED"
+	scenarios := []struct {
+		DayOffset int
+		Hour, Min int
+		Distance  float64
+		Review    string
+	}{
+		{0, 7, 10, 350, ""},
+		{1, 7, 30, 520, ""},
+		{2, 8, 5, 800, "REJECTED"},
+		{3, 7, 20, 400, "APPROVED"},
+	}
+
+	for _, emp := range emps {
+		for _, s := range scenarios {
+			day := today.AddDate(0, 0, -s.DayOffset)
+			startOfDay := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, wib)
+			checkIn := time.Date(day.Year(), day.Month(), day.Day(), s.Hour, s.Min, 0, 0, wib).
+				UnixMilli()
+
+			var attendance Attendance
+			if db.Where("employee_id = ? AND date = ?", emp.ID, startOfDay.UnixMilli()).
+				First(&attendance).Error != nil {
+				attendance = Attendance{
+					ID: id(), CompanyID: companyID, EmployeeID: emp.ID,
+					Date: startOfDay.UnixMilli(), CheckInTime: checkIn,
+					Status: "HADIR", CreatedAt: now(), UpdatedAt: now(),
+				}
+				mustCreate(db, &attendance)
+			}
+
+			var existing AttendanceLog
+			if db.Where("attendance_id = ? AND type = ?", attendance.ID, "CHECK_IN").
+				First(&existing).Error == nil {
+				continue
+			}
+
+			entry := AttendanceLog{
+				ID: id(), AttendanceID: attendance.ID, Type: "CHECK_IN", Time: checkIn,
+				Lat: -6.2, Lng: 106.8, LocationDistance: s.Distance,
+				IsLocationVerified: false, IsFaceVerified: true, FaceConfidence: 0.95,
+				FaceImageURL: "https://placehold.co/400x400?text=selfie",
+				DeviceInfo:   "seeder", IsApproved: false,
+				CreatedAt: now(), UpdatedAt: now(),
+			}
+			switch s.Review {
+			case "APPROVED":
+				entry.IsApproved = true
+				entry.ReviewedAt = now()
+				entry.ReviewedBy = reviewerID
+			case "REJECTED":
+				entry.ReviewedAt = now()
+				entry.ReviewedBy = reviewerID
+				entry.RejectReason = "Lokasi tidak sesuai (data seeder)"
+			}
+			mustCreate(db, &entry)
+			fmt.Printf(
+				"Created check-in log: %s day-%d review=%q\n",
+				emp.Fullname,
+				s.DayOffset,
+				s.Review,
+			)
+		}
+	}
+}
 func main() {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s", dbHost, dbPort, dbUser, dbPassword, dbName, dbSSL, dbTZ)
+	dsn := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
+		dbHost,
+		dbPort,
+		dbUser,
+		dbPassword,
+		dbName,
+		dbSSL,
+		dbTZ,
+	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("DB connect error: %v", err)
 	}
+	seedSalaryComponents(db)
 
 	company := findOrCreateCompany(db)
 	divisionIDs := map[string]string{}
 	for _, name := range []string{"Operasional", "Bisnis"} {
 		var division Division
 		if db.Where("name = ? AND company_id = ?", name, company.ID).First(&division).Error != nil {
-			division = Division{ID: id(), CompanyID: company.ID, Name: name, CreatedAt: now(), UpdatedAt: now()}
+			division = Division{
+				ID:        id(),
+				CompanyID: company.ID,
+				Name:      name,
+				CreatedAt: now(),
+				UpdatedAt: now(),
+			}
 			mustCreate(db, &division)
 			fmt.Println("Created division:", name)
 		}
@@ -146,16 +404,35 @@ func main() {
 		Name, Parent string
 		Approver     bool
 	}
-	positions := []positionSeed{{"Direktur Utama", "", true}, {"Direktur Operasional", "Direktur Utama", true}, {"Kadiv Operasional", "Direktur Operasional", true}, {"Kabag Operasional", "Kadiv Operasional", false}, {"Staff Operasional", "Kabag Operasional", false}, {"Kadiv Bisnis", "Direktur Utama", true}, {"Kabag Bisnis", "Kadiv Bisnis", false}, {"Staff Bisnis", "Kabag Bisnis", false}}
+	positions := []positionSeed{
+		{"Direktur Utama", "", true},
+		{"Direktur Operasional", "Direktur Utama", true},
+		{"Kadiv Operasional", "Direktur Operasional", true},
+		{"Kabag Operasional", "Kadiv Operasional", false},
+		{"Staff Operasional", "Kabag Operasional", false},
+		{"Kadiv Bisnis", "Direktur Utama", true},
+		{"Kabag Bisnis", "Kadiv Bisnis", false},
+		{"Staff Bisnis", "Kabag Bisnis", false},
+	}
 	positionIDs := map[string]string{}
 	for _, seed := range positions {
 		var position Position
-		if db.Where("name = ? AND company_id = ?", seed.Name, company.ID).First(&position).Error != nil {
+		if db.Where("name = ? AND company_id = ?", seed.Name, company.ID).
+			First(&position).
+			Error != nil {
 			var parentID *string
 			if seed.Parent != "" {
 				parentID = ptr(positionIDs[seed.Parent])
 			}
-			position = Position{ID: id(), CompanyID: company.ID, Name: seed.Name, ParentID: parentID, IsApprover: seed.Approver, CreatedAt: now(), UpdatedAt: now()}
+			position = Position{
+				ID:         id(),
+				CompanyID:  company.ID,
+				Name:       seed.Name,
+				ParentID:   parentID,
+				IsApprover: seed.Approver,
+				CreatedAt:  now(),
+				UpdatedAt:  now(),
+			}
 			mustCreate(db, &position)
 			fmt.Println("Created position:", seed.Name)
 		}
@@ -164,7 +441,42 @@ func main() {
 
 	adminRole := findOrCreateRole(db, "ADMIN")
 	staffRole := findOrCreateRole(db, "STAFF")
-	permissionNames := []string{"USERS", "EMPLOYEES", "EMPLOYEE_CONTRACTS", "DIVISIONS", "SANCTIONS", "EMPLOYEE_SANCTIONS", "POSITIONS", "OFFICE_LOCATIONS", "SHIFTS", "TIME_OFF_REQUESTS", "TIME_OFF_TYPES", "TIME_OFF_BALANCES", "PERMISSIONS", "ROLES", "EMPLOYEE_DOCUMENTS", "VISITS", "HOLIDAYS", "EMPLOYEE_EDUCATIONS", "EMPLOYEE_TRAININGS", "EMPLOYEE_IDENTITIES", "ATTENDANCES", "REMIDIAL_VISITS", "ANNOUNCEMENTS", "SALARY_COMPONENTS", "EMPLOYEE_SALARIES", "EMPLOYEE_ALLOWANCES", "EMPLOYEE_DEDUCTIONS", "PAYROLLS", "PAYROLL_ADJUSTMENTS", "PAYROLL_PAYMENTS", "PAYROLL_APPROVALS", "NOTIFICATIONS", "NOTIFICATION_TEMPLATES", "NOTIFICATION_PREFERENCES"}
+	permissionNames := []string{
+		"USERS",
+		"EMPLOYEES",
+		"EMPLOYEE_CONTRACTS",
+		"DIVISIONS",
+		"SANCTIONS",
+		"EMPLOYEE_SANCTIONS",
+		"POSITIONS",
+		"OFFICE_LOCATIONS",
+		"SHIFTS",
+		"TIME_OFF_REQUESTS",
+		"TIME_OFF_TYPES",
+		"TIME_OFF_BALANCES",
+		"PERMISSIONS",
+		"ROLES",
+		"EMPLOYEE_DOCUMENTS",
+		"VISITS",
+		"HOLIDAYS",
+		"EMPLOYEE_EDUCATIONS",
+		"EMPLOYEE_TRAININGS",
+		"EMPLOYEE_IDENTITIES",
+		"ATTENDANCES",
+		"REMIDIAL_VISITS",
+		"ANNOUNCEMENTS",
+		"SALARY_COMPONENTS",
+		"EMPLOYEE_SALARIES",
+		"EMPLOYEE_ALLOWANCES",
+		"EMPLOYEE_DEDUCTIONS",
+		"PAYROLLS",
+		"PAYROLL_ADJUSTMENTS",
+		"PAYROLL_PAYMENTS",
+		"PAYROLL_APPROVALS",
+		"NOTIFICATIONS",
+		"NOTIFICATION_TEMPLATES",
+		"NOTIFICATION_PREFERENCES",
+	}
 	for _, name := range permissionNames {
 		var permission Permission
 		if db.Where("name = ?", name).First(&permission).Error != nil {
@@ -172,7 +484,9 @@ func main() {
 			mustCreate(db, &permission)
 		}
 		var relation RolePermission
-		if db.Where("role_id = ? AND permission_id = ?", adminRole.ID, permission.ID).First(&relation).Error != nil {
+		if db.Where("role_id = ? AND permission_id = ?", adminRole.ID, permission.ID).
+			First(&relation).
+			Error != nil {
 			mustCreate(db, &RolePermission{RoleID: adminRole.ID, PermissionID: permission.ID})
 		}
 	}
@@ -180,11 +494,22 @@ func main() {
 	defaultPassword := password("Password123!")
 	var adminUser User
 	if db.Where("email = ?", "admin@company.com").First(&adminUser).Error != nil {
-		adminUser = User{ID: id(), Name: "Admin", Email: "admin@company.com", Password: defaultPassword, EmailVerified: true, CompanyID: company.ID, CreatedAt: now(), UpdatedAt: now()}
+		adminUser = User{
+			ID:            id(),
+			Name:          "Admin",
+			Email:         "admin@company.com",
+			Password:      defaultPassword,
+			EmailVerified: true,
+			CompanyID:     company.ID,
+			CreatedAt:     now(),
+			UpdatedAt:     now(),
+		}
 		mustCreate(db, &adminUser)
 	}
 	var adminUserRole UserRole
-	if db.Where("user_id = ? AND role_id = ?", adminUser.ID, adminRole.ID).First(&adminUserRole).Error != nil {
+	if db.Where("user_id = ? AND role_id = ?", adminUser.ID, adminRole.ID).
+		First(&adminUserRole).
+		Error != nil {
 		mustCreate(db, &UserRole{UserID: adminUser.ID, RoleID: adminRole.ID})
 	}
 
@@ -193,23 +518,66 @@ func main() {
 	for index, seed := range employees {
 		var user User
 		if db.Where("email = ?", seed.Email).First(&user).Error != nil {
-			user = User{ID: id(), Name: seed.Name, Email: seed.Email, Password: defaultPassword, EmailVerified: true, CompanyID: company.ID, CreatedAt: now(), UpdatedAt: now()}
+			user = User{
+				ID:            id(),
+				Name:          seed.Name,
+				Email:         seed.Email,
+				Password:      defaultPassword,
+				EmailVerified: true,
+				CompanyID:     company.ID,
+				CreatedAt:     now(),
+				UpdatedAt:     now(),
+			}
 			mustCreate(db, &user)
 		}
 		var userRole UserRole
-		if db.Where("user_id = ? AND role_id = ?", user.ID, staffRole.ID).First(&userRole).Error != nil {
+		if db.Where("user_id = ? AND role_id = ?", user.ID, staffRole.ID).
+			First(&userRole).
+			Error != nil {
 			mustCreate(db, &UserRole{UserID: user.ID, RoleID: staffRole.ID})
 		}
 		var employee Employee
 		if db.Where("user_id = ?", user.ID).First(&employee).Error != nil {
-			employee = Employee{ID: id(), CompanyID: company.ID, UserID: user.ID, EmployeeNumber: seed.Number, Fullname: seed.Name, Gender: seed.Gender, BirthPlace: "Jakarta", BirthDate: birthDate, BloodType: "O", MaritalStatus: "single", Religion: "Islam", Phone: fmt.Sprintf("08100000000%d", index+1), Timezone: dbTZ, CreatedAt: now(), UpdatedAt: now()}
+			employee = Employee{
+				ID:             id(),
+				CompanyID:      company.ID,
+				UserID:         user.ID,
+				EmployeeNumber: seed.Number,
+				Fullname:       seed.Name,
+				Gender:         seed.Gender,
+				BirthPlace:     "Jakarta",
+				BirthDate:      birthDate,
+				BloodType:      "O",
+				MaritalStatus:  "single",
+				Religion:       "Islam",
+				Phone:          fmt.Sprintf("08100000000%d", index+1),
+				Timezone:       dbTZ,
+				CreatedAt:      now(),
+				UpdatedAt:      now(),
+			}
 			mustCreate(db, &employee)
 		}
 		var contract EmployeeContract
-		if db.Where("employee_id = ? AND position_id = ?", employee.ID, positionIDs[seed.Position]).First(&contract).Error != nil {
-			mustCreate(db, &EmployeeContract{ID: id(), EmployeeID: employee.ID, ContractType: "PKWTT", StartDate: contractStart, DivisionID: divisionIDs[seed.Division], PositionID: positionIDs[seed.Position], Salary: seed.Salary, IsActive: true})
+		if db.Where("employee_id = ? AND position_id = ?", employee.ID, positionIDs[seed.Position]).
+			First(&contract).
+			Error != nil {
+			mustCreate(
+				db,
+				&EmployeeContract{
+					ID:           id(),
+					EmployeeID:   employee.ID,
+					ContractType: "PKWTT",
+					StartDate:    contractStart,
+					DivisionID:   divisionIDs[seed.Division],
+					PositionID:   positionIDs[seed.Position],
+					Salary:       seed.Salary,
+					IsActive:     true,
+				},
+			)
 		}
 	}
+
+	seedPendingLogs(db, company.ID, adminUser.ID)
 
 	fmt.Println("Seeding selesai!")
 	fmt.Println("Default password semua karyawan: Password123!")
@@ -218,7 +586,12 @@ func main() {
 func findOrCreateCompany(db *gorm.DB) Company {
 	var company Company
 	if db.Where("name = ?", "PT Contoh Perusahaan").First(&company).Error != nil {
-		company = Company{ID: id(), Name: "PT Contoh Perusahaan", CreatedAt: now(), UpdatedAt: now()}
+		company = Company{
+			ID:        id(),
+			Name:      "PT Contoh Perusahaan",
+			CreatedAt: now(),
+			UpdatedAt: now(),
+		}
 		mustCreate(db, &company)
 		fmt.Println("Created company:", company.Name)
 	}

@@ -3,8 +3,6 @@ package entity
 import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-
-	userEntity "hrsaas/internal/modules/user/entity"
 )
 
 type PayrollApproval struct {
@@ -16,16 +14,11 @@ type PayrollApproval struct {
 	Notes      *string `gorm:"column:notes"`
 	ApprovedAt *int64  `gorm:"column:approved_at"`
 	CreatedAt  int64   `gorm:"column:created_at;autoCreateTime:milli"`
-
-	Approver userEntity.User `gorm:"foreignKey:ApproverID;references:ID"`
 }
 
-// BeforeCreate hook to set UUID.
-func (a *PayrollApproval) BeforeCreate(tx *gorm.DB) (err error) {
+func (a *PayrollApproval) BeforeCreate(tx *gorm.DB) error {
 	a.ID = uuid.NewString()
 	return nil
 }
 
-func (a *PayrollApproval) TableName() string {
-	return "payroll_approvals"
-}
+func (a *PayrollApproval) TableName() string { return "payroll_approvals" }

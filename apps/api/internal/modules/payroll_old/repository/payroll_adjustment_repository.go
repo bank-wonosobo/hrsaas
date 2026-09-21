@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"hrsaas/internal/modules/payroll/entity"
+	"hrsaas/internal/modules/payroll_old/entity"
 	"hrsaas/pkg/repository"
 
 	"github.com/sirupsen/logrus"

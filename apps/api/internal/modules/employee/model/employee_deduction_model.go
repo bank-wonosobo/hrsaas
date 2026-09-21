@@ -2,7 +2,7 @@ package model
 
 import (
 	"hrsaas/internal/modules/employee/entity"
-	payrollModel "hrsaas/internal/modules/payroll/model"
+	payrollModel "hrsaas/internal/modules/payroll_old/model"
 )
 
 type EmployeeDeductionResponse struct {
