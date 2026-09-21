@@ -85,6 +85,17 @@ type SearchAttendanceRequest struct {
 	Size       int    `json:"size,omitempty"        validate:"min=1,max=100"`
 }
 
+type SearchPendingLogRequest struct {
+	CompanyID string
+	Page      int `validate:"min=1"`
+	Size      int `validate:"min=1,max=100"`
+}
+
+type ReviewLogRequest struct {
+	Approve *bool   `json:"approve" validate:"required"` // pointer, supaya false tidak dianggap kosong
+	Reason  *string `json:"reason"`
+}
+
 type SearchAttendanceLogRequest struct {
 	CompanyID    string `json:"-"                       validate:"required,uuid4"`
 	AttendanceID string `json:"attendance_id,omitempty" validate:"omitempty,uuid4"`
