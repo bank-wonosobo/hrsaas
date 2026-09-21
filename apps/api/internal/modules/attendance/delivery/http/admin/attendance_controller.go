@@ -16,7 +16,10 @@ type AttendanceController struct {
 	Log     *logrus.Logger
 }
 
-func NewAttendanceController(useCase *usecase.AttendanceUseCase, log *logrus.Logger) *AttendanceController {
+func NewAttendanceController(
+	useCase *usecase.AttendanceUseCase,
+	log *logrus.Logger,
+) *AttendanceController {
 	return &AttendanceController{
 		UseCase: useCase,
 		Log:     log,
@@ -136,7 +139,12 @@ func (c *AttendanceController) Update(ctx *fiber.Ctx) error {
 	}
 
 	companyID := auth.GetCompanyId(ctx)
-	result, err := c.UseCase.Update(ctx.UserContext(), ctx.Params("attendanceID"), companyID, request)
+	result, err := c.UseCase.Update(
+		ctx.UserContext(),
+		ctx.Params("attendanceID"),
+		companyID,
+		request,
+	)
 	if err != nil {
 		c.Log.WithError(err).Error("failed to update attendance")
 		return err
@@ -154,4 +162,54 @@ func (c *AttendanceController) Delete(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.JSON(response.WebResponse[any]{Data: nil})
+}
+
+func (c *AttendanceController) ListPendingLog(ctx *fiber.Ctx) error {
+	request := new(model.SearchPendingLogRequest)
+	request.CompanyID = auth.GetCompanyId(ctx)
+	request.Page = ctx.QueryInt("page", 1)
+	request.Size = ctx.QueryInt("size", 10)
+
+	result, total, err := c.UseCase.SearchPendingLogs(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to list pending attendance logs")
+		return err
+	}
+
+	paging := &response.PageMetadata{
+		Page:      request.Page,
+		Size:      request.Size,
+		TotalItem: total,
+		TotalPage: int64(math.Ceil(float64(total) / float64(request.Size))),
+	}
+
+	return ctx.JSON(response.WebResponse[[]model.AttendanceLogResponse]{
+		Data:   result,
+		Paging: paging,
+	})
+}
+
+func (c *AttendanceController) ReviewLog(ctx *fiber.Ctx) error {
+	request := new(model.ReviewLogRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+
+	companyID := auth.GetCompanyId(ctx)
+	reviewerID := auth.GetUser(ctx).ID
+
+	result, err := c.UseCase.ReviewLog(
+		ctx.UserContext(),
+		ctx.Params("logID"),
+		companyID,
+		reviewerID,
+		request,
+	)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to review attendance log")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.AttendanceLogResponse]{Data: result})
 }

@@ -13,6 +13,8 @@ func (c *AttendanceController) RegisterRoutes(
 	route.Get("/", protected("ATTENDANCES", c.List)...)
 	route.Get("/_export", protected("ATTENDANCES", c.Export)...)
 	route.Get("/logs", protected("ATTENDANCES", c.ListLog)...)
+	route.Get("/logs/pending", protected("ATTENDANCES", c.ListPendingLog)...)
+	route.Patch("/logs/:logID/review", protected("ATTENDANCES", c.ReviewLog)...)
 	route.Get("/:attendanceID", protected("ATTENDANCES", c.Detail)...)
 	route.Put("/:attendanceID", protected("ATTENDANCES", c.Update)...)
 	route.Delete("/:attendanceID", protected("ATTENDANCES", c.Delete)...)

@@ -48,6 +48,9 @@ type AttendanceLog struct {
 	FaceConfidence     float64 `gorm:"column:face_confidence"` // Confidence level of face verification
 	FaceImageURL       string  `gorm:"column:face_image_url"`  // URL to the face image
 	IsApproved         bool    `gorm:"column:is_approved"`
+	ReviewedAt         int64   `gorm:"column:reviewed_at"`
+	ReviewedBy         string  `gorm:"column:reviewed_by"`
+	RejectReason       string  `gorm:"column:reject_reason"`
 	DeviceInfo         string  `gorm:"column:device_info"`
 	CreatedAt          int64   `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt          int64   `gorm:"column:updated_at;autoUpdateTime"`

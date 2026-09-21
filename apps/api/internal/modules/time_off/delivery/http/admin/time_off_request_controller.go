@@ -39,7 +39,7 @@ func (c *TimeOffRequestController) AdminCreateRequest(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	result, err := c.RequestUseCase.CreateRequest(ctx.UserContext(), employeeID, request)
+	result, err := c.RequestUseCase.AdminCreateRequest(ctx.UserContext(), employeeID, request)
 	if err != nil {
 		c.Log.WithError(err).Error("failed to create time off request")
 		return err
