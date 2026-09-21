@@ -19,6 +19,7 @@ import (
 	distances "hrsaas/pkg/distance"
 	excel "hrsaas/pkg/excel"
 	face "hrsaas/pkg/face_recognition"
+	timepkg "hrsaas/pkg/time"
 	timedifference "hrsaas/pkg/time_difference"
 
 	"mime/multipart"
@@ -1067,6 +1068,9 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	employeeID string,
 	now time.Time,
 ) (string, error) {
+	jakarta := timepkg.JakartaLocation()
+	now = now.In(jakarta)
+
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
 	if err != nil {
 		c.Log.WithError(err).Error("Failed to find employee shifts")
@@ -1086,7 +1090,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	scheduled := time.UnixMilli(shiftDay.CheckIn).In(time.FixedZone("UTC+07:07", 7*60*60+7*60))
+	scheduled := time.UnixMilli(shiftDay.CheckIn).In(jakarta)
 	deadline := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		scheduled.Hour(), scheduled.Minute(), 0, 0,

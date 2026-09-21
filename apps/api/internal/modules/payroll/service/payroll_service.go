@@ -7,7 +7,6 @@ import (
 	"hrsaas/internal/modules/payroll/dto"
 	"hrsaas/internal/modules/payroll/entity"
 	"hrsaas/internal/modules/payroll/repository"
-	oldentity "hrsaas/internal/modules/payroll_old/entity"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,12 +25,33 @@ type PayrollService interface {
 		ctx context.Context,
 		companyID, id string,
 	) (*dto.PayrollResponse, error)
+	Submit(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error)
+	Approve(ctx context.Context, companyID, id, approverID string) (*dto.PayrollResponse, error)
+	Pay(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error)
 	List(ctx context.Context, companyID string, request *dto.SearchPayrollRequest) ([]dto.PayrollResponse, int64, error)
 	Detail(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error)
 	Delete(ctx context.Context, companyID, id string) error
+	Cancel(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error)
 	ListPayments(ctx context.Context, request *dto.SearchPayrollRequest) ([]dto.PayrollPaymentResponse, int64, error)
 	PaymentDetail(ctx context.Context, id string) (*dto.PayrollPaymentResponse, error)
 	UpdatePaymentStatus(ctx context.Context, id string, request *dto.UpdatePayrollPaymentStatusRequest) (*dto.PayrollPaymentResponse, error)
+	ListApprovals(ctx context.Context, companyID, id string) ([]dto.PayrollApprovalResponse, error)
+}
+
+func (s *payrollService) ListApprovals(ctx context.Context, companyID, id string) ([]dto.PayrollApprovalResponse, error) {
+	var payroll entity.Payroll
+	if err := s.DB.WithContext(ctx).Where("id = ? AND company_id = ?", id, companyID).First(&payroll).Error; err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	var items []entity.PayrollApproval
+	if err := s.DB.WithContext(ctx).Where("payroll_id = ?", id).Order("level ASC, created_at ASC").Find(&items).Error; err != nil {
+		return nil, err
+	}
+	result := make([]dto.PayrollApprovalResponse, 0, len(items))
+	for i := range items {
+		result = append(result, *dto.PayrollApprovalToResponse(&items[i]))
+	}
+	return result, nil
 }
 
 type payrollService struct {
@@ -73,10 +93,183 @@ func (s *payrollService) List(ctx context.Context, companyID string, r *dto.Sear
 
 func (s *payrollService) Detail(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error) {
 	var p entity.Payroll
-	if err := s.DB.WithContext(ctx).Where("id = ? AND company_id = ?", id, companyID).First(&p).Error; err != nil {
+	db := s.DB.WithContext(ctx)
+	if err := db.Where("id = ? AND company_id = ?", id, companyID).First(&p).Error; err != nil {
 		return nil, fiber.ErrNotFound
 	}
+
+	var details []entity.PayrollDetail
+	if err := db.Preload("Items").Where("payroll_id = ?", p.ID).Find(&details).Error; err != nil {
+		return nil, err
+	}
+
+	response := dto.PayrollToResponse(&p)
+	response.Details = make([]dto.PayrollDetailResponse, len(details))
+	employeeIDs := make([]string, 0, len(details))
+	for i := range details {
+		detail := &details[i]
+		items := make([]dto.PayrollItemResponse, len(detail.Items))
+		for j := range detail.Items {
+			item := &detail.Items[j]
+			items[j] = dto.PayrollItemResponse{
+				ID: item.ID, PayrollDetailID: item.PayrollDetailID,
+				SalaryComponentID: item.SalaryComponentID, Name: item.Name,
+				Type: item.Type, Amount: item.Amount,
+				CalculationValue: item.CalculationValue, CreatedAt: item.CreatedAt,
+			}
+		}
+		response.Details[i] = dto.PayrollDetailResponse{
+			ID: detail.ID, PayrollID: detail.PayrollID, EmployeeID: detail.EmployeeID,
+			BasicSalary: detail.BasicSalary, GrossSalary: detail.GrossSalary,
+			TotalEarning: detail.TotalEarning, TotalDeduction: detail.TotalDeduction,
+			NetSalary: detail.NetSalary, CreatedAt: detail.CreatedAt, UpdatedAt: detail.UpdatedAt,
+			Items: items,
+		}
+		employeeIDs = append(employeeIDs, detail.EmployeeID)
+	}
+
+	if len(employeeIDs) > 0 {
+		var employees []struct {
+			ID             string
+			EmployeeNumber string
+			Fullname       string
+			BankName       string
+			BankAccount    string
+		}
+		if err := db.Table("employees").Select("id, employee_number, fullname, bank_name, bank_account").Where("id IN ?", employeeIDs).Find(&employees).Error; err != nil {
+			return nil, err
+		}
+		employeeByID := make(map[string]*dto.PayrollEmployeeSummary, len(employees))
+		for i := range employees {
+			employee := &employees[i]
+			employeeByID[employee.ID] = &dto.PayrollEmployeeSummary{
+				ID: employee.ID, EmployeeNumber: employee.EmployeeNumber, Fullname: employee.Fullname,
+				BankName: employee.BankName, BankAccount: employee.BankAccount,
+			}
+		}
+		for i := range response.Details {
+			response.Details[i].Employee = employeeByID[response.Details[i].EmployeeID]
+		}
+	}
+
+	return response, nil
+}
+
+func (s *payrollService) Cancel(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error) {
+	var p entity.Payroll
+	db := s.DB.WithContext(ctx)
+	if err := db.Where("id = ? AND company_id = ?", id, companyID).First(&p).Error; err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	if p.Status != dto.PayrollStatusDraft && p.Status != dto.PayrollStatusCalculated && p.Status != dto.PayrollStatusSubmitted {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Only a DRAFT, CALCULATED, or SUBMITTED payroll can be cancelled")
+	}
+	p.Status = dto.PayrollStatusCancelled
+	if err := db.Save(&p).Error; err != nil {
+		return nil, err
+	}
 	return dto.PayrollToResponse(&p), nil
+}
+
+func (s *payrollService) Submit(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error) {
+	db := s.DB.WithContext(ctx)
+	var payroll entity.Payroll
+	if err := db.Where("id = ? AND company_id = ?", id, companyID).First(&payroll).Error; err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	if payroll.Status != dto.PayrollStatusCalculated {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Only a CALCULATED payroll can be submitted")
+	}
+	payroll.Status = dto.PayrollStatusSubmitted
+	if err := db.Save(&payroll).Error; err != nil {
+		return nil, err
+	}
+	return dto.PayrollToResponse(&payroll), nil
+}
+
+func (s *payrollService) Approve(ctx context.Context, companyID, id, approverID string) (*dto.PayrollResponse, error) {
+	db := s.DB.WithContext(ctx)
+	var payroll entity.Payroll
+	if err := db.Where("id = ? AND company_id = ?", id, companyID).First(&payroll).Error; err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	if payroll.Status != dto.PayrollStatusSubmitted {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Only a SUBMITTED payroll can be approved")
+	}
+
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var level int64
+		if err := tx.Model(&entity.PayrollApproval{}).Where("payroll_id = ?", payroll.ID).Count(&level).Error; err != nil {
+			return err
+		}
+		now := time.Now().UnixMilli()
+		if err := tx.Create(&entity.PayrollApproval{
+			PayrollID: payroll.ID, ApproverID: approverID, Level: int(level) + 1,
+			Status: "APPROVED", ApprovedAt: &now,
+		}).Error; err != nil {
+			return err
+		}
+		payroll.Status = dto.PayrollStatusApproved
+		payroll.ApprovedBy = &approverID
+		payroll.ApprovedAt = &now
+		return tx.Save(&payroll).Error
+	}); err != nil {
+		return nil, err
+	}
+	return dto.PayrollToResponse(&payroll), nil
+}
+
+func (s *payrollService) Pay(ctx context.Context, companyID, id string) (*dto.PayrollResponse, error) {
+	db := s.DB.WithContext(ctx)
+	var payroll entity.Payroll
+	if err := db.Where("id = ? AND company_id = ?", id, companyID).First(&payroll).Error; err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	if payroll.Status != dto.PayrollStatusApproved {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Only an APPROVED payroll can be paid")
+	}
+
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var details []entity.PayrollDetail
+		if err := tx.Where("payroll_id = ?", payroll.ID).Find(&details).Error; err != nil {
+			return err
+		}
+		for _, detail := range details {
+			var employee struct {
+				BankName    string
+				BankAccount string
+				Fullname    string
+			}
+			if err := tx.Table("employees").Select("bank_name, bank_account, fullname").Where("id = ?", detail.EmployeeID).Take(&employee).Error; err != nil {
+				return err
+			}
+			payment := &entity.PayrollPayment{
+				PayrollDetailID: detail.ID,
+				EmployeeID:      detail.EmployeeID,
+				Amount:          detail.NetSalary,
+				Status:          dto.PaymentStatusPending,
+			}
+			if employee.BankName != "" {
+				payment.BankName = &employee.BankName
+			}
+			if employee.BankAccount != "" {
+				payment.BankAccount = &employee.BankAccount
+			}
+			if employee.Fullname != "" {
+				payment.AccountName = &employee.Fullname
+			}
+			if err := tx.Create(payment).Error; err != nil {
+				return err
+			}
+		}
+		now := time.Now().UnixMilli()
+		payroll.PaymentDate = &now
+		payroll.Status = dto.PayrollStatusPaid
+		return tx.Save(&payroll).Error
+	}); err != nil {
+		return nil, err
+	}
+	return dto.PayrollToResponse(&payroll), nil
 }
 
 func (s *payrollService) Delete(ctx context.Context, companyID, id string) error {
@@ -91,7 +284,7 @@ func (s *payrollService) Delete(ctx context.Context, companyID, id string) error
 }
 
 func (s *payrollService) ListPayments(ctx context.Context, r *dto.SearchPayrollRequest) ([]dto.PayrollPaymentResponse, int64, error) {
-	q := s.DB.WithContext(ctx).Model(&oldentity.PayrollPayment{})
+	q := s.DB.WithContext(ctx).Model(&entity.PayrollPayment{})
 	if r.Status != "" {
 		q = q.Where("status = ?", r.Status)
 	}
@@ -102,7 +295,7 @@ func (s *payrollService) ListPayments(ctx context.Context, r *dto.SearchPayrollR
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	var items []oldentity.PayrollPayment
+	var items []entity.PayrollPayment
 	if err := q.Order("payroll_payments.created_at DESC").Offset((r.Page - 1) * r.Size).Limit(r.Size).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
@@ -114,7 +307,7 @@ func (s *payrollService) ListPayments(ctx context.Context, r *dto.SearchPayrollR
 }
 
 func (s *payrollService) PaymentDetail(ctx context.Context, id string) (*dto.PayrollPaymentResponse, error) {
-	var p oldentity.PayrollPayment
+	var p entity.PayrollPayment
 	if err := s.DB.WithContext(ctx).First(&p, "id = ?", id).Error; err != nil {
 		return nil, fiber.ErrNotFound
 	}
@@ -122,7 +315,7 @@ func (s *payrollService) PaymentDetail(ctx context.Context, id string) (*dto.Pay
 }
 
 func (s *payrollService) UpdatePaymentStatus(ctx context.Context, id string, r *dto.UpdatePayrollPaymentStatusRequest) (*dto.PayrollPaymentResponse, error) {
-	var p oldentity.PayrollPayment
+	var p entity.PayrollPayment
 	db := s.DB.WithContext(ctx)
 	if err := db.First(&p, "id = ?", id).Error; err != nil {
 		return nil, fiber.ErrNotFound
@@ -205,8 +398,9 @@ func (s *payrollService) Calculate(
 ) (*dto.PayrollResponse, error) {
 
 	// find payroll
+	txDB := s.DB.WithContext(ctx)
 	payroll := new(entity.Payroll)
-	err := s.PayrollRepo.FindById(s.DB.WithContext(ctx), payroll, id)
+	err := s.PayrollRepo.FindById(txDB, payroll, id)
 	if err != nil {
 		return nil, err
 	}
@@ -217,19 +411,24 @@ func (s *payrollService) Calculate(
 	}
 
 	// get all employee active
-	employees, err := s.EmployeeRepo.ListActiveByCompany(s.DB.WithContext(ctx), companyID)
-	if err != nil {
-		return nil, err
-	}
-
 	asOf := endOfMonth(payroll.PeriodYear, payroll.PeriodMonth)
 
 	var totalGross, totalDeduction float64
 
 	if err = s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Re-check ownership and load employees in the same transaction used for
+		// creating the payroll snapshot.
+		if err := tx.Where("id = ? AND company_id = ?", id, companyID).First(payroll).Error; err != nil {
+			return err
+		}
+		employees, err := s.EmployeeRepo.ListActiveByCompany(tx, companyID)
+		if err != nil {
+			return err
+		}
+
 		for _, employee := range employees {
 			// get salary
-			salary, err := s.EmployeeSalaryRepo.FindActiveByEmployee(s.DB.WithContext(ctx), employee.ID, asOf)
+			salary, err := s.EmployeeSalaryRepo.FindActiveByEmployee(tx, employee.ID, asOf)
 			if err != nil {
 				continue
 			}
@@ -245,7 +444,8 @@ func (s *payrollService) Calculate(
 				return err
 			}
 
-			totalGross += salary.BasicSalary
+			grossSalary := salary.BasicSalary
+			var detailDeduction float64
 
 			// create item salary
 			if err = s.PayrollItemRepo.Create(tx, &entity.PayrollItem{
@@ -294,7 +494,7 @@ func (s *payrollService) Calculate(
 
 			}
 
-			totalGross += grossAllowance
+			grossSalary += grossAllowance
 
 			// create item payroll for deduction
 			deductions, err := s.EmployeeDeductionRepo.FindActiveByEmployee(tx, employee.ID, asOf)
@@ -313,7 +513,7 @@ func (s *payrollService) Calculate(
 					salaryComponent.CalculationType, deduction.Amount, deduction.Percentage,
 					salary.BasicSalary, salary.BasicSalary+grossAllowance, employee.MaritalStatus,
 				)
-				totalDeduction += deductionAmount
+				detailDeduction += deductionAmount
 
 				if err = s.PayrollItemRepo.Create(tx, &entity.PayrollItem{
 					PayrollDetailID:   payrollDetail.ID,
@@ -327,14 +527,30 @@ func (s *payrollService) Calculate(
 				}
 
 			}
-			payroll.TotalDeduction = totalDeduction
-			payroll.TotalGross = totalGross
-			payroll.TotalNet = totalGross - totalDeduction
 
-			if err := s.PayrollRepo.Update(tx, payroll); err != nil {
+			payrollDetail.GrossSalary = grossSalary
+			payrollDetail.TotalEarning = grossSalary
+			payrollDetail.TotalDeduction = detailDeduction
+			payrollDetail.NetSalary = grossSalary - detailDeduction
+			if err := tx.Model(payrollDetail).Updates(map[string]any{
+				"gross_salary":    payrollDetail.GrossSalary,
+				"total_earning":   payrollDetail.TotalEarning,
+				"total_deduction": payrollDetail.TotalDeduction,
+				"net_salary":      payrollDetail.NetSalary,
+			}).Error; err != nil {
 				return err
 			}
 
+			totalGross += payrollDetail.GrossSalary
+			totalDeduction += payrollDetail.TotalDeduction
+
+		}
+		payroll.TotalGross = totalGross
+		payroll.TotalDeduction = totalDeduction
+		payroll.TotalNet = totalGross - totalDeduction
+		payroll.Status = dto.PayrollStatusCalculated
+		if err := s.PayrollRepo.Update(tx, payroll); err != nil {
+			return err
 		}
 		return nil
 	}); err != nil {
@@ -342,7 +558,7 @@ func (s *payrollService) Calculate(
 		return nil, fiber.ErrInternalServerError
 	}
 
-	return dto.PayrollToResponse(payroll), nil
+	return s.Detail(ctx, companyID, id)
 }
 
 func endOfMonth(year int, month int) int64 {

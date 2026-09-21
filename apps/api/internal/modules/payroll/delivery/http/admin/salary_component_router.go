@@ -13,4 +13,7 @@ func (h *SalaryComponentHandler) RegisterRoutes(
 	salaryComponents := router.Group("/salary-components")
 	salaryComponents.Get("/", protected("SALARY_COMPONENTS", h.List)...)
 	salaryComponents.Post("/", protected("SALARY_COMPONENTS", h.Create)...)
+	salaryComponents.Get("/:id", protected("SALARY_COMPONENTS", h.Detail)...)
+	salaryComponents.Put("/:id", protected("SALARY_COMPONENTS", h.Update)...)
+	salaryComponents.Delete("/:id", protected("SALARY_COMPONENTS", h.Delete)...)
 }

@@ -36,12 +36,30 @@ func (h *PayrollHandler) Detail(ctx *fiber.Ctx) error {
 	}
 	return ctx.JSON(response.WebResponse[*dto.PayrollResponse]{Data: p})
 }
+
+func (h *PayrollHandler) ListApprovals(ctx *fiber.Ctx) error {
+	u := auth.GetUser(ctx)
+	items, err := h.PayrollService.ListApprovals(ctx.UserContext(), u.CompanyID, ctx.Params("id"))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[[]dto.PayrollApprovalResponse]{Data: items})
+}
 func (h *PayrollHandler) Delete(ctx *fiber.Ctx) error {
 	u := auth.GetUser(ctx)
 	if err := h.PayrollService.Delete(ctx.UserContext(), u.CompanyID, ctx.Params("id")); err != nil {
 		return err
 	}
 	return ctx.JSON(response.WebResponse[any]{Data: nil})
+}
+
+func (h *PayrollHandler) Cancel(ctx *fiber.Ctx) error {
+	u := auth.GetUser(ctx)
+	p, err := h.PayrollService.Cancel(ctx.UserContext(), u.CompanyID, ctx.Params("id"))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[*dto.PayrollResponse]{Data: p})
 }
 
 func (h *PayrollHandler) ListPayments(ctx *fiber.Ctx) error {
@@ -128,5 +146,32 @@ func (h *PayrollHandler) Calculate(ctx *fiber.Ctx) error {
 		return err
 	}
 
+	return ctx.JSON(response.WebResponse[*dto.PayrollResponse]{Data: result})
+}
+
+func (h *PayrollHandler) Submit(ctx *fiber.Ctx) error {
+	user := auth.GetUser(ctx)
+	result, err := h.PayrollService.Submit(ctx.UserContext(), user.CompanyID, ctx.Params("id"))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[*dto.PayrollResponse]{Data: result})
+}
+
+func (h *PayrollHandler) Approve(ctx *fiber.Ctx) error {
+	user := auth.GetUser(ctx)
+	result, err := h.PayrollService.Approve(ctx.UserContext(), user.CompanyID, ctx.Params("id"), user.ID)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[*dto.PayrollResponse]{Data: result})
+}
+
+func (h *PayrollHandler) Pay(ctx *fiber.Ctx) error {
+	user := auth.GetUser(ctx)
+	result, err := h.PayrollService.Pay(ctx.UserContext(), user.CompanyID, ctx.Params("id"))
+	if err != nil {
+		return err
+	}
 	return ctx.JSON(response.WebResponse[*dto.PayrollResponse]{Data: result})
 }

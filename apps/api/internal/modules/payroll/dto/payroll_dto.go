@@ -2,7 +2,6 @@ package dto
 
 import (
 	"hrsaas/internal/modules/payroll/entity"
-	oldentity "hrsaas/internal/modules/payroll_old/entity"
 )
 
 const (
@@ -14,27 +13,63 @@ const (
 	PayrollStatusCancelled  = "CANCELLED"
 )
 
+type PayrollEmployeeSummary struct {
+	ID             string `json:"id"`
+	EmployeeNumber string `json:"employee_number,omitempty"`
+	Fullname       string `json:"fullname,omitempty"`
+	BankName       string `json:"bank_name,omitempty"`
+	BankAccount    string `json:"bank_account,omitempty"`
+}
+
 type CreatePayrollRequest struct {
 	PeriodMonth int `json:"period_month" validate:"required,min=1,max=12"`
 	PeriodYear  int `json:"period_year" validate:"required,min=2000,max=2100"`
 }
 
 type PayrollResponse struct {
-	ID             string  `json:"id"`
-	CompanyID      string  `json:"company_id"`
-	PayrollNumber  string  `json:"payroll_number"`
-	PeriodMonth    int     `json:"period_month"`
-	PeriodYear     int     `json:"period_year"`
-	PaymentDate    *int64  `json:"payment_date,omitempty"`
-	Status         string  `json:"status"`
-	TotalGross     float64 `json:"total_gross"`
-	TotalDeduction float64 `json:"total_deduction"`
-	TotalNet       float64 `json:"total_net"`
-	CreatedBy      *string `json:"created_by,omitempty"`
-	ApprovedBy     *string `json:"approved_by,omitempty"`
-	ApprovedAt     *int64  `json:"approved_at,omitempty"`
-	CreatedAt      int64   `json:"created_at"`
-	UpdatedAt      int64   `json:"updated_at"`
+	ID             string                  `json:"id"`
+	CompanyID      string                  `json:"company_id"`
+	PayrollNumber  string                  `json:"payroll_number"`
+	PeriodMonth    int                     `json:"period_month"`
+	PeriodYear     int                     `json:"period_year"`
+	PaymentDate    *int64                  `json:"payment_date,omitempty"`
+	Status         string                  `json:"status"`
+	TotalGross     float64                 `json:"total_gross"`
+	TotalDeduction float64                 `json:"total_deduction"`
+	TotalNet       float64                 `json:"total_net"`
+	CreatedBy      *string                 `json:"created_by,omitempty"`
+	ApprovedBy     *string                 `json:"approved_by,omitempty"`
+	ApprovedAt     *int64                  `json:"approved_at,omitempty"`
+	CreatedAt      int64                   `json:"created_at"`
+	UpdatedAt      int64                   `json:"updated_at"`
+	Details        []PayrollDetailResponse `json:"details,omitempty"`
+}
+
+type PayrollItemResponse struct {
+	ID                string   `json:"id"`
+	PayrollDetailID   string   `json:"payroll_detail_id"`
+	SalaryComponentID *string  `json:"salary_component_id,omitempty"`
+	Name              string   `json:"name"`
+	Type              string   `json:"type"`
+	Amount            float64  `json:"amount"`
+	CalculationValue  *float64 `json:"calculation_value,omitempty"`
+	CreatedAt         int64    `json:"created_at"`
+}
+
+type PayrollDetailResponse struct {
+	ID             string                      `json:"id"`
+	PayrollID      string                      `json:"payroll_id"`
+	EmployeeID     string                      `json:"employee_id"`
+	BasicSalary    float64                     `json:"basic_salary"`
+	GrossSalary    float64                     `json:"gross_salary"`
+	TotalEarning   float64                     `json:"total_earning"`
+	TotalDeduction float64                     `json:"total_deduction"`
+	NetSalary      float64                     `json:"net_salary"`
+	CreatedAt      int64                       `json:"created_at"`
+	UpdatedAt      int64                       `json:"updated_at"`
+	Employee       *PayrollEmployeeSummary     `json:"employee,omitempty"`
+	Items          []PayrollItemResponse       `json:"items,omitempty"`
+	Adjustments    []PayrollAdjustmentResponse `json:"adjustments,omitempty"`
 }
 
 type SearchPayrollRequest struct {
@@ -67,12 +102,30 @@ type PayrollPaymentResponse struct {
 	UpdatedAt        int64   `json:"updated_at"`
 }
 
+type PayrollApprovalResponse struct {
+	ID         string  `json:"id"`
+	PayrollID  string  `json:"payroll_id"`
+	ApproverID string  `json:"approver_id"`
+	Level      int     `json:"level"`
+	Status     string  `json:"status"`
+	Notes      *string `json:"notes,omitempty"`
+	ApprovedAt *int64  `json:"approved_at,omitempty"`
+	CreatedAt  int64   `json:"created_at"`
+}
+
+func PayrollApprovalToResponse(item *entity.PayrollApproval) *PayrollApprovalResponse {
+	if item == nil {
+		return nil
+	}
+	return &PayrollApprovalResponse{ID: item.ID, PayrollID: item.PayrollID, ApproverID: item.ApproverID, Level: item.Level, Status: item.Status, Notes: item.Notes, ApprovedAt: item.ApprovedAt, CreatedAt: item.CreatedAt}
+}
+
 type UpdatePayrollPaymentStatusRequest struct {
 	Status           string  `json:"status" validate:"required,oneof=PENDING PROCESSING SUCCESS FAILED"`
 	PaymentReference *string `json:"payment_reference"`
 }
 
-func PayrollPaymentToResponse(p *oldentity.PayrollPayment) *PayrollPaymentResponse {
+func PayrollPaymentToResponse(p *entity.PayrollPayment) *PayrollPaymentResponse {
 	if p == nil {
 		return nil
 	}

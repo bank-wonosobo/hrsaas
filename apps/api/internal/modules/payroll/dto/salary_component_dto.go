@@ -35,6 +35,15 @@ type CreateSalaryComponentRequest struct {
 	IsBpjsBase      bool   `json:"is_bpjs_base"`
 }
 
+type UpdateSalaryComponentRequest struct {
+	Name            *string `json:"name,omitempty"`
+	Type            *string `json:"type,omitempty" validate:"omitempty,oneof=EARNING DEDUCTION"`
+	CalculationType *string `json:"calculation_type,omitempty" validate:"omitempty,oneof=FIXED FORMULA SALARY_PERCENTAGE ATTENDANCE GROSS_PERCENTAGE"`
+	IsTaxable       *bool   `json:"is_taxable,omitempty"`
+	IsBpjsBase      *bool   `json:"is_bpjs_base,omitempty"`
+	IsActive        *bool   `json:"is_active,omitempty"`
+}
+
 type SearchSalaryComponentRequest struct {
 	Key        string `json:"key" validate:"max=100"`
 	Type       string `json:"type" validate:"omitempty,oneof=EARNING DEDUCTION"`

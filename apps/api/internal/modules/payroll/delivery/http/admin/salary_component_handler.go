@@ -81,3 +81,33 @@ func (h *SalaryComponentHandler) List(ctx *fiber.Ctx) error {
 		},
 	})
 }
+
+func (h *SalaryComponentHandler) Detail(ctx *fiber.Ctx) error {
+	result, err := h.SalaryComponentService.Detail(ctx.UserContext(), ctx.Params("id"))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[*dto.SalaryComponentResponse]{Data: result})
+}
+
+func (h *SalaryComponentHandler) Update(ctx *fiber.Ctx) error {
+	request := new(dto.UpdateSalaryComponentRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		return fiber.ErrBadRequest
+	}
+	if err := h.Validator.Struct(request); err != nil {
+		return err
+	}
+	result, err := h.SalaryComponentService.Update(ctx.UserContext(), ctx.Params("id"), request)
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[*dto.SalaryComponentResponse]{Data: result})
+}
+
+func (h *SalaryComponentHandler) Delete(ctx *fiber.Ctx) error {
+	if err := h.SalaryComponentService.Delete(ctx.UserContext(), ctx.Params("id")); err != nil {
+		return err
+	}
+	return ctx.JSON(response.WebResponse[any]{Data: nil})
+}

@@ -457,6 +457,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Log,
 	)
 	payrollHandler := payrollHttp.NewPayrollHandler(payrollService, cfg.Validator, cfg.Log)
+	payrollPaymentController := payrollHttp.NewPayrollPaymentController(payrollService, cfg.Validator, cfg.Log)
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
@@ -511,6 +512,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	// module payroll
 	salaryComponentHandler.RegisterRoutes(api, protected)
 	payrollHandler.RegisterRoutes(api, protected)
+	payrollPaymentController.RegisterRoutes(api, protected)
 	// module visit
 	visitController.RegisterRoutes(api, protected)
 	collectingController.RegisterRoutes(api, protected)
