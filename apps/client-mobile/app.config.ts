@@ -5,7 +5,7 @@ type AppEnv = "development" | "staging" | "production";
 const APP_ENV = (process.env.APP_ENV ?? "development") as AppEnv;
 
 // Single source of truth for version
-const APP_VERSION = "1.6.7";
+const APP_VERSION = "1.6.8";
 
 // Single source of truth for Google Maps API keys (fall back to env vars if set)
 const GOOGLE_MAPS_API_KEY_IOS =
@@ -54,6 +54,8 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
       ITSAppUsesNonExemptEncryption: false,
       NSLocationWhenInUseUsageDescription:
         "BW Akses+ menggunakan lokasi Anda untuk memverifikasi lokasi saat melakukan absensi dan memastikan Anda berada di lokasi kerja yang diizinkan.",
+      NSCameraUsageDescription:
+        "Kamera digunakan untuk mengambil foto wajah karyawan saat pendaftaran wajah dan saat melakukan verifikasi kehadiran.",
     },
     config: {
       googleMapsApiKey: GOOGLE_MAPS_API_KEY_IOS,
@@ -103,10 +105,10 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
     [
       "expo-camera",
       {
-        cameraPermission: "Allow $(PRODUCT_NAME) to access your camera",
-        microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone",
-        recordAudioAndroid: true,
-        barcodeScannerEnabled: true,
+        cameraPermission:
+          "Kamera digunakan untuk mengambil foto wajah karyawan saat pendaftaran wajah dan saat melakukan verifikasi kehadiran.",
+        recordAudioAndroid: false,
+        barcodeScannerEnabled: false,
       },
     ],
     [
@@ -145,6 +147,8 @@ export default (_ctx: ConfigContext): ExpoConfig => ({
           compileSdkVersion: 36,
           targetSdkVersion: 36,
           buildToolsVersion: "36.0.0",
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
         },
         ios: {
           deploymentTarget: "16.4",

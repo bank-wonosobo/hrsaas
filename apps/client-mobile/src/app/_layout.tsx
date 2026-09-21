@@ -2,6 +2,7 @@ import BackButton from "@/components/shared/back-bottom";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 import { NotificationProvider } from "@/context/notification-context";
 import { ToastProvider } from "@/context/toast-context";
+import { api } from "@/lib/axios";
 import {
   Inter_100Thin,
   Inter_200ExtraLight,
@@ -15,7 +16,8 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "@expo-google-fonts/poppins";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, usePathname, useRouter } from "expo-router";
+import { useEffect, useLayoutEffect } from "react";
 import { KeyboardAvoidingView, Platform, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "../global.css"; //
@@ -24,6 +26,28 @@ const queryClient = new QueryClient();
 
 function RootNavigation() {
   const { token, loading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  
+  useLayoutEffect(() => {
+    if (token) {
+      const normalizedToken = token.split(",token=", 1)[0];
+      api.defaults.headers.common.Cookie = `token=${normalizedToken}`;
+    } else {
+      delete api.defaults.headers.common.Cookie;
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (token && pathname === "/") {
+      router.replace("/(tabs)/home");
+    } else if (!token && pathname !== "/") {
+      router.replace("/");
+    }
+  }, [loading, pathname, router, token]);
 
   if (loading) {
     return null; // atau SplashScreen

@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	payrollEntity "hrsaas/internal/modules/payroll/entity"
+	payrollEntity "hrsaas/internal/modules/payroll_old/entity"
 )
 
 type EmployeeAllowance struct {

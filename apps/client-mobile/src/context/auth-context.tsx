@@ -24,6 +24,8 @@ const AuthContext = createContext<AuthContextType>({
 const TOKEN_KEY = "token";
 const USER_KEY = "user";
 
+const normalizeToken = (token: string) => token.split(",token=", 1)[0];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUserState] = useState<User | null>(null);
@@ -42,7 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (storedToken) {
-        setToken(storedToken);
+        const normalizedToken = normalizeToken(storedToken);
+        setToken(normalizedToken);
+        if (normalizedToken !== storedToken) {
+          await SecureStore.setItemAsync(TOKEN_KEY, normalizedToken);
+        }
       }
 
       if (storedUser) {
@@ -57,12 +63,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (token: string, user: User) => {
+    const normalizedToken = normalizeToken(token);
+
     await Promise.all([
-      SecureStore.setItemAsync(TOKEN_KEY, token),
+      SecureStore.setItemAsync(TOKEN_KEY, normalizedToken),
       AsyncStorage.setItem(USER_KEY, JSON.stringify(user)),
     ]);
 
-    setToken(token);
+    setToken(normalizedToken);
     setUserState(user);
   };
 

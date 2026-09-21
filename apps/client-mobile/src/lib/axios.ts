@@ -5,7 +5,9 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 export const api = axios.create({
   baseURL: `${BASE_URL}/api`,
   validateStatus: () => true,
-  withCredentials: true, // Sertakan cookie dalam setiap permintaan
+  // Token dikirim sendiri melalui interceptor. Jangan kirim cookie native
+  // juga karena iOS dapat menggabungkannya menjadi dua nilai token.
+  withCredentials: false,
 });
 
 // React Native tidak selalu mempertahankan HttpOnly cookie setelah aplikasi
@@ -15,7 +17,8 @@ api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync("token");
 
   if (token) {
-    config.headers.set("Cookie", `token=${token}`);
+    const normalizedToken = token.split(",token=", 1)[0];
+    config.headers.set("Cookie", `token=${normalizedToken}`);
   }
 
   return config;

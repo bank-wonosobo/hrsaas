@@ -1,9 +1,11 @@
+/* eslint-disable react-hooks/purity */
 import Button from "@/components/ui/button";
 import { useTodayAttendance } from "@/hooks/attendance/use-today-attendance";
 import { formatTime } from "@/lib/utils/format-time";
 import { Attendance } from "@/schema/attendance-schema";
 import { useRouter } from "expo-router";
 import { CalendarDays, CheckCircle2, LogIn, LogOut } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
 function formatAttendanceDate(dateMs?: number) {
@@ -27,6 +29,17 @@ function getStatus(attendance: Attendance | null) {
       };
 }
 
+function formatBreakDuration(durationMs: number) {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
 export default function Hero() {
   const { data: attendance, isLoading } = useTodayAttendance();
   const status = getStatus(attendance ?? null);
@@ -46,6 +59,21 @@ export default function Hero() {
         ? "break-out"
         : "break-in"
       : null;
+  const lastBreakInTime =
+    attendance?.logs
+      ?.filter((log) => log.type === "BREAK_IN")
+      .sort((a, b) => b.time - a.time)[0]?.time ?? null;
+  const isOnBreak = breakAttendanceType === "break-out" && !!lastBreakInTime;
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!isOnBreak) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNow(Date.now());
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [isOnBreak, lastBreakInTime]);
 
   return (
     <View className="w-full rounded-3xl mb-2 overflow-hidden bg-primary shadow-lg shadow-primary/40">
@@ -111,36 +139,52 @@ export default function Hero() {
 
         {attendanceType && (
           <View className="mt-4 gap-2">
-            <Button
-              variant="outline"
-              className="bg-white"
-              disabled={isLoading}
-              onPress={() =>
-                router.push({
-                  pathname: "/attendances/area",
-                  params: { type: attendanceType },
-                })
-              }
-            >
-              {attendanceType === "check-in" ? "Masuk Kerja" : "Selesai Kerja"}
-            </Button>
-
-            {breakAttendanceType && (
+            {!isOnBreak && (
               <Button
-                variant="secondary"
+                variant="outline"
+                className="bg-white"
                 disabled={isLoading}
                 onPress={() =>
                   router.push({
                     pathname: "/attendances/area",
-                    params: { type: breakAttendanceType },
+                    params: { type: attendanceType },
                   })
                 }
               >
-                {breakAttendanceType === "break-in"
-                  ? "Istirahat"
-                  : "Selesai Istirahat"}
+                {attendanceType === "check-in"
+                  ? "Masuk Kerja"
+                  : "Selesai Kerja"}
               </Button>
             )}
+
+            {isOnBreak && lastBreakInTime && (
+              <View className="items-center rounded-xl bg-white/15 px-4 py-3">
+                <Text className="text-white/70 font-poppins-regular text-xs">
+                  Durasi Istirahat
+                </Text>
+                <Text className="text-white font-poppins-bold text-2xl">
+                  {formatBreakDuration(now - lastBreakInTime)}
+                </Text>
+              </View>
+            )}
+
+            {breakAttendanceType &&
+              (breakAttendanceType === "break-out" || breakInCount === 0) && (
+                <Button
+                  variant="secondary"
+                  disabled={isLoading}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/attendances/area",
+                      params: { type: breakAttendanceType },
+                    })
+                  }
+                >
+                  {breakAttendanceType === "break-in"
+                    ? "Istirahat"
+                    : "Selesai Istirahat"}
+                </Button>
+              )}
           </View>
         )}
       </View>
