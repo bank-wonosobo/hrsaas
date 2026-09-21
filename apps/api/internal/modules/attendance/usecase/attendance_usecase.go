@@ -1101,3 +1101,63 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 
 	return "HADIR", nil
 }
+
+func (c *AttendanceUseCase) SearchPendingLogs(
+	ctx context.Context, req *model.SearchPendingLogRequest,
+) ([]model.AttendanceLogResponse, int64, error) {
+	if err := c.Validate.Struct(req); err != nil {
+		return nil, 0, fiber.ErrBadRequest
+	}
+	logs, total, err := c.AttendanceLogRepo.SearchPending(c.DB.WithContext(ctx), req)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to search pending logs")
+		return nil, 0, fiber.ErrInternalServerError
+	}
+	res := make([]model.AttendanceLogResponse, len(logs))
+	for i, l := range logs {
+		res[i] = *model.AttendanceLogToResponse(&l)
+	}
+	return res, total, nil
+}
+
+func (c *AttendanceUseCase) ReviewLog(
+	ctx context.Context, logID, companyID, reviewerID string, req *model.ReviewLogRequest,
+) (*model.AttendanceLogResponse, error) {
+	if err := c.Validate.Struct(req); err != nil {
+		return nil, fiber.ErrBadRequest
+	}
+	if !*req.Approve && (req.Reason == nil || *req.Reason == "") {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Alasan penolakan wajib diisi")
+	}
+
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	log := new(entity.AttendanceLog)
+	if err := c.AttendanceLogRepo.FindLogByIdAndCompany(tx, log, logID, companyID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fiber.NewError(fiber.StatusNotFound, "Log tidak ditemukan")
+		}
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if log.IsApproved || log.ReviewedAt != 0 {
+		return nil, fiber.NewError(fiber.StatusConflict, "Log sudah direview")
+	}
+
+	log.IsApproved = *req.Approve
+	log.ReviewedAt = time.Now().UnixMilli()
+	log.ReviewedBy = reviewerID
+	if !*req.Approve {
+		log.RejectReason = *req.Reason
+	}
+
+	if err := c.AttendanceLogRepo.Update(tx, log); err != nil {
+		c.Log.WithError(err).Error("Failed to update attendance log")
+		return nil, fiber.ErrInternalServerError
+	}
+	if err := tx.Commit().Error; err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	return model.AttendanceLogToResponse(log), nil
+}

@@ -227,6 +227,171 @@ func (c *TimeOffRequestUseCase) CreateRequest(
 	return model.TimeOffRequestToResponse(item), nil
 }
 
+func (c *TimeOffRequestUseCase) AdminCreateRequest(
+	ctx context.Context,
+	employeeID string,
+	request *model.CreateTimeOffRequest,
+) (*model.TimeOffRequestResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	status := strings.ToUpper(strings.TrimSpace(request.RequestStatus))
+	if status == "" {
+		status = "PENDING"
+	}
+	request.RequestStatus = status
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate request body")
+		return nil, fiber.ErrBadRequest
+	}
+
+	if status != "PENDING" {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Pengajuan cuti harus berstatus PENDING")
+	}
+
+	startDate, err := pkg.ParseDateToUnixMilli(request.StartDate)
+	if err != nil || startDate == 0 {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Invalid start_date")
+	}
+	endDate, err := pkg.ParseDateToUnixMilli(request.EndDate)
+	if err != nil || endDate == 0 {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Invalid end_date")
+	}
+	if startDate > endDate {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Invalid start_date or end_date")
+	}
+	// Derive requested days from the date range (inclusive).
+	const dayMillis = 24 * 60 * 60 * 1000
+	request.RequestedDays = int((endDate-startDate)/dayMillis) + 1
+	if request.RequestedDays <= 0 {
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Invalid date range")
+	}
+
+	// TODO: Consider excluding rejected/cancelled requests from overlap check.
+	var overlapCount int64
+	if err := tx.Table("time_off_requests").
+		Where("employee_id = ?", employeeID).
+		Where("request_status IN ?", []string{"PENDING", "APPROVED"}).
+		Where("NOT (end_date < ? OR start_date > ?)", startDate, endDate).
+		Where("request_status NOT IN ?", []string{"REJECTED", "CANCELLED"}).
+		Count(&overlapCount).Error; err != nil {
+		c.Log.WithError(err).Error("Failed to check overlap dates")
+		return nil, fiber.ErrInternalServerError
+	}
+	if overlapCount > 0 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Tanggal pengajuan cuti bertabrakan dengan pengajuan lain yang sudah ada",
+		)
+	}
+	// Limit to 5 concurrent leave requests per day across all employees for any day in the requested range.
+	// The limit is bases on time off type, so different types of leave (e.g. annual vs sick) can have separate limits.
+	// var concurrentCount int64
+	// if err := tx.Table("time_off_requests").
+	// 	Where("employee_id != ?", employeeID).
+	// 	Where("time_off_type_id = ?", request.TimeOffTypeID).
+	// 	Where("request_status IN ?", []string{"PENDING", "APPROVED"}).
+	// 	Where("NOT (end_date < ? OR start_date > ?)", startDate, endDate).
+	// 	Count(&concurrentCount).Error; err != nil {
+	// 	c.Log.WithError(err).Error("Failed to check concurrent leave count")
+	// 	return nil, fiber.ErrInternalServerError
+	// }
+	// if concurrentCount >= 5 {
+	// 	return nil, fiber.NewError(
+	// 		fiber.StatusTooManyRequests,
+	// 		"Kuota Pengajuan Cuti Harian Sudah Penuh",
+	// 	)
+	// }
+
+	timeOffType, err := c.TimeOffTypeRepo.FindByID(tx, request.TimeOffTypeID)
+	if err != nil {
+		c.Log.WithError(err).Error("Tipe cuti tidak ditemukan")
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Tipe cuti tidak ditemukan")
+	}
+	if timeOffType.IsQuotaBased {
+		// TODO: Use company timezone when deriving period year.
+		periodYear := time.UnixMilli(startDate).UTC().Year()
+		balance, err := c.TimeOffBalanceRepo.FindByEmployeeTypeYear(
+			tx,
+			employeeID,
+			request.TimeOffTypeID,
+			periodYear,
+		)
+		if err != nil {
+			c.Log.WithError(err).Error("Kuota cuti tidak ditemukan")
+			return nil, fiber.NewError(fiber.StatusBadRequest, "Kuota cuti tidak ditemukan")
+		}
+		if request.RequestedDays > balance.RemainingDays {
+			return nil, fiber.NewError(
+				fiber.StatusBadRequest,
+				"Jumlah hari yang diminta melebihi kuota yang tersedia",
+			)
+		}
+	}
+
+	item := &entity.TimeOffRequest{
+		EmployeeID:    employeeID,
+		TimeOffTypeId: request.TimeOffTypeID,
+		RequestedDays: request.RequestedDays,
+		StartDate:     startDate,
+		EndDate:       &endDate,
+		RequestReason: &request.RequestReason,
+		RequestStatus: &status,
+		FileUrl:       request.FileUrl,
+	}
+
+	if err := c.TimeOffRequestRepo.Create(tx, item); err != nil {
+		c.Log.WithError(err).Error("Gagal membuat pengajuan cuti")
+		return nil, fiber.ErrInternalServerError
+	}
+	// Ensure requested dates are persisted (entity hook sets start_date to now).
+	if err := tx.Table("time_off_requests").
+		Where("id = ?", item.ID).
+		Updates(map[string]any{
+			"start_date": startDate,
+			"end_date":   endDate,
+		}).Error; err != nil {
+		c.Log.WithError(err).Error("Gagal memperbarui tanggal pengajuan cuti")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// Build approval chain from position hierarchy.
+	// TODO: Consider caching org structure to reduce DB roundtrips.
+	approvals, err := c.buildApprovalsFromPositionChain(tx, employeeID)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to build approval chain")
+		return nil, err
+	}
+	if len(approvals) == 0 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Tidak ada approver yang tersedia untuk pengajuan cuti ini",
+		)
+	}
+	// Bind approvals to the newly created request; approval order is assigned
+	// here (and only here) so it is always sequential 1..N without gaps.
+	for i := range approvals {
+		approvals[i].TimeOffRequestId = item.ID
+		approvals[i].Status = "PENDING"
+		approvals[i].ApprovalOrder = i + 1
+	}
+
+	if err := c.TimeOffApprovalRepo.CreateMany(tx, approvals); err != nil {
+		c.Log.WithError(err).Error("Gagal membuat data approval untuk pengajuan cuti")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	c.sendTimeOffRequestPush(ctx, employeeID, approvals, timeOffType.Category, item)
+
+	return model.TimeOffRequestToResponse(item), nil
+}
+
 func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
 	ctx context.Context,
 	employeeID string,
@@ -285,7 +450,12 @@ func (c *TimeOffRequestUseCase) sendTimeOffRequestPush(
 		messages = append(messages, pushnotification.Message{
 			To:    device.PushToken,
 			Title: "Pengajuan Cuti Baru",
-			Body:  fmt.Sprintf("Pengajuan %s dari %s selama %d hari menunggu persetujuan", requestType, employee.Fullname, request.RequestedDays),
+			Body: fmt.Sprintf(
+				"Pengajuan %s dari %s selama %d hari menunggu persetujuan",
+				requestType,
+				employee.Fullname,
+				request.RequestedDays,
+			),
 			Data: map[string]any{
 				"type":                "time_off_request",
 				"time_off_request_id": request.ID,
