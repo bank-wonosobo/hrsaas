@@ -2,9 +2,9 @@ package usecase
 
 import (
 	"context"
-	"hrsaas/internal/modules/payroll/entity"
-	"hrsaas/internal/modules/payroll/model"
-	"hrsaas/internal/modules/payroll/repository"
+	"hrsaas/internal/modules/payroll_old/entity"
+	"hrsaas/internal/modules/payroll_old/model"
+	"hrsaas/internal/modules/payroll_old/repository"
 	"strings"
 
 	"github.com/go-playground/validator/v10"

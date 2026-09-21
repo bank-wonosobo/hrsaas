@@ -33,7 +33,8 @@ import (
 
 	payrollHttp "hrsaas/internal/modules/payroll/delivery/http/admin"
 	payrollRepo "hrsaas/internal/modules/payroll/repository"
-	payrollUc "hrsaas/internal/modules/payroll/usecase"
+	payrollService "hrsaas/internal/modules/payroll/service"
+	payrollOldRepo "hrsaas/internal/modules/payroll_old/repository"
 
 	permissionHttp "hrsaas/internal/modules/user/delivery/http/admin"
 	permissionRepo "hrsaas/internal/modules/user/repository"
@@ -129,13 +130,11 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeAllowanceRepository := employeeRepo.NewEmployeeAllowanceRepository(cfg.Log)
 	employeeDeductionRepository := employeeRepo.NewEmployeeDeductionRepository(cfg.Log)
 	// module payroll
-	salaryComponentRepository := payrollRepo.NewSalaryComponentRepository(cfg.Log)
-	payrollRepository := payrollRepo.NewPayrollRepository(cfg.Log)
-	payrollDetailRepository := payrollRepo.NewPayrollDetailRepository(cfg.Log)
-	payrollItemRepository := payrollRepo.NewPayrollItemRepository(cfg.Log)
-	payrollAdjustmentRepository := payrollRepo.NewPayrollAdjustmentRepository(cfg.Log)
-	payrollPaymentRepository := payrollRepo.NewPayrollPaymentRepository(cfg.Log)
-	payrollApprovalRepository := payrollRepo.NewPayrollApprovalRepository(cfg.Log)
+	salaryComponentRepository := payrollOldRepo.NewSalaryComponentRepository(cfg.Log)
+	payrollSalaryComponentRepository := payrollRepo.NewSalaryComponentRepository(cfg.Log)
+	payrollRepository := payrollRepo.NewPayrollRepository(cfg.DB)
+	payrollDetailRepository := payrollRepo.NewPayrollDetailRepository(cfg.DB)
+	payrollItemRepository := payrollRepo.NewPayrollItemRepository(cfg.DB)
 	//module visit
 	visitRepository := visitRepo.NewVisitRepository(cfg.Log)
 	collectingRepository := collectingRepo.NewCollectingRepository(
@@ -343,32 +342,20 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		timeOffTypeRepository,
 	)
 	// module payroll
-	salaryComponentUseCase := payrollUc.NewSalaryComponentUseCase(
+	salaryComponentService := payrollService.NewSalaryComponentService(
 		cfg.DB,
-		cfg.Log,
-		cfg.Validator,
-		salaryComponentRepository,
+		payrollSalaryComponentRepository,
 	)
-	payrollUseCase := payrollUc.NewPayrollUseCase(
+	payrollService := payrollService.NewPayrollService(
 		cfg.DB,
-		cfg.Log,
-		cfg.Validator,
 		payrollRepository,
 		payrollDetailRepository,
 		payrollItemRepository,
-		payrollAdjustmentRepository,
-		payrollPaymentRepository,
-		payrollApprovalRepository,
-		employeeRepository,
-		employeeSalaryRepository,
-		employeeAllowanceRepository,
-		employeeDeductionRepository,
-	)
-	payrollPaymentUseCase := payrollUc.NewPayrollPaymentUseCase(
-		cfg.DB,
-		cfg.Log,
-		cfg.Validator,
-		payrollPaymentRepository,
+		*payrollSalaryComponentRepository,
+		*employeeRepository,
+		*employeeSalaryRepository,
+		*employeeAllowanceRepository,
+		*employeeDeductionRepository,
 	)
 	// module visit
 	visitUseCase := visitUc.NewVisitUseCase(
@@ -464,12 +451,12 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	)
 	timeOffTypeController := timeOffHttp.NewTimeOffTypeController(timeOffTypeUseCase, cfg.Log)
 	// module payroll
-	salaryController := payrollHttp.NewSalaryController(salaryComponentUseCase, cfg.Log)
-	payrollController := payrollHttp.NewPayrollController(payrollUseCase, cfg.Log)
-	payrollPaymentController := payrollHttp.NewPayrollPaymentController(
-		payrollPaymentUseCase,
+	salaryComponentHandler := payrollHttp.NewSalaryComponentHandler(
+		salaryComponentService,
+		cfg.Validator,
 		cfg.Log,
 	)
+	payrollHandler := payrollHttp.NewPayrollHandler(payrollService, cfg.Validator, cfg.Log)
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)
@@ -522,9 +509,8 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 	employeeAllowanceController.RegisterRoutes(api, protected)
 	employeeDeductionController.RegisterRoutes(api, protected)
 	// module payroll
-	salaryController.RegisterRoutes(api, protected)
-	payrollController.RegisterRoutes(api, protected)
-	payrollPaymentController.RegisterRoutes(api, protected)
+	salaryComponentHandler.RegisterRoutes(api, protected)
+	payrollHandler.RegisterRoutes(api, protected)
 	// module visit
 	visitController.RegisterRoutes(api, protected)
 	collectingController.RegisterRoutes(api, protected)

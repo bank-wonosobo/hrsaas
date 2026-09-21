@@ -45,9 +45,9 @@ import (
 	visitRepo "hrsaas/internal/modules/visit/repository"
 	visitUc "hrsaas/internal/modules/visit/usecase"
 
-	payrollHttp "hrsaas/internal/modules/payroll/delivery/http/client"
-	payrollRepo "hrsaas/internal/modules/payroll/repository"
-	payrollUc "hrsaas/internal/modules/payroll/usecase"
+	payrollHttp "hrsaas/internal/modules/payroll_old/delivery/http/client"
+	payrollRepo "hrsaas/internal/modules/payroll_old/repository"
+	payrollUc "hrsaas/internal/modules/payroll_old/usecase"
 
 	uploadHttp "hrsaas/internal/modules/upload/delivery/http"
 )

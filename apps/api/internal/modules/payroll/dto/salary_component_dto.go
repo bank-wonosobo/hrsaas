@@ -1,17 +1,16 @@
-package model
+package dto
 
-import (
-	"hrsaas/internal/modules/payroll/entity"
-)
+import "hrsaas/internal/modules/payroll/entity"
 
 const (
 	SalaryComponentTypeEarning   = "EARNING"
 	SalaryComponentTypeDeduction = "DEDUCTION"
 
-	CalculationTypeFixed      = "FIXED"
-	CalculationTypePercentage = "PERCENTAGE"
-	CalculationTypeFormula    = "FORMULA"
-	CalculationTypeManual     = "MANUAL"
+	CalculationTypeFixed            = "FIXED"
+	CalculationTypeSalaryPercentage = "SALARY_PERCENTAGE" // persentase gaji pokok
+	CalculationTypeAttendance       = "ATTENDANCE"
+	CalculateTypeGrossPercentage    = "GROSS_PERCENTAGE" // total semua pendapatan
+	// CalculateTypeMaritalStatus      = "MARITAL_STATUS"
 )
 
 type SalaryComponentResponse struct {
@@ -31,18 +30,9 @@ type CreateSalaryComponentRequest struct {
 	Code            string `json:"code" validate:"required,max=50"`
 	Name            string `json:"name" validate:"required,max=100"`
 	Type            string `json:"type" validate:"required,oneof=EARNING DEDUCTION"`
-	CalculationType string `json:"calculation_type" validate:"required,oneof=FIXED PERCENTAGE FORMULA MANUAL"`
+	CalculationType string `json:"calculation_type" validate:"required,oneof=FIXED FORMULA SALARY_PERCENTAGE ATTENDANCE GROSS_PERCENTAGE"`
 	IsTaxable       bool   `json:"is_taxable"`
 	IsBpjsBase      bool   `json:"is_bpjs_base"`
-}
-
-type UpdateSalaryComponentRequest struct {
-	Name            *string `json:"name,omitempty"`
-	Type            *string `json:"type,omitempty" validate:"omitempty,oneof=EARNING DEDUCTION"`
-	CalculationType *string `json:"calculation_type,omitempty" validate:"omitempty,oneof=FIXED PERCENTAGE FORMULA MANUAL"`
-	IsTaxable       *bool   `json:"is_taxable,omitempty"`
-	IsBpjsBase      *bool   `json:"is_bpjs_base,omitempty"`
-	IsActive        *bool   `json:"is_active,omitempty"`
 }
 
 type SearchSalaryComponentRequest struct {
@@ -52,6 +42,8 @@ type SearchSalaryComponentRequest struct {
 	Page       int    `json:"page" validate:"min=1"`
 	Size       int    `json:"size" validate:"min=1,max=100"`
 }
+
+//
 
 func SalaryComponentToResponse(item *entity.SalaryComponent) *SalaryComponentResponse {
 	if item == nil {
@@ -79,10 +71,9 @@ func SalaryComponentsToResponse(items []entity.SalaryComponent) []SalaryComponen
 
 	responses := make([]SalaryComponentResponse, 0, len(items))
 	for i := range items {
-		if response := SalaryComponentToResponse(&items[i]); response != nil {
-			responses = append(responses, *response)
+		if item := SalaryComponentToResponse(&items[i]); item != nil {
+			responses = append(responses, *item)
 		}
 	}
-
 	return responses
 }

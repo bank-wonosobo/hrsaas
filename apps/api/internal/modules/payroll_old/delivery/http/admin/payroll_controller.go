@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"hrsaas/internal/modules/payroll/model"
-	"hrsaas/internal/modules/payroll/usecase"
+	"hrsaas/internal/modules/payroll_old/model"
+	"hrsaas/internal/modules/payroll_old/usecase"
 	"hrsaas/pkg/auth"
 	"hrsaas/pkg/response"
 	"math"

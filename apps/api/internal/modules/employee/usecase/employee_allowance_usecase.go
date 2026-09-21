@@ -5,8 +5,8 @@ import (
 	"hrsaas/internal/modules/employee/entity"
 	"hrsaas/internal/modules/employee/model"
 	"hrsaas/internal/modules/employee/repository"
-	payrollModel "hrsaas/internal/modules/payroll/model"
-	payrollRepository "hrsaas/internal/modules/payroll/repository"
+	payrollModel "hrsaas/internal/modules/payroll_old/model"
+	payrollRepository "hrsaas/internal/modules/payroll_old/repository"
 	pkg "hrsaas/pkg/time"
 
 	"github.com/go-playground/validator/v10"

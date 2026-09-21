@@ -1086,7 +1086,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	scheduled := time.UnixMilli(shiftDay.CheckIn)
+	scheduled := time.UnixMilli(shiftDay.CheckIn).In(time.FixedZone("UTC+07:07", 7*60*60+7*60))
 	deadline := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		scheduled.Hour(), scheduled.Minute(), 0, 0,

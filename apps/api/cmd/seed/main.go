@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hrsaas/internal/modules/payroll/entity"
 	"log"
 	"time"
 
@@ -123,12 +124,42 @@ func password(value string) string {
 	return string(result)
 }
 
+func seedSalaryComponents(db *gorm.DB) {
+	seeds := []entity.SalaryComponent{
+		{Code: "TUNJANGAN_MAKAN", Name: "TUNJANGAN MAKAN", Type: "EARNING", CalculationType: "ATTENDANCE"},
+		{Code: "TUNJANGAN_TRANSPORT", Name: "TUNJANGAN TRANSPORT", Type: "EARNING", CalculationType: "ATTENDANCE"},
+		{Code: "TUNJANGAN_ISTRI", Name: "TUNJANGAN ISTRI", Type: "EARNING", CalculationType: "SALARY_PERCENTAGE"},
+		{Code: "TUNJANGAN_ANAK", Name: "TUNJANGAN ANAK", Type: "EARNING", CalculationType: "SALARY_PERCENTAGE"},
+		{Code: "TUNJANGAN_JABATAN", Name: "TUNJANGAN JABATAN", Type: "EARNING", CalculationType: "FIXED"},
+		{Code: "TUNJANGAN_KESEHATAN", Name: "TUNJANGAN KESEHATAN", Type: "EARNING", CalculationType: "SALARY_PERCENTAGE"},
+		{Code: "TUNJANGAN_PANGAN", Name: "TUNJANGAN PANGAN", Type: "EARNING", CalculationType: "FIXED"},
+		{Code: "TUNJANGAN_PENSIUN", Name: "TUNJANGAN PENSIUN", Type: "EARNING", CalculationType: "SALARY_PERCENTAGE"},
+		{Code: "BPJS_KESEHATAN", Name: "BPJS KESEHATAN", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "BPJS_JAMSOSTEK", Name: "BPJS JAMSOSTEK", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "TAMARA", Name: "TAMARA", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "FUTSAL", Name: "FUTSAL", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "ZUMBA", Name: "ZUMBA", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "PINJAMAN_BAWON", Name: "PINJAMAN BAWON", Type: "DEDUCTION", CalculationType: "FIXED"},
+		{Code: "ZAKAT", Name: "ZAKAT", Type: "DEDUCTION", CalculationType: "GROSS_PERCENTAGE"},
+	}
+
+	for _, seed := range seeds {
+		var component entity.SalaryComponent
+		if db.Where("code = ?", seed.Code).First(&component).Error != nil {
+			seed.IsActive = true
+			mustCreate(db, &seed)
+			fmt.Println("Created salary component:", seed.Code)
+		}
+	}
+}
+
 func main() {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s", dbHost, dbPort, dbUser, dbPassword, dbName, dbSSL, dbTZ)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("DB connect error: %v", err)
 	}
+	seedSalaryComponents(db)
 
 	company := findOrCreateCompany(db)
 	divisionIDs := map[string]string{}

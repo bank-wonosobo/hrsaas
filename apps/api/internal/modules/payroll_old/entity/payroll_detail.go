@@ -21,7 +21,9 @@ type PayrollDetail struct {
 	CreatedAt      int64   `gorm:"column:created_at;autoCreateTime:milli"`
 	UpdatedAt      int64   `gorm:"column:updated_at;autoUpdateTime:milli"`
 
-	Items []PayrollItem `gorm:"foreignKey:PayrollDetailID;references:ID"`
+	Items       []PayrollItem       `gorm:"foreignKey:PayrollDetailID;references:ID"`
+	Adjustments []PayrollAdjustment `gorm:"foreignKey:PayrollDetailID;references:ID"`
+	Payments    []PayrollPayment    `gorm:"foreignKey:PayrollDetailID;references:ID"`
 }
 
 // BeforeCreate hook to set UUID.
