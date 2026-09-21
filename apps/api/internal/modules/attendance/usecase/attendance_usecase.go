@@ -585,10 +585,12 @@ func (c *AttendanceUseCase) CheckIn(
 		return nil, fiber.NewError(fiber.StatusConflict, "Anda sudah melakukan check-out hari ini")
 	}
 
-	faceImageURL, err := c.UploadUseCase.SaveToS3(ctx, request.File)
+	faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
 	if err != nil {
-		c.Log.WithError(err).Error("Failed to upload check in selfie")
-		return nil, fiber.ErrInternalServerError
+		return nil, err
+	}
+	if !faceResult.Match {
+		return nil, fiber.NewError(fiber.StatusBadRequest, faceResult.Message)
 	}
 
 	logType := "CHECK_IN"
@@ -639,7 +641,7 @@ func (c *AttendanceUseCase) CheckIn(
 		Lng:                request.Lng,
 		LocationDistance:   distance,
 		IsLocationVerified: isLocationVerified,
-		FaceImageURL:       *faceImageURL,
+		FaceImageURL:       faceImageURL,
 		IsApproved:         isLocationVerified,
 		DeviceInfo:         request.DeviceInfo,
 	}
