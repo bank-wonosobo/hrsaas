@@ -1069,7 +1069,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	now time.Time,
 ) (string, error) {
 	jakarta := timepkg.JakartaLocation()
-	now = now.In(jakarta)
+	now = now.In(jakarta).Truncate(time.Minute)
 
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
 	if err != nil {
