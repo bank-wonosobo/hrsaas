@@ -270,9 +270,45 @@ func (c *AttendanceUseCase) Export(
 		return nil, fiber.ErrInternalServerError
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Failed to commit transaction")
-		return nil, fiber.ErrInternalServerError
+	// Cache shift lookups because an export can contain many attendance rows for
+	// the same employee and weekday.
+	employeeShifts := make(map[string]*entity.Shift)
+	shiftDays := make(map[string]*entity.ShiftDay)
+	getShiftDay := func(attendance entity.Attendance) (*entity.ShiftDay, bool, error) {
+		shift, loaded := employeeShifts[attendance.EmployeeID]
+		if !loaded {
+			shifts, findErr := c.ShiftRepository.FindByEmployeeID(tx, attendance.EmployeeID)
+			if findErr != nil {
+				return nil, false, findErr
+			}
+			if len(shifts) == 0 {
+				employeeShifts[attendance.EmployeeID] = nil
+				return nil, false, nil
+			}
+			shift = &shifts[0]
+			employeeShifts[attendance.EmployeeID] = shift
+		}
+		if shift == nil {
+			return nil, false, nil
+		}
+
+		date := time.UnixMilli(attendance.Date).In(timepkg.JakartaLocation())
+		weekday := (int(date.Weekday())+6)%7 + 1 // Shift weekdays are Monday=1 ... Sunday=7.
+		cacheKey := attendance.EmployeeID + ":" + strconv.Itoa(weekday)
+		if day, ok := shiftDays[cacheKey]; ok {
+			return day, true, nil
+		}
+
+		day := new(entity.ShiftDay)
+		if findErr := c.ShiftDayRepo.FindByShiftIDAndWeekday(tx, day, shift.ID, weekday); findErr != nil {
+			if errors.Is(findErr, gorm.ErrRecordNotFound) {
+				shiftDays[cacheKey] = nil
+				return nil, true, nil
+			}
+			return nil, false, findErr
+		}
+		shiftDays[cacheKey] = day
+		return day, true, nil
 	}
 
 	employeeMap := make(map[string]*model.AttendanceSheet)
@@ -292,23 +328,39 @@ func (c *AttendanceUseCase) Export(
 		}
 
 		var lateCheckIn string = "-"
-		if attendance.CheckInTime > 0 {
-			tIn := time.UnixMilli(attendance.CheckInTime)
-			diffStr, _ := timedifference.GetTimeDifference("07:45:00", tIn.Format("15:04:05"))
+		var lateCheckOut string = "-"
+		shiftDay, hasShift, err := getShiftDay(attendance)
+		if err != nil {
+			c.Log.WithError(err).Error("error getting employee shift day for export")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		checkInSchedule := "07:45:00"
+		checkOutSchedule := "17:00:00"
+		if time.UnixMilli(attendance.Date).In(timepkg.JakartaLocation()).Weekday() == time.Saturday {
+			checkOutSchedule = "12:00:00"
+		}
+		if hasShift {
+			checkInSchedule = ""
+			checkOutSchedule = ""
+			if shiftDay != nil {
+				checkInSchedule = shiftDay.CheckIn
+				checkOutSchedule = shiftDay.CheckOut
+			}
+		}
+
+		if attendance.CheckInTime > 0 && checkInSchedule != "" {
+			tIn := time.UnixMilli(attendance.CheckInTime).In(timepkg.JakartaLocation())
+			diffStr, _ := timedifference.GetTimeDifference(checkInSchedule, tIn.Format("15:04:05"))
 			if diffStr != "" {
 				lateCheckIn = diffStr
 			}
 		}
 
-		var lateCheckOut string = "-"
 		var catatan string
-		if attendance.CheckOutTime > 0 {
-			tOut := time.UnixMilli(attendance.CheckOutTime)
-			expectedOutStr := "17:00:00"
-			if tOut.Weekday() == time.Saturday {
-				expectedOutStr = "12:00:00"
-			}
-			diffStr, _ := timedifference.GetTimeDifference(tOut.Format("15:04:05"), expectedOutStr)
+		if attendance.CheckOutTime > 0 && checkOutSchedule != "" {
+			tOut := time.UnixMilli(attendance.CheckOutTime).In(timepkg.JakartaLocation())
+			diffStr, _ := timedifference.GetTimeDifference(tOut.Format("15:04:05"), checkOutSchedule)
 			if diffStr != "" {
 				lateCheckOut = diffStr
 			}
@@ -337,6 +389,11 @@ func (c *AttendanceUseCase) Export(
 		}
 
 		employeeMap[empID].Data = append(employeeMap[empID].Data, row)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
 	}
 
 	var sheets []model.AttendanceSheet
