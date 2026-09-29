@@ -23,6 +23,24 @@ func NewEmployeeEducationController(
 	return &EmployeeEducationController{UseCase: useCase, Log: log}
 }
 
+func (c *EmployeeEducationController) Create(ctx *fiber.Ctx) error {
+	request := new(model.CreateEmployeeEducationRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+
+	request.CompanyID = auth.GetCompanyId(ctx)
+	request.EmployeeID = auth.GetEmployeeId(ctx)
+
+	result, err := c.UseCase.Create(ctx.UserContext(), request)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeEducationResponse]{Data: result})
+}
+
 func (c *EmployeeEducationController) ListCurrent(ctx *fiber.Ctx) error {
 	request := &model.SearchEmployeeEducationRequest{
 		CompanyID:  auth.GetCompanyId(ctx),

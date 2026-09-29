@@ -20,6 +20,7 @@ import (
 	excel "hrsaas/pkg/excel"
 	face "hrsaas/pkg/face_recognition"
 	timedifference "hrsaas/pkg/time_difference"
+	"hrsaas/pkg/timezone"
 
 	"mime/multipart"
 	"time"
@@ -1088,14 +1089,16 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	scheduled := time.UnixMilli(shiftDay.CheckIn).In(time.FixedZone("UTC+07:07", 7*60*60+7*60))
+	location := time.FixedZone("UTC+07:07", 7*60*60+7*60)
+	nowWIB := now.In(location)
+	scheduled := time.UnixMilli(shiftDay.CheckIn).In(location)
 	deadline := time.Date(
-		now.Year(), now.Month(), now.Day(),
+		nowWIB.Year(), nowWIB.Month(), nowWIB.Day(),
 		scheduled.Hour(), scheduled.Minute(), 0, 0,
-		now.Location(),
+		location,
 	).Add(time.Duration(shift.LateTolerance) * time.Minute)
 
-	if now.After(deadline) {
+	if nowWIB.After(deadline) {
 		return "TERLAMBAT", nil
 	}
 
@@ -1160,4 +1163,30 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, fiber.ErrInternalServerError
 	}
 	return model.AttendanceLogToResponse(log), nil
+}
+
+func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	today := timezone.StartOfDay(timezone.Now()).UnixMilli()
+
+	stale, err := c.AttendanceRepository.FindUnclosedBeforeDate(tx, today)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to find unclosed attendances")
+		return 0, err
+	}
+
+	for _, a := range stale {
+		a.Status = "LUPA_ABSEN"
+		if err := c.AttendanceRepository.Update(tx, &a); err != nil {
+			c.Log.WithError(err).Error("Failed to mark attendance as LUPA_ABSEN")
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return 0, err
+	}
+	return len(stale), nil
 }
