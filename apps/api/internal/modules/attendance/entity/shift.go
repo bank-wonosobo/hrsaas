@@ -36,10 +36,10 @@ type ShiftDay struct {
 	ShiftID         string `gorm:"column:shift_id"`
 	Weekday         int    `gorm:"column:weekday"`
 	DayType         string `gorm:"column:day_type"`
-	CheckIn         int64  `gorm:"column:check_in;type:time"`
-	CheckOut        int64  `gorm:"column:check_out;type:time"`
-	BreakStart      int64  `gorm:"column:break_start;type:time"`
-	BreakEnd        int64  `gorm:"column:break_end;type:time"`
+	CheckIn         string `gorm:"column:check_in;type:varchar(8)"`
+	CheckOut        string `gorm:"column:check_out;type:varchar(8)"`
+	BreakStart      string `gorm:"column:break_start;type:varchar(8)"`
+	BreakEnd        string `gorm:"column:break_end;type:varchar(8)"`
 	MaxBreakMinutes int    `gorm:"column:max_break_minutes"`
 
 	CreatedAt int64 `gorm:"column:created_at"`

@@ -13,6 +13,8 @@ import {
   WEEKDAY_LABELS,
 } from "../schemas/shift-schema";
 
+const SHIFT_TIME_ZONE = "Asia/Jakarta";
+
 export function FormShift() {
   const [open, setOpen] = useState(false);
 
@@ -133,6 +135,7 @@ export function FormShift() {
                     <input
                       type="time"
                       lang="id-ID"
+                      data-timezone={SHIFT_TIME_ZONE}
                       disabled={!isWorkday}
                       {...form.register(`shift_days.${i}.check_in`)}
                       className="text-sm border border-zinc-200 rounded-lg px-2 py-1.5 outline-none focus:border-black disabled:bg-zinc-50 disabled:text-zinc-300 w-full"
@@ -140,6 +143,7 @@ export function FormShift() {
                     <input
                       type="time"
                       lang="id-ID"
+                      data-timezone={SHIFT_TIME_ZONE}
                       disabled={!isWorkday}
                       {...form.register(`shift_days.${i}.check_out`)}
                       className="text-sm border border-zinc-200 rounded-lg px-2 py-1.5 outline-none focus:border-black disabled:bg-zinc-50 disabled:text-zinc-300 w-full"
@@ -147,6 +151,7 @@ export function FormShift() {
                     <input
                       type="time"
                       lang="id-ID"
+                      data-timezone={SHIFT_TIME_ZONE}
                       disabled={!isWorkday}
                       {...form.register(`shift_days.${i}.break_start`)}
                       className="text-sm border border-zinc-200 rounded-lg px-2 py-1.5 outline-none focus:border-black disabled:bg-zinc-50 disabled:text-zinc-300 w-full"
@@ -154,6 +159,7 @@ export function FormShift() {
                     <input
                       type="time"
                       lang="id-ID"
+                      data-timezone={SHIFT_TIME_ZONE}
                       disabled={!isWorkday}
                       {...form.register(`shift_days.${i}.break_end`)}
                       className="text-sm border border-zinc-200 rounded-lg px-2 py-1.5 outline-none focus:border-black disabled:bg-zinc-50 disabled:text-zinc-300 w-full"

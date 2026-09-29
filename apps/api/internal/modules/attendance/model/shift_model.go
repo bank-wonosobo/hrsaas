@@ -19,10 +19,10 @@ type ShiftResponse struct {
 type ShiftDayResponse struct {
 	Weekday         int    `json:"weekday"`
 	DayType         string `json:"day_type"`
-	CheckIn         int64  `json:"check_in"`
-	CheckOut        int64  `json:"check_out"`
-	BreakStart      int64  `json:"break_start"`
-	BreakEnd        int64  `json:"break_end"`
+	CheckIn         string `json:"check_in"`
+	CheckOut        string `json:"check_out"`
+	BreakStart      string `json:"break_start"`
+	BreakEnd        string `json:"break_end"`
 	MaxBreakMinutes int    `json:"max_break_minutes"`
 }
 

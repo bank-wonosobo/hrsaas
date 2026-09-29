@@ -1,0 +1,47 @@
+@startuml flow-time-off
+title Flow User Time Off (Cuti/Izin)
+
+skinparam activity {
+  BackgroundColor #EFF6FF
+  BorderColor #2563EB
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF9C3
+  DiamondBorderColor #CA8A04
+}
+
+|User|
+start
+:Buka fitur Time Off;
+:Pilih jenis cuti/izin;
+:Isi tanggal, alasan, dan lampiran;
+:Kirim pengajuan;
+
+|Sistem|
+:Validasi data pengajuan;
+if (Data valid dan saldo mencukupi?) then (Ya)
+  :Simpan pengajuan;
+  :Kirim notifikasi ke atasan;
+  |Atasan|
+  :Buka detail pengajuan;
+  if (Setujui pengajuan?) then (Setujui)
+    :Setujui pengajuan;
+    |Sistem|
+    :Perbarui status menjadi Disetujui;
+    :Kurangi saldo cuti;
+    :Kirim notifikasi persetujuan;
+  else (Tolak)
+    :Tolak pengajuan dan isi alasan;
+    |Sistem|
+    :Perbarui status menjadi Ditolak;
+    :Kirim notifikasi penolakan;
+  endif
+else (Tidak)
+  :Tampilkan pesan validasi;
+  |User|
+  :Perbaiki data pengajuan;
+endif
+
+|User|
+:Lihat status dan riwayat pengajuan;
+stop
+@enduml

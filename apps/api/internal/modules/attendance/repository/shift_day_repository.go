@@ -3,7 +3,6 @@ package repository
 import (
 	"hrsaas/internal/modules/attendance/entity"
 	"hrsaas/pkg/repository"
-	pkg "hrsaas/pkg/time"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -51,23 +50,15 @@ func (r *ShiftDayRepository) FindByShiftIDAndWeekday(db *gorm.DB, shiftDay *enti
 		return err
 	}
 
-	checkIn, _ := pkg.ParseTimeToUnixMilli(row.CheckIn)
-
-	checkOut, _ := pkg.ParseTimeToUnixMilli(row.CheckOut)
-
-	breakStart, _ := pkg.ParseTimeToUnixMilli(row.BreakStart)
-
-	breakEnd, _ := pkg.ParseTimeToUnixMilli(row.BreakEnd)
-
 	*shiftDay = entity.ShiftDay{
 		ID:              row.ID,
 		ShiftID:         row.ShiftID,
 		Weekday:         row.Weekday,
 		DayType:         row.DayType,
-		CheckIn:         checkIn,
-		CheckOut:        checkOut,
-		BreakStart:      breakStart,
-		BreakEnd:        breakEnd,
+		CheckIn:         row.CheckIn,
+		CheckOut:        row.CheckOut,
+		BreakStart:      row.BreakStart,
+		BreakEnd:        row.BreakEnd,
 		MaxBreakMinutes: row.MaxBreakMinutes,
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
