@@ -1090,11 +1090,13 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	scheduled := time.UnixMilli(shiftDay.CheckIn).In(timepkg.JakartaLocation())
+	jakarta := timepkg.JakartaLocation()
+	now = now.In(jakarta)
+	scheduled := time.UnixMilli(shiftDay.CheckIn).In(jakarta)
 	deadline := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		scheduled.Hour(), scheduled.Minute(), 0, 0,
-		now.Location(),
+		jakarta,
 	).Add(time.Duration(shift.LateTolerance) * time.Minute)
 
 	if now.After(deadline) {
