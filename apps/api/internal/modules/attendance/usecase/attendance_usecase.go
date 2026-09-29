@@ -1108,7 +1108,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	c.Log.Infof("===== SCHEDULE ====== %v", scheduled)
 	c.Log.Infof("===== DEADLINE ====== %v", deadline)
 	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
-	c.Log.Infof("===== SHIFT TIME ====== %t", time.UnixMilli(shiftDay.CheckIn).In(jakarta))
+	c.Log.Infof("===== SHIFT TIME ====== %v", time.UnixMilli(shiftDay.CheckIn).In(jakarta))
 
 	if now.After(deadline) {
 		return "TERLAMBAT", nil
