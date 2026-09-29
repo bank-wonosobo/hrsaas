@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -20,7 +19,7 @@ func JakartaLocation() *time.Location {
 	return jakartaLocation
 }
 
-// ParseTimeHHMMOrHHMMSS parses "15:04" and "15:04:05" into time.Time (UTC).
+// ParseTimeHHMMOrHHMMSS parses "15:04" and "15:04:05" into time.Time in Asia/Jakarta.
 func ParseTimeHHMMOrHHMMSS(value string) (time.Time, error) {
 	if value == "" {
 		return time.Time{}, nil
@@ -32,13 +31,13 @@ func ParseTimeHHMMOrHHMMSS(value string) (time.Time, error) {
 		if !ok {
 			return time.Time{}, ErrInvalidTimeFormat
 		}
-		return time.Date(0, 1, 1, hour, minute, 0, 0, time.UTC), nil
+		return time.Date(0, 1, 1, hour, minute, 0, 0, jakartaLocation), nil
 	case 8:
 		hour, minute, second, ok := parseHHMMSS(value)
 		if !ok {
 			return time.Time{}, ErrInvalidTimeFormat
 		}
-		return time.Date(0, 1, 1, hour, minute, second, 0, time.UTC), nil
+		return time.Date(0, 1, 1, hour, minute, second, 0, jakartaLocation), nil
 	default:
 		return time.Time{}, ErrInvalidTimeFormat
 	}
@@ -94,10 +93,9 @@ func parseTwoDigits(a, b byte) (int, bool) {
 
 func ParseDateToUnixMilli(dateStr string) (int64, error) {
 
-	// Parse the string into a time.Time object
-	t, err := time.Parse("2006-01-02", dateStr)
+	// Parse the string into a time.Time object in Asia/Jakarta.
+	t, err := time.ParseInLocation("2006-01-02", dateStr, jakartaLocation)
 	if err != nil {
-		fmt.Println("Error parsing date:", err)
 		return 0, err
 	}
 
@@ -107,10 +105,9 @@ func ParseDateToUnixMilli(dateStr string) (int64, error) {
 
 func ParseDateToUnixMilli2(dateStr string) (int64, error) {
 
-	// Parse the string into a time.Time object
-	t, err := time.Parse("02/01/2006", dateStr)
+	// Parse the string into a time.Time object in Asia/Jakarta.
+	t, err := time.ParseInLocation("02/01/2006", dateStr, jakartaLocation)
 	if err != nil {
-		fmt.Println("Error parsing date:", err)
 		return 0, err
 	}
 

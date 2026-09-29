@@ -571,7 +571,7 @@ func (c *AttendanceUseCase) CheckIn(
 		return nil, err
 	}
 
-	now := time.Now()
+	now := time.Now().In(timepkg.JakartaLocation())
 
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
@@ -1070,8 +1070,6 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	employeeID string,
 	now time.Time,
 ) (string, error) {
-	jakarta := timepkg.JakartaLocation()
-	now = now.In(jakarta).Truncate(time.Minute)
 
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
 	if err != nil {
@@ -1092,7 +1090,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	scheduled := time.UnixMilli(shiftDay.CheckIn).In(jakarta)
+	scheduled := time.UnixMilli(shiftDay.CheckIn).In(timepkg.JakartaLocation())
 	deadline := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		scheduled.Hour(), scheduled.Minute(), 0, 0,
