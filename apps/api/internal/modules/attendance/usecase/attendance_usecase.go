@@ -1097,7 +1097,14 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		now.Hour(), now.Minute(), 0, 0,
 		jakarta,
 	)
-	shiftTime := time.UnixMilli(shiftDay.CheckIn).In(jakarta)
+	if shiftDay.CheckIn == "" {
+		return "HADIR", nil
+	}
+	shiftTime, err := timepkg.ParseTimeHHMMOrHHMMSS(shiftDay.CheckIn)
+	if err != nil {
+		c.Log.WithError(err).Error("Invalid shift check-in time")
+		return "", fiber.ErrInternalServerError
+	}
 	scheduled := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		shiftTime.Hour(), shiftTime.Minute(), 0, 0,
@@ -1105,10 +1112,11 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	)
 	deadline := scheduled.Add(time.Duration(shift.LateTolerance) * time.Minute)
 
+	c.Log.Infof("===== NOW ====== %v", now)
 	c.Log.Infof("===== SCHEDULE ====== %v", scheduled)
 	c.Log.Infof("===== DEADLINE ====== %v", deadline)
 	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
-	c.Log.Infof("===== SHIFT TIME ====== %v", time.UnixMilli(shiftDay.CheckIn).In(jakarta))
+	c.Log.Infof("===== SHIFT TIME ====== %s", shiftDay.CheckIn)
 
 	if now.After(deadline) {
 		return "TERLAMBAT", nil
