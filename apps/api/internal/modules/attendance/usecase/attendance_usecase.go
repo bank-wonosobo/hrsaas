@@ -1070,6 +1070,8 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	employeeID string,
 	now time.Time,
 ) (string, error) {
+	jakarta := timepkg.JakartaLocation()
+	now = now.In(jakarta)
 
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
 	if err != nil {
@@ -1090,18 +1092,23 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	jakarta := timepkg.JakartaLocation()
-	now = now.In(jakarta)
-	scheduled := time.UnixMilli(shiftDay.CheckIn).In(jakarta)
-	deadline := time.Date(
+	now = time.Date(
 		now.Year(), now.Month(), now.Day(),
-		scheduled.Hour(), scheduled.Minute(), 0, 0,
+		now.Hour(), now.Minute(), 0, 0,
 		jakarta,
-	).Add(time.Duration(shift.LateTolerance) * time.Minute).In(jakarta)
+	)
+	shiftTime := time.UnixMilli(shiftDay.CheckIn).In(jakarta)
+	scheduled := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		shiftTime.Hour(), shiftTime.Minute(), 0, 0,
+		jakarta,
+	)
+	deadline := scheduled.Add(time.Duration(shift.LateTolerance) * time.Minute)
 
-	c.Log.Println("===== SCHEDULE ======", scheduled)
-	c.Log.Println("===== DEADLINE ======", deadline)
-	c.Log.Println("===== NOW AFTER DEADLINE ======", now.After(deadline))
+	c.Log.Infof("===== SCHEDULE ====== %v", scheduled)
+	c.Log.Infof("===== DEADLINE ====== %v", deadline)
+	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
+	c.Log.Infof("===== SHIFT TIME ====== %t", time.UnixMilli(shiftDay.CheckIn).In(jakarta))
 
 	if now.After(deadline) {
 		return "TERLAMBAT", nil
