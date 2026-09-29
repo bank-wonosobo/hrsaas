@@ -1097,7 +1097,11 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		now.Year(), now.Month(), now.Day(),
 		scheduled.Hour(), scheduled.Minute(), 0, 0,
 		jakarta,
-	).Add(time.Duration(shift.LateTolerance) * time.Minute)
+	).Add(time.Duration(shift.LateTolerance) * time.Minute).In(jakarta)
+
+	c.Log.Println("===== SCHEDULE ======", scheduled)
+	c.Log.Println("===== DEADLINE ======", deadline)
+	c.Log.Println("===== NOW AFTER DEADLINE ======", now.After(deadline))
 
 	if now.After(deadline) {
 		return "TERLAMBAT", nil
