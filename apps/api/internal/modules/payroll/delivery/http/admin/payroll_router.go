@@ -16,9 +16,9 @@ func (h *PayrollHandler) RegisterRoutes(
 	payrolls.Get("/:id", protected("PAYROLLS", h.Detail)...)
 	payrolls.Delete("/:id", protected("PAYROLLS", h.Delete)...)
 	payrolls.Post("/:id/calculate", protected("PAYROLLS", h.Calculate)...)
-
-	payments := router.Group("/payroll-payments")
-	payments.Get("/", protected("PAYROLL_PAYMENTS", h.ListPayments)...)
-	payments.Get("/:id", protected("PAYROLL_PAYMENTS", h.PaymentDetail)...)
-	payments.Patch("/:id/status", protected("PAYROLL_PAYMENTS", h.UpdatePaymentStatus)...)
+	payrolls.Post("/:id/submit", protected("PAYROLLS", h.Submit)...)
+	payrolls.Post("/:id/approve", protected("PAYROLL_APPROVALS", h.Approve)...)
+	payrolls.Post("/:id/pay", protected("PAYROLL_PAYMENTS", h.Pay)...)
+	payrolls.Post("/:id/cancel", protected("PAYROLLS", h.Cancel)...)
+	payrolls.Get("/:id/approvals", protected("PAYROLL_APPROVALS", h.ListApprovals)...)
 }

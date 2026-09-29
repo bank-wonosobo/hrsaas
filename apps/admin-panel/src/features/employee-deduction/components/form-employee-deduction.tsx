@@ -114,6 +114,7 @@ export default function FormEmployeeDeduction({ employeeId, isOpen, onClose }: P
             <Input
               label="Persentase (%)"
               type="number"
+              step="any"
               min={0}
               max={100}
               {...form.register("percentage")}

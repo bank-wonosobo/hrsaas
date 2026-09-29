@@ -23,6 +23,38 @@ type ShiftUseCase struct {
 	ShiftDayRepo    *repository.ShiftDayRepository
 }
 
+func normalizeShiftTime(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	parsed, err := pkg.ParseTimeHHMMOrHHMMSS(value)
+	if err != nil {
+		return "", err
+	}
+	if value == "" {
+		return "", nil
+	}
+	return parsed.Format("15:04:05"), nil
+}
+
+func shiftDayTimes(request *model.ShiftDayRequest) (string, string, string, string, error) {
+	checkIn, err := normalizeShiftTime(request.CheckIn)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	checkOut, err := normalizeShiftTime(request.CheckOut)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	breakStart, err := normalizeShiftTime(request.BreakStart)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	breakEnd, err := normalizeShiftTime(request.BreakEnd)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	return checkIn, checkOut, breakStart, breakEnd, nil
+}
+
 func NewShiftUseCase(
 	db *gorm.DB,
 	log *logrus.Logger,
@@ -82,13 +114,11 @@ func (c *ShiftUseCase) Create(ctx context.Context, request *model.CreateShiftReq
 
 		shiftDays := make([]entity.ShiftDay, 0, len(request.ShiftDayRequests))
 		for _, shiftDayRequest := range request.ShiftDayRequests {
-			checkIn, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.CheckIn)
-
-			checkOut, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.CheckOut)
-
-			breakStart, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.BreakStart)
-
-			breakEnd, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.BreakEnd)
+			checkIn, checkOut, breakStart, breakEnd, err := shiftDayTimes(&shiftDayRequest)
+			if err != nil {
+				c.Log.WithError(err).Error("Invalid shift day time format")
+				return nil, fiber.ErrBadRequest
+			}
 
 			shiftDays = append(shiftDays, entity.ShiftDay{
 				ShiftID:         shift.ID,
@@ -285,10 +315,11 @@ func (c *ShiftUseCase) Update(ctx context.Context, shiftID string, companyID str
 			}
 			weekdayMask |= bit
 
-			checkIn, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.CheckIn)
-			checkOut, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.CheckOut)
-			breakStart, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.BreakStart)
-			breakEnd, _ := pkg.ParseTimeToUnixMilli(shiftDayRequest.BreakEnd)
+			checkIn, checkOut, breakStart, breakEnd, err := shiftDayTimes(&shiftDayRequest)
+			if err != nil {
+				c.Log.WithError(err).Error("Invalid shift day time format")
+				return nil, fiber.ErrBadRequest
+			}
 
 			shiftDays = append(shiftDays, entity.ShiftDay{
 				ShiftID:         shift.ID,

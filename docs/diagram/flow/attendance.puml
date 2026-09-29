@@ -1,0 +1,38 @@
+@startuml flow-attendance
+title Flow User Attendance (Absensi)
+
+skinparam activity {
+  BackgroundColor #ECFDF5
+  BorderColor #059669
+  ArrowColor #334155
+  DiamondBackgroundColor #FEF9C3
+  DiamondBorderColor #CA8A04
+}
+
+|User|
+start
+:Buka fitur Attendance;
+if (Sudah check-in?) then (Belum)
+  :Tekan tombol Check-in;
+  :Izinkan akses lokasi;
+  :Ambil foto/selfie;
+  |Sistem|
+  :Verifikasi data absensi;
+  :Simpan waktu check-in;
+  :Tampilkan check-in berhasil;
+else (Sudah)
+  :Tampilkan waktu check-in;
+endif
+
+|User|
+:Selesaikan jam kerja;
+:Tekan tombol Check-out;
+|Sistem|
+:Simpan waktu check-out;
+:Hitung durasi kerja;
+:Tampilkan check-out berhasil;
+
+|User|
+:Lihat riwayat attendance;
+stop
+@enduml

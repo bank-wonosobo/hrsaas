@@ -19,6 +19,7 @@ import (
 	distances "hrsaas/pkg/distance"
 	excel "hrsaas/pkg/excel"
 	face "hrsaas/pkg/face_recognition"
+	timepkg "hrsaas/pkg/time"
 	timedifference "hrsaas/pkg/time_difference"
 	"hrsaas/pkg/timezone"
 
@@ -571,7 +572,7 @@ func (c *AttendanceUseCase) CheckIn(
 		return nil, err
 	}
 
-	now := time.Now()
+	now := time.Now().In(timepkg.JakartaLocation())
 
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
@@ -1070,6 +1071,9 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	employeeID string,
 	now time.Time,
 ) (string, error) {
+	jakarta := timepkg.JakartaLocation()
+	now = now.In(jakarta)
+
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
 	if err != nil {
 		c.Log.WithError(err).Error("Failed to find employee shifts")
@@ -1089,18 +1093,31 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
-	location := time.FixedZone("UTC+07:07", 7*60*60+7*60)
-	nowWIB := now.In(location)
-	scheduled := time.UnixMilli(shiftDay.CheckIn).In(location)
-	deadline := time.Date(
-		nowWIB.Year(), nowWIB.Month(), nowWIB.Day(),
-		scheduled.Hour(), scheduled.Minute(), 0, 0,
-		location,
-	).Add(time.Duration(shift.LateTolerance) * time.Minute)
-
-	if nowWIB.After(deadline) {
-		return "TERLAMBAT", nil
+	now = time.Date(
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), 0, 0,
+		jakarta,
+	)
+	if shiftDay.CheckIn == "" {
+		return "HADIR", nil
 	}
+	shiftTime, err := timepkg.ParseTimeHHMMOrHHMMSS(shiftDay.CheckIn)
+	if err != nil {
+		c.Log.WithError(err).Error("Invalid shift check-in time")
+		return "", fiber.ErrInternalServerError
+	}
+	scheduled := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		shiftTime.Hour(), shiftTime.Minute(), 0, 0,
+		jakarta,
+	)
+	deadline := scheduled.Add(time.Duration(shift.LateTolerance) * time.Minute)
+
+	c.Log.Infof("===== NOW ====== %v", now)
+	c.Log.Infof("===== SCHEDULE ====== %v", scheduled)
+	c.Log.Infof("===== DEADLINE ====== %v", deadline)
+	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
+	c.Log.Infof("===== SHIFT TIME ====== %s", shiftDay.CheckIn)
 
 	return "HADIR", nil
 }

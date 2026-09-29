@@ -130,8 +130,10 @@ export default function PayrollDetailModal({
 }: Props) {
   const { mutate: removeAdjustment } = useDeletePayrollAdjustment(payrollId);
 
-  const earnings = detail.items?.filter((i) => i.type === "EARNING") ?? [];
-  const deductions = detail.items?.filter((i) => i.type === "DEDUCTION") ?? [];
+  const items = detail.items ?? [];
+  const allowanceItems = items.filter((item) => item.type === "EARNING");
+  const deductionItems = items.filter((item) => item.type === "DEDUCTION");
+  const totalAllowance = Math.max(detail.total_earning - detail.basic_salary, 0);
 
   const handleDeleteAdjustment = (id: string) => {
     if (!confirm("Yakin ingin menghapus penyesuaian ini?")) return;
@@ -149,11 +151,15 @@ export default function PayrollDetailModal({
         <div className="grid grid-cols-3 gap-3 rounded-xl bg-zinc-50 p-3">
           <div>
             <p className="text-xs text-zinc-400">Gaji Pokok</p>
-            <p className="text-sm font-semibold">{formatRupiah(detail.basic_salary)}</p>
+            <p className="text-sm font-semibold">
+              {formatRupiah(detail.basic_salary)}
+            </p>
           </div>
           <div>
             <p className="text-xs text-zinc-400">Total Potongan</p>
-            <p className="text-sm font-semibold">{formatRupiah(detail.total_deduction)}</p>
+            <p className="text-sm font-semibold">
+              {formatRupiah(detail.total_deduction)}
+            </p>
           </div>
           <div>
             <p className="text-xs text-zinc-400">Take Home Pay</p>
@@ -165,37 +171,91 @@ export default function PayrollDetailModal({
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-            Komponen Penambah
+            Allowance
           </p>
-          <div className="space-y-1.5">
-            {earnings.length === 0 && (
-              <p className="text-sm text-zinc-400 italic">Tidak ada.</p>
-            )}
-            {earnings.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-zinc-700">{item.name}</span>
-                <span className="font-medium">{formatRupiah(item.amount)}</span>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-xl border border-zinc-200">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Komponen</th>
+                  <th className="px-3 py-2 text-right font-medium">Nilai Perhitungan</th>
+                  <th className="px-3 py-2 text-right font-medium">Nominal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {allowanceItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-4 text-center text-zinc-400 italic">
+                      Tidak ada allowance.
+                    </td>
+                  </tr>
+                ) : (
+                  allowanceItems.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-2 text-zinc-700">{item.name}</td>
+                      <td className="px-3 py-2 text-right text-zinc-500">
+                        {item.calculation_value ?? "-"}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-zinc-800">
+                        {formatRupiah(item.amount)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot className="border-t border-zinc-200 bg-zinc-50 text-sm font-semibold">
+                <tr>
+                  <td colSpan={2} className="px-3 py-2 text-right">Total Allowance</td>
+                  <td className="px-3 py-2 text-right text-green-700">
+                    {formatRupiah(totalAllowance)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        </div>
 
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-            Komponen Potongan
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2 mt-4">
+            Deduction
           </p>
-          <div className="space-y-1.5">
-            {deductions.length === 0 && (
-              <p className="text-sm text-zinc-400 italic">Tidak ada.</p>
-            )}
-            {deductions.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-zinc-700">{item.name}</span>
-                <span className="font-medium text-red-600">
-                  -{formatRupiah(item.amount)}
-                </span>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-xl border border-zinc-200">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Komponen</th>
+                  <th className="px-3 py-2 text-right font-medium">Nilai Perhitungan</th>
+                  <th className="px-3 py-2 text-right font-medium">Nominal</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {deductionItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-4 text-center text-zinc-400 italic">
+                      Tidak ada deduction.
+                    </td>
+                  </tr>
+                ) : (
+                  deductionItems.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-2 text-zinc-700">{item.name}</td>
+                      <td className="px-3 py-2 text-right text-zinc-500">
+                        {item.calculation_value ?? "-"}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-red-600">
+                        -{formatRupiah(item.amount)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot className="border-t border-zinc-200 bg-zinc-50 text-sm font-semibold">
+                <tr>
+                  <td colSpan={2} className="px-3 py-2 text-right">Total Deduction</td>
+                  <td className="px-3 py-2 text-right text-red-600">
+                    -{formatRupiah(detail.total_deduction)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
 
@@ -205,7 +265,9 @@ export default function PayrollDetailModal({
           </p>
           <div className="space-y-1.5 mb-3">
             {(detail.adjustments ?? []).length === 0 && (
-              <p className="text-sm text-zinc-400 italic">Belum ada penyesuaian.</p>
+              <p className="text-sm text-zinc-400 italic">
+                Belum ada penyesuaian.
+              </p>
             )}
             {(detail.adjustments ?? []).map((adj) => (
               <div
@@ -239,7 +301,8 @@ export default function PayrollDetailModal({
             <AdjustmentForm payrollDetailId={detail.id} payrollId={payrollId} />
           ) : (
             <p className="text-xs text-zinc-400 italic">
-              Penyesuaian hanya bisa diubah saat payroll berstatus Draft/Terhitung.
+              Penyesuaian hanya bisa diubah saat payroll berstatus
+              Draft/Terhitung.
             </p>
           )}
         </div>

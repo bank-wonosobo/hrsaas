@@ -1,7 +1,8 @@
 "use client";
 
 import toIDDate, { formatRupiah } from "@/lib/utils";
-import { Pencil, Trash2, Wallet } from "lucide-react";
+import Table from "@/components/ui/table/table";
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useDeleteEmployeeSalary } from "../hooks/use-delete-employee-salary";
 import { useGetEmployeeSalaries } from "../hooks/use-get-employee-salaries";
@@ -16,62 +17,6 @@ const isActivePeriod = (start: number, end?: number | null) => {
   const now = Date.now();
   return start <= now && (!end || end >= now);
 };
-
-function SalaryCard({
-  salary,
-  onEdit,
-  onDelete,
-}: {
-  salary: EmployeeSalary;
-  onEdit: (s: EmployeeSalary) => void;
-  onDelete: (s: EmployeeSalary) => void;
-}) {
-  const active = isActivePeriod(salary.effective_date, salary.end_date);
-
-  return (
-    <div className="border border-zinc-200 rounded-xl p-4 space-y-2 bg-white">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Wallet size={14} className="text-zinc-400" />
-          <span className="text-sm font-semibold text-zinc-800">
-            {formatRupiah(salary.basic_salary)}
-          </span>
-          <span
-            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-              active ? "bg-green-100 text-green-700" : "bg-zinc-100 text-zinc-500"
-            }`}
-          >
-            {active ? "Aktif" : "Berakhir"}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onEdit(salary)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={() => onDelete(salary)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
-
-      <div className="text-sm text-zinc-500">
-        {toIDDate(new Date(salary.effective_date))}
-        {" – "}
-        {salary.end_date ? (
-          toIDDate(new Date(salary.end_date))
-        ) : (
-          <span className="text-zinc-400 italic">masih berlaku</span>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function ListEmployeeSalary({ employeeId }: Props) {
   const [editTarget, setEditTarget] = useState<EmployeeSalary | null>(null);
@@ -93,13 +38,6 @@ export default function ListEmployeeSalary({ employeeId }: Props) {
 
   const salaries = data?.data ?? [];
 
-  if (salaries.length === 0)
-    return (
-      <div className="text-sm text-zinc-400 py-4 text-center">
-        Belum ada data gaji pokok.
-      </div>
-    );
-
   return (
     <>
       {editTarget && (
@@ -109,16 +47,34 @@ export default function ListEmployeeSalary({ employeeId }: Props) {
           onClose={() => setEditTarget(null)}
         />
       )}
-      <div className="space-y-3">
-        {salaries.map((salary) => (
-          <SalaryCard
-            key={salary.id}
-            salary={salary}
-            onEdit={setEditTarget}
-            onDelete={handleDelete}
-          />
-        ))}
-      </div>
+      <Table
+        data={salaries}
+        keyExtractor={(salary) => salary.id}
+        emptyMessage="Belum ada data gaji pokok."
+        columns={[
+          { header: "Gaji pokok", accessor: (salary) => formatRupiah(salary.basic_salary) },
+          {
+            header: "Berlaku",
+            accessor: (salary) => `${toIDDate(new Date(salary.effective_date))} – ${salary.end_date ? toIDDate(new Date(salary.end_date)) : "masih berlaku"}`,
+          },
+          {
+            header: "Status",
+            accessor: (salary) => {
+              const active = isActivePeriod(salary.effective_date, salary.end_date);
+              return <span className={`font-medium ${active ? "text-green-700" : "text-zinc-500"}`}>{active ? "Aktif" : "Berakhir"}</span>;
+            },
+          },
+          {
+            header: "Aksi",
+            accessor: (salary) => (
+              <div className="flex gap-1">
+                <button aria-label="Edit gaji" onClick={() => setEditTarget(salary)} className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100"><Pencil size={14} /></button>
+                <button aria-label="Hapus gaji" onClick={() => handleDelete(salary)} className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
+              </div>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

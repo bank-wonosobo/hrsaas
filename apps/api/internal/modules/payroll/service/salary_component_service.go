@@ -20,6 +20,54 @@ type SalaryComponentService interface {
 		ctx context.Context,
 		request *dto.SearchSalaryComponentRequest,
 	) ([]dto.SalaryComponentResponse, int64, error)
+	Detail(ctx context.Context, id string) (*dto.SalaryComponentResponse, error)
+	Update(ctx context.Context, id string, req *dto.UpdateSalaryComponentRequest) (*dto.SalaryComponentResponse, error)
+	Delete(ctx context.Context, id string) error
+}
+
+func (s *salaryComponentService) Detail(ctx context.Context, id string) (*dto.SalaryComponentResponse, error) {
+	item, err := s.SalaryComponentRepo.FindByID(s.DB.WithContext(ctx), id)
+	if err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	return dto.SalaryComponentToResponse(item), nil
+}
+
+func (s *salaryComponentService) Update(ctx context.Context, id string, req *dto.UpdateSalaryComponentRequest) (*dto.SalaryComponentResponse, error) {
+	item, err := s.SalaryComponentRepo.FindByID(s.DB.WithContext(ctx), id)
+	if err != nil {
+		return nil, fiber.ErrNotFound
+	}
+	if req.Name != nil {
+		item.Name = strings.TrimSpace(*req.Name)
+	}
+	if req.Type != nil {
+		item.Type = *req.Type
+	}
+	if req.CalculationType != nil {
+		item.CalculationType = *req.CalculationType
+	}
+	if req.IsTaxable != nil {
+		item.IsTaxable = *req.IsTaxable
+	}
+	if req.IsBpjsBase != nil {
+		item.IsBpjsBase = *req.IsBpjsBase
+	}
+	if req.IsActive != nil {
+		item.IsActive = *req.IsActive
+	}
+	if err := s.DB.WithContext(ctx).Save(item).Error; err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	return dto.SalaryComponentToResponse(item), nil
+}
+
+func (s *salaryComponentService) Delete(ctx context.Context, id string) error {
+	item, err := s.SalaryComponentRepo.FindByID(s.DB.WithContext(ctx), id)
+	if err != nil {
+		return fiber.ErrNotFound
+	}
+	return s.DB.WithContext(ctx).Delete(item).Error
 }
 
 func (s *salaryComponentService) List(ctx context.Context, request *dto.SearchSalaryComponentRequest) ([]dto.SalaryComponentResponse, int64, error) {
