@@ -23,6 +23,24 @@ func NewEmployeeTrainingController(
 	return &EmployeeTrainingController{EmployeeTrainingUseCase: useCase, Log: log}
 }
 
+func (c *EmployeeTrainingController) Create(ctx *fiber.Ctx) error {
+	request := new(model.CreateEmployeeTrainingRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+
+	request.CompanyID = auth.GetCompanyId(ctx)
+	request.EmployeeID = auth.GetEmployeeId(ctx)
+	
+	result, err := c.EmployeeTrainingUseCase.Create(ctx.UserContext(), request)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.EmployeeTrainingResponse]{Data: result})
+}
+
 // ListCurrent memuat riwayat pelatihan milik karyawan yang sedang login.
 func (c *EmployeeTrainingController) ListCurrent(ctx *fiber.Ctx) error {
 	request := &model.SearchEmployeeTrainingRequest{

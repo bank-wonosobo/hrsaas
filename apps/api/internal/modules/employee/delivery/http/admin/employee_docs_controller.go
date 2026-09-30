@@ -15,7 +15,10 @@ type EmployeeDocumentController struct {
 	Log     *logrus.Logger
 }
 
-func NewEmployeeDocumentController(useCase *usecase.EmployeeDocumentUseCase, log *logrus.Logger) *EmployeeDocumentController {
+func NewEmployeeDocumentController(
+	useCase *usecase.EmployeeDocumentUseCase,
+	log *logrus.Logger,
+) *EmployeeDocumentController {
 	return &EmployeeDocumentController{UseCase: useCase, Log: log}
 }
 

@@ -12,6 +12,7 @@ func (c *CollectingController) RegisterRoutes(
 	route := router.Group("/collecting")
 	route.Get("/admin", protected("REMIDIAL_VISITS", c.ListAdmin)...)
 	route.Get("/_export", protected("REMIDIAL_VISITS", c.Export)...)
+	route.Get("/:no_pjm/history", protected("REMIDIAL_VISITS", c.ListByNoPjm)...)
 	route.Put("/:remidial_visit_id", protected("REMIDIAL_VISITS", c.Update)...)
 	route.Delete("/:remidial_visit_id/delete", protected("REMIDIAL_VISITS", c.Delete)...)
 }

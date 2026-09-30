@@ -165,6 +165,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		shiftDayRepository,
 		attendanceLogRepository,
 		employeeRepository,
+		timeOffRequestRepository,
 		userRepository,
 		uploadUseCase,
 		cfg.Config.GetString("face.base_url"),

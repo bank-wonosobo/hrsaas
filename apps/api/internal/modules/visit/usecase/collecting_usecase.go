@@ -249,6 +249,8 @@ func (c *CollectingUseCase) ExportToExcel(
 			NasabahName:        visit.NasabahName,
 			NoPjm:              visit.NoPjm,
 			Collectibility:     visit.Collectibility,
+			Unit:               visit.Unit,
+			LoanType:           visit.LoanType,
 			OutstandingBalance: visit.OutstandingBalance,
 			OverdueTotal:       visit.OverdueTotal,
 			TotalPaid:          visit.TotalPaid,
