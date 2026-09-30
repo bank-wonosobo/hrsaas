@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"hrsaas/internal/modules/payroll/entity"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
@@ -289,6 +290,107 @@ type AttendanceLog struct {
 }
 
 func (AttendanceLog) TableName() string { return "attendance_logs" }
+
+func seedAttendance(db *gorm.DB, companyID string) {
+	wib := time.FixedZone("WIB", 7*60*60)
+	today := time.Now().In(wib)
+	start := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, wib)
+	end := time.Date(today.Year(), today.Month(), today.Day()+1, 0, 0, 0, 0, wib)
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	var emps []Employee
+	if err := db.Where("company_id = ?", companyID).Order("employee_number").Find(&emps).Error; err != nil {
+		log.Fatalf("seed find employees error: %v", err)
+	}
+
+	var existing []Attendance
+	if err := db.Where("company_id = ? AND date >= ? AND date < ?", companyID, start.UnixMilli(), end.UnixMilli()).Find(&existing).Error; err != nil {
+		log.Fatalf("seed find attendances error: %v", err)
+	}
+	existingByEmployeeDate := make(map[string]bool, len(existing))
+	for _, attendance := range existing {
+		existingByEmployeeDate[attendance.EmployeeID+":"+fmt.Sprint(attendance.Date)] = true
+	}
+
+	attendances := make([]Attendance, 0, len(emps)*23)
+	logs := make([]AttendanceLog, 0, len(emps)*46)
+	for _, emp := range emps {
+		for day := start; day.Before(end); day = day.AddDate(0, 0, 1) {
+			if day.Weekday() == time.Saturday || day.Weekday() == time.Sunday {
+				continue
+			}
+
+			date := day.UnixMilli()
+			key := emp.ID + ":" + fmt.Sprint(date)
+			if existingByEmployeeDate[key] {
+				continue
+			}
+
+			statusRoll := random.Intn(100)
+			status := "HADIR"
+			switch {
+			case statusRoll < 8:
+				status = "ALPHA"
+			case statusRoll < 13:
+				status = "IZIN"
+			case statusRoll < 18:
+				status = "SAKIT"
+			case statusRoll < 35:
+				status = "TERLAMBAT"
+			}
+
+			attendance := Attendance{
+				ID: id(), CompanyID: companyID, EmployeeID: emp.ID, Date: date,
+				Status: status, CreatedAt: now(), UpdatedAt: now(),
+			}
+			if status == "HADIR" || status == "TERLAMBAT" {
+				checkInHour, checkInMinute := 7, random.Intn(16)
+				if status == "TERLAMBAT" {
+					checkInHour, checkInMinute = 8+random.Intn(2), random.Intn(60)
+				}
+				checkIn := time.Date(day.Year(), day.Month(), day.Day(), checkInHour, checkInMinute, 0, 0, wib).UnixMilli()
+				checkOut := time.Date(day.Year(), day.Month(), day.Day(), 16+random.Intn(2), random.Intn(60), 0, 0, wib).UnixMilli()
+				attendance.CheckInTime = checkIn
+				attendance.CheckOutTime = checkOut
+				attendance.TotalWorkMinutes = int((checkOut - checkIn) / int64(time.Minute))
+				attendance.TotalBreakMinutes = 60
+
+				for _, logTypeAndTime := range []struct {
+					typ  string
+					time int64
+				}{{"CHECK_IN", checkIn}, {"CHECK_OUT", checkOut}} {
+					logs = append(logs, AttendanceLog{
+						ID: id(), AttendanceID: attendance.ID, Type: logTypeAndTime.typ,
+						Time: logTypeAndTime.time, Lat: -7.363, Lng: 109.903,
+						LocationDistance: 25, IsLocationVerified: true, IsFaceVerified: true,
+						FaceConfidence: 0.98, FaceImageURL: "https://placehold.co/400x400?text=selfie",
+						DeviceInfo: "seeder", IsApproved: true, ReviewedAt: now(),
+						CreatedAt: now(), UpdatedAt: now(),
+					})
+				}
+			}
+			attendances = append(attendances, attendance)
+			existingByEmployeeDate[key] = true
+		}
+	}
+
+	if len(attendances) == 0 {
+		return
+	}
+	tx := db.Begin()
+	if err := tx.CreateInBatches(&attendances, 100).Error; err != nil {
+		tx.Rollback()
+		log.Fatalf("seed attendance insert error: %v", err)
+	}
+	if err := tx.CreateInBatches(&logs, 100).Error; err != nil {
+		tx.Rollback()
+		log.Fatalf("seed attendance log insert error: %v", err)
+	}
+	if err := tx.Commit().Error; err != nil {
+		log.Fatalf("seed attendance transaction error: %v", err)
+	}
+	fmt.Printf("Created %d attendance records and %d attendance logs\n", len(attendances), len(logs))
+}
 
 func seedPendingLogs(db *gorm.DB, companyID, reviewerID string) {
 	wib := time.FixedZone("WIB", 7*60*60)
@@ -577,6 +679,7 @@ func main() {
 		}
 	}
 
+	seedAttendance(db, company.ID)
 	seedPendingLogs(db, company.ID, adminUser.ID)
 
 	fmt.Println("Seeding selesai!")

@@ -552,8 +552,8 @@ func ExportCreditCollectionToExcel(
 
 		// Judul
 		f.SetCellValue(sheetName, "B1", "REKAP COLLECTING (REMIDIAL)")
-		f.MergeCell(sheetName, "B1", "J1")
-		f.SetCellStyle(sheetName, "A1", "J1", titleStyle)
+		f.MergeCell(sheetName, "B1", "L1")
+		f.SetCellStyle(sheetName, "A1", "L1", titleStyle)
 
 		// Detail Personalia
 		f.SetCellValue(sheetName, "B3", "PT BPR BANK WONOSOBO (PERSERODA)")
@@ -592,7 +592,9 @@ func ExportCreditCollectionToExcel(
 			"Nama Nasabah",
 			"No Pinjaman",
 			"Kolektibilitas",
-			"Saldo Pinjaman",
+			"Unit",
+			"Jenis Pinjaman",
+			"Sisa Pinjaman",
 			"Tunggakan Total",
 			"Total Dibayar",
 			"Komitmen",
@@ -601,7 +603,7 @@ func ExportCreditCollectionToExcel(
 			cell, _ := excelize.CoordinatesToCellName(col+2, 9) // starts from column B (2)
 			f.SetCellValue(sheetName, cell, h)
 		}
-		f.SetCellStyle(sheetName, "B9", "J9", headerStyle)
+		f.SetCellStyle(sheetName, "B9", "L9", headerStyle)
 
 		no := 1
 		// Data
@@ -618,26 +620,30 @@ func ExportCreditCollectionToExcel(
 			f.SetCellValue(sheetName, fmt.Sprintf("D%d", r), collecting.NasabahName)
 			f.SetCellValue(sheetName, fmt.Sprintf("E%d", r), collecting.NoPjm)
 			f.SetCellValue(sheetName, fmt.Sprintf("F%d", r), collecting.Collectibility)
-			f.SetCellValue(sheetName, fmt.Sprintf("G%d", r), collecting.OutstandingBalance)
-			f.SetCellValue(sheetName, fmt.Sprintf("H%d", r), collecting.OverdueTotal)
-			f.SetCellValue(sheetName, fmt.Sprintf("I%d", r), collecting.TotalPaid)
-			f.SetCellValue(sheetName, fmt.Sprintf("J%d", r), collecting.Commitment)
+			f.SetCellValue(sheetName, fmt.Sprintf("G%d", r), collecting.Unit)
+			f.SetCellValue(sheetName, fmt.Sprintf("H%d", r), collecting.LoanType)
+			f.SetCellValue(sheetName, fmt.Sprintf("I%d", r), collecting.OutstandingBalance)
+			f.SetCellValue(sheetName, fmt.Sprintf("J%d", r), collecting.OverdueTotal)
+			f.SetCellValue(sheetName, fmt.Sprintf("K%d", r), collecting.TotalPaid)
+			f.SetCellValue(sheetName, fmt.Sprintf("L%d", r), collecting.Commitment)
 
-			f.SetCellStyle(sheetName, fmt.Sprintf("B%d", r), fmt.Sprintf("J%d", r), cellStyle)
-			f.SetCellStyle(sheetName, fmt.Sprintf("G%d", r), fmt.Sprintf("I%d", r), currencyStyle)
+			f.SetCellStyle(sheetName, fmt.Sprintf("B%d", r), fmt.Sprintf("L%d", r), cellStyle)
+			f.SetCellStyle(sheetName, fmt.Sprintf("I%d", r), fmt.Sprintf("K%d", r), currencyStyle)
 			no++
 		}
 
 		// Atur lebar kolom
 		f.SetColWidth(sheetName, "A", "A", 5)
-		f.SetColWidth(sheetName, "B", "B", 10)
+		f.SetColWidth(sheetName, "B", "B", 20)
 		f.SetColWidth(sheetName, "C", "C", 22)
 		f.SetColWidth(sheetName, "D", "D", 30)
 		f.SetColWidth(sheetName, "E", "E", 20)
 		f.SetColWidth(sheetName, "F", "F", 15)
 		f.SetColWidth(sheetName, "G", "H", 20)
 		f.SetColWidth(sheetName, "I", "I", 20)
-		f.SetColWidth(sheetName, "J", "J", 40)
+		f.SetColWidth(sheetName, "J", "J", 20)
+		f.SetColWidth(sheetName, "K", "K", 20)
+		f.SetColWidth(sheetName, "L", "L", 40)
 
 		f.SetRowHeight(sheetName, 1, 30)
 		f.SetRowHeight(sheetName, 3, 30)

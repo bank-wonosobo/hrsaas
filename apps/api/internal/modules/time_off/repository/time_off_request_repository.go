@@ -110,3 +110,30 @@ func (r *TimeOffRequestRepository) applyFilters(
 
 	return query
 }
+
+func (r *TimeOffRequestRepository) FindApprovedInRange(
+	db *gorm.DB,
+	companyID, employeeID string,
+	from, to int64,
+) ([]entity.TimeOffRequest, error) {
+	var items []entity.TimeOffRequest
+
+	query := db.Model(&entity.TimeOffRequest{}).
+		Where("company_id = ? AND request_status = ?", companyID, "APPROVED")
+	if employeeID != "" {
+		query = query.Where("employee_id = ?", employeeID)
+	}
+	if to > 0 {
+		query = query.Where("start_date <= ?", to)
+	}
+	if from > 0 {
+		query = query.Where("COALESCE(end_date, start_date) >= ?", from)
+	}
+
+	err := query.
+		Preload("Employee").
+		Preload("TimeOffType").
+		Order("start_date ASC").
+		Find(&items).Error
+	return items, err
+}

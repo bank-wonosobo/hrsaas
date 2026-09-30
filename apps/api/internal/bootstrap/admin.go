@@ -180,6 +180,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		shiftDayRepository,
 		attendanceLogRepository,
 		employeeRepository,
+		timeOffRequestRepository,
 		userRepository,
 		cfg.Upload,
 		cfg.Config.GetString("face.base_url"),
@@ -356,6 +357,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		*employeeSalaryRepository,
 		*employeeAllowanceRepository,
 		*employeeDeductionRepository,
+		attendanceRepository,
 	)
 	// module visit
 	visitUseCase := visitUc.NewVisitUseCase(
@@ -457,7 +459,11 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Log,
 	)
 	payrollHandler := payrollHttp.NewPayrollHandler(payrollService, cfg.Validator, cfg.Log)
-	payrollPaymentController := payrollHttp.NewPayrollPaymentController(payrollService, cfg.Validator, cfg.Log)
+	payrollPaymentController := payrollHttp.NewPayrollPaymentController(
+		payrollService,
+		cfg.Validator,
+		cfg.Log,
+	)
 	// module visit
 	visitController := visitHttp.NewVisitController(visitUseCase, cfg.Log)
 	collectingController := collectingHttp.NewCollectingController(collectingUseCase, cfg.Log)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sort"
 	"strconv"
 
 	"hrsaas/internal/modules/attendance/entity"
@@ -13,6 +14,7 @@ import (
 	"hrsaas/internal/modules/attendance/repository"
 	employeeEntity "hrsaas/internal/modules/employee/entity"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
+	timeOffRepo "hrsaas/internal/modules/time_off/repository"
 	"hrsaas/internal/modules/upload"
 	userEntity "hrsaas/internal/modules/user/entity"
 	userRepo "hrsaas/internal/modules/user/repository"
@@ -21,6 +23,7 @@ import (
 	face "hrsaas/pkg/face_recognition"
 	timepkg "hrsaas/pkg/time"
 	timedifference "hrsaas/pkg/time_difference"
+	"hrsaas/pkg/timezone"
 
 	"mime/multipart"
 	"time"
@@ -33,18 +36,19 @@ import (
 )
 
 type AttendanceUseCase struct {
-	DB                   *gorm.DB
-	Log                  *logrus.Logger
-	Validate             *validator.Validate
-	AttendanceRepository *repository.AttendanceRepository
-	LocationRepository   *repository.OfficeLocationRepository
-	ShiftRepository      *repository.ShiftRepository
-	ShiftDayRepo         *repository.ShiftDayRepository
-	AttendanceLogRepo    *repository.AttendanceLogRepository
-	EmployeeRepository   *employeeRepo.EmployeeRepository
-	UserRepository       *userRepo.UserRepository
-	UploadUseCase        *upload.UploadUseCase
-	FaceServiceURL       string
+	DB                       *gorm.DB
+	Log                      *logrus.Logger
+	Validate                 *validator.Validate
+	AttendanceRepository     *repository.AttendanceRepository
+	LocationRepository       *repository.OfficeLocationRepository
+	ShiftRepository          *repository.ShiftRepository
+	ShiftDayRepo             *repository.ShiftDayRepository
+	AttendanceLogRepo        *repository.AttendanceLogRepository
+	EmployeeRepository       *employeeRepo.EmployeeRepository
+	TimeOffRequestRepository *timeOffRepo.TimeOffRequestRepository
+	UserRepository           *userRepo.UserRepository
+	UploadUseCase            *upload.UploadUseCase
+	FaceServiceURL           string
 }
 
 func NewAttendanceUseCase(
@@ -57,23 +61,25 @@ func NewAttendanceUseCase(
 	shiftDayRepo *repository.ShiftDayRepository,
 	attendanceLogRepo *repository.AttendanceLogRepository,
 	employeeRepository *employeeRepo.EmployeeRepository,
+	timeOffRequestRepository *timeOffRepo.TimeOffRequestRepository,
 	userRepository *userRepo.UserRepository,
 	uploadUseCase *upload.UploadUseCase,
 	faceServiceURL string,
 ) *AttendanceUseCase {
 	return &AttendanceUseCase{
-		DB:                   db,
-		Log:                  log,
-		Validate:             validate,
-		AttendanceRepository: attendanceRepository,
-		LocationRepository:   locationRepository,
-		ShiftRepository:      shiftRepository,
-		ShiftDayRepo:         shiftDayRepo,
-		AttendanceLogRepo:    attendanceLogRepo,
-		EmployeeRepository:   employeeRepository,
-		UserRepository:       userRepository,
-		UploadUseCase:        uploadUseCase,
-		FaceServiceURL:       faceServiceURL,
+		DB:                       db,
+		Log:                      log,
+		Validate:                 validate,
+		AttendanceRepository:     attendanceRepository,
+		LocationRepository:       locationRepository,
+		ShiftRepository:          shiftRepository,
+		ShiftDayRepo:             shiftDayRepo,
+		AttendanceLogRepo:        attendanceLogRepo,
+		EmployeeRepository:       employeeRepository,
+		TimeOffRequestRepository: timeOffRequestRepository,
+		UserRepository:           userRepository,
+		UploadUseCase:            uploadUseCase,
+		FaceServiceURL:           faceServiceURL,
 	}
 }
 
@@ -252,12 +258,35 @@ func (c *AttendanceUseCase) Search(
 	return responses, total, nil
 }
 
+func exportPeriod(request *model.SearchAttendanceRequest) (from, to int64) {
+	loc := timepkg.JakartaLocation()
+	parse := func(s string) (time.Time, bool) {
+		t, err := time.ParseInLocation("2006-01-02", s, loc)
+		return t, err == nil
+	}
+
+	if request.StartDate != "" && request.EndDate != "" {
+		s, ok1 := parse(request.StartDate)
+		e, ok2 := parse(request.EndDate)
+		if ok1 && ok2 {
+			return s.UnixMilli(), e.AddDate(0, 0, 1).UnixMilli() - 1
+		}
+	} else if request.Date != "" {
+		if d, ok := parse(request.Date); ok {
+			return d.UnixMilli(), d.AddDate(0, 0, 1).UnixMilli() - 1
+		}
+	}
+	return 0, 0
+}
+
 func (c *AttendanceUseCase) Export(
 	ctx context.Context,
 	request *model.SearchAttendanceRequest,
 ) (*excelize.File, error) {
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
+
+	jakarta := timepkg.JakartaLocation()
 
 	if err := c.Validate.Struct(request); err != nil {
 		c.Log.WithError(err).Error("error validating request body")
@@ -270,9 +299,45 @@ func (c *AttendanceUseCase) Export(
 		return nil, fiber.ErrInternalServerError
 	}
 
-	if err := tx.Commit().Error; err != nil {
-		c.Log.WithError(err).Error("Failed to commit transaction")
-		return nil, fiber.ErrInternalServerError
+	// Cache shift lookups because an export can contain many attendance rows for
+	// the same employee and weekday.
+	employeeShifts := make(map[string]*entity.Shift)
+	shiftDays := make(map[string]*entity.ShiftDay)
+	getShiftDay := func(employeeID string, dt time.Time) (*entity.ShiftDay, bool, error) {
+		shift, loaded := employeeShifts[employeeID]
+		if !loaded {
+			shifts, findErr := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
+			if findErr != nil {
+				return nil, false, findErr
+			}
+			if len(shifts) == 0 {
+				employeeShifts[employeeID] = nil
+				return nil, false, nil
+			}
+			shift = &shifts[0]
+			employeeShifts[employeeID] = shift
+		}
+		if shift == nil {
+			return nil, false, nil
+		}
+
+		date := dt.In(timepkg.JakartaLocation())
+		weekday := (int(date.Weekday())+6)%7 + 1 // Senin=1 ... Minggu=7
+		cacheKey := employeeID + ":" + strconv.Itoa(weekday)
+		if day, ok := shiftDays[cacheKey]; ok {
+			return day, true, nil
+		}
+
+		day := new(entity.ShiftDay)
+		if findErr := c.ShiftDayRepo.FindByShiftIDAndWeekday(tx, day, shift.ID, weekday); findErr != nil {
+			if errors.Is(findErr, gorm.ErrRecordNotFound) {
+				shiftDays[cacheKey] = nil
+				return nil, true, nil
+			}
+			return nil, false, findErr
+		}
+		shiftDays[cacheKey] = day
+		return day, true, nil
 	}
 
 	employeeMap := make(map[string]*model.AttendanceSheet)
@@ -292,23 +357,48 @@ func (c *AttendanceUseCase) Export(
 		}
 
 		var lateCheckIn string = "-"
-		if attendance.CheckInTime > 0 {
-			tIn := time.UnixMilli(attendance.CheckInTime)
-			diffStr, _ := timedifference.GetTimeDifference("07:45:00", tIn.Format("15:04:05"))
+		var lateCheckOut string = "-"
+		shiftDay, hasShift, err := getShiftDay(
+			attendance.EmployeeID,
+			time.UnixMilli(attendance.Date),
+		)
+		if err != nil {
+			c.Log.WithError(err).Error("error getting employee shift day for export")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		checkInSchedule := "07:45:00"
+		checkOutSchedule := "17:00:00"
+		if time.UnixMilli(attendance.Date).
+			In(timepkg.JakartaLocation()).
+			Weekday() ==
+			time.Saturday {
+			checkOutSchedule = "12:00:00"
+		}
+		if hasShift {
+			checkInSchedule = ""
+			checkOutSchedule = ""
+			if shiftDay != nil {
+				checkInSchedule = shiftDay.CheckIn
+				checkOutSchedule = shiftDay.CheckOut
+			}
+		}
+
+		if attendance.CheckInTime > 0 && checkInSchedule != "" {
+			tIn := time.UnixMilli(attendance.CheckInTime).In(timepkg.JakartaLocation())
+			diffStr, _ := timedifference.GetTimeDifference(checkInSchedule, tIn.Format("15:04:05"))
 			if diffStr != "" {
 				lateCheckIn = diffStr
 			}
 		}
 
-		var lateCheckOut string = "-"
 		var catatan string
-		if attendance.CheckOutTime > 0 {
-			tOut := time.UnixMilli(attendance.CheckOutTime)
-			expectedOutStr := "17:00:00"
-			if tOut.Weekday() == time.Saturday {
-				expectedOutStr = "12:00:00"
-			}
-			diffStr, _ := timedifference.GetTimeDifference(tOut.Format("15:04:05"), expectedOutStr)
+		if attendance.CheckOutTime > 0 && checkOutSchedule != "" {
+			tOut := time.UnixMilli(attendance.CheckOutTime).In(timepkg.JakartaLocation())
+			diffStr, _ := timedifference.GetTimeDifference(
+				tOut.Format("15:04:05"),
+				checkOutSchedule,
+			)
 			if diffStr != "" {
 				lateCheckOut = diffStr
 			}
@@ -337,6 +427,109 @@ func (c *AttendanceUseCase) Export(
 		}
 
 		employeeMap[empID].Data = append(employeeMap[empID].Data, row)
+	}
+
+	// ===== Cuti =====
+	if request.Status == "" {
+		from, to := exportPeriod(request)
+
+		leaves, err := c.TimeOffRequestRepository.FindApprovedInRange(
+			tx, request.CompanyID, request.EmployeeID, from, to,
+		)
+		if err != nil {
+			c.Log.WithError(err).Error("error getting time off for export")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		dayStart := func(t time.Time) time.Time {
+			return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, jakarta)
+		}
+
+		// tanggal yang sudah punya baris attendance tidak dobel
+		hasRow := make(map[string]bool)
+		for _, a := range attendances {
+			key := a.EmployeeID + ":" + time.UnixMilli(a.Date).In(jakarta).Format("2006-01-02")
+			hasRow[key] = true
+		}
+
+		for _, leave := range leaves {
+			startDay := dayStart(time.UnixMilli(leave.StartDate).In(jakarta))
+			endDay := startDay // end_date nil = 1 hari
+			if leave.EndDate != nil {
+				endDay = dayStart(time.UnixMilli(*leave.EndDate).In(jakarta))
+			}
+
+			status := leave.TimeOffType.Name
+			if status == "" {
+				status = "Cuti"
+			}
+
+			note := ""
+			if leave.RequestReason != nil {
+				note = *leave.RequestReason
+			}
+
+			for d := startDay; !d.After(endDay); d = d.AddDate(0, 0, 1) {
+				dMilli := d.UnixMilli()
+				if from > 0 && dMilli < from {
+					continue
+				}
+				if to > 0 && dMilli > to {
+					break
+				}
+
+				key := leave.EmployeeID + ":" + d.Format("2006-01-02")
+				if hasRow[key] {
+					continue
+				}
+
+				// hanya hari kerja sesuai shift
+				shiftDay, hasShift, err := getShiftDay(leave.EmployeeID, d)
+				if err != nil {
+					c.Log.WithError(err).Error("error getting shift day for leave export")
+					return nil, fiber.ErrInternalServerError
+				}
+				if hasShift && shiftDay == nil {
+					continue // hari libur menurut shift
+				}
+				if !hasShift && d.Weekday() == time.Sunday {
+					continue // tanpa shift: Senin-Sabtu
+				}
+
+				sheet, exists := employeeMap[leave.EmployeeID]
+				if !exists {
+					sheet = &model.AttendanceSheet{
+						Name: leave.Employee.Fullname,
+						Data: []model.AttendanceRow{},
+					}
+					employeeMap[leave.EmployeeID] = sheet
+				}
+
+				sheet.Data = append(sheet.Data, model.AttendanceRow{
+					Date:         dMilli,
+					Status:       status,
+					LateCheckIn:  "-",
+					LateCheckOut: "-",
+					Note:         note,
+				})
+				hasRow[key] = true
+			}
+		}
+	}
+
+	// urutkan tanggal DESC lalu nomori ulang
+	for _, sheet := range employeeMap {
+		sort.SliceStable(sheet.Data, func(i, j int) bool {
+			return sheet.Data[i].Date > sheet.Data[j].Date
+		})
+		for i := range sheet.Data {
+			sheet.Data[i].No = i + 1
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
 	}
 
 	var sheets []model.AttendanceSheet
@@ -1118,10 +1311,6 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
 	c.Log.Infof("===== SHIFT TIME ====== %s", shiftDay.CheckIn)
 
-	if now.After(deadline) {
-		return "TERLAMBAT", nil
-	}
-
 	return "HADIR", nil
 }
 
@@ -1183,4 +1372,30 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, fiber.ErrInternalServerError
 	}
 	return model.AttendanceLogToResponse(log), nil
+}
+
+func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	today := timezone.StartOfDay(timezone.Now()).UnixMilli()
+
+	stale, err := c.AttendanceRepository.FindUnclosedBeforeDate(tx, today)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to find unclosed attendances")
+		return 0, err
+	}
+
+	for _, a := range stale {
+		a.Status = "LUPA_ABSEN"
+		if err := c.AttendanceRepository.Update(tx, &a); err != nil {
+			c.Log.WithError(err).Error("Failed to mark attendance as LUPA_ABSEN")
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return 0, err
+	}
+	return len(stale), nil
 }

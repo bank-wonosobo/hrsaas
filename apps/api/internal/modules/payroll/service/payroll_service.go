@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	attendanceRepo "hrsaas/internal/modules/attendance/repository"
 	employeeRepo "hrsaas/internal/modules/employee/repository"
 	"hrsaas/internal/modules/payroll/dto"
 	"hrsaas/internal/modules/payroll/entity"
@@ -38,6 +39,36 @@ type PayrollService interface {
 	ListApprovals(ctx context.Context, companyID, id string) ([]dto.PayrollApprovalResponse, error)
 }
 
+func NewPayrollService(
+	db *gorm.DB,
+
+	payrollRepo repository.PayrollRepository,
+	payrollDetailRepo repository.PayrollDetailRepository,
+	payrollItemRepo repository.PayrollItemRepository,
+	salaryComponentRepo repository.SalaryComponentRepository,
+
+	employeeRepository employeeRepo.EmployeeRepository,
+	employeeSalaryRepository employeeRepo.EmployeeSalaryRepository,
+	employeeAllowanceRepository employeeRepo.EmployeeAllowanceRepository,
+	employeeDeductionRepo employeeRepo.EmployeeDeductionRepository,
+	attendanceRepository *attendanceRepo.AttendanceRepository,
+) PayrollService {
+	return &payrollService{
+		DB: db,
+
+		PayrollRepo:         payrollRepo,
+		PayrollDetailRepo:   payrollDetailRepo,
+		PayrollItemRepo:     payrollItemRepo,
+		SalaryComponentRepo: salaryComponentRepo,
+
+		EmployeeRepo:          employeeRepository,
+		EmployeeSalaryRepo:    employeeSalaryRepository,
+		EmployeeAllowanceRepo: employeeAllowanceRepository,
+		EmployeeDeductionRepo: employeeDeductionRepo,
+		AttendanceRepo:        attendanceRepository,
+	}
+}
+
 func (s *payrollService) ListApprovals(ctx context.Context, companyID, id string) ([]dto.PayrollApprovalResponse, error) {
 	var payroll entity.Payroll
 	if err := s.DB.WithContext(ctx).Where("id = ? AND company_id = ?", id, companyID).First(&payroll).Error; err != nil {
@@ -66,6 +97,7 @@ type payrollService struct {
 	EmployeeSalaryRepo    employeeRepo.EmployeeSalaryRepository
 	EmployeeAllowanceRepo employeeRepo.EmployeeAllowanceRepository
 	EmployeeDeductionRepo employeeRepo.EmployeeDeductionRepository
+	AttendanceRepo        *attendanceRepo.AttendanceRepository
 }
 
 func (s *payrollService) List(ctx context.Context, companyID string, r *dto.SearchPayrollRequest) ([]dto.PayrollResponse, int64, error) {
@@ -332,34 +364,6 @@ func (s *payrollService) UpdatePaymentStatus(ctx context.Context, id string, r *
 	return dto.PayrollPaymentToResponse(&p), nil
 }
 
-func NewPayrollService(
-	db *gorm.DB,
-
-	payrollRepo repository.PayrollRepository,
-	payrollDetailRepo repository.PayrollDetailRepository,
-	payrollItemRepo repository.PayrollItemRepository,
-	salaryComponentRepo repository.SalaryComponentRepository,
-
-	employeeRepository employeeRepo.EmployeeRepository,
-	employeeSalaryRepository employeeRepo.EmployeeSalaryRepository,
-	employeeAllowanceRepository employeeRepo.EmployeeAllowanceRepository,
-	employeeDeductionRepo employeeRepo.EmployeeDeductionRepository,
-) PayrollService {
-	return &payrollService{
-		DB: db,
-
-		PayrollRepo:         payrollRepo,
-		PayrollDetailRepo:   payrollDetailRepo,
-		PayrollItemRepo:     payrollItemRepo,
-		SalaryComponentRepo: salaryComponentRepo,
-
-		EmployeeRepo:          employeeRepository,
-		EmployeeSalaryRepo:    employeeSalaryRepository,
-		EmployeeAllowanceRepo: employeeAllowanceRepository,
-		EmployeeDeductionRepo: employeeDeductionRepo,
-	}
-}
-
 // Create implements PayrollService.
 func (s *payrollService) Create(
 	ctx context.Context,
@@ -476,7 +480,7 @@ func (s *payrollService) Calculate(
 
 				allowanceAmount, calculationValue := calculateComponentAmount(
 					salaryComponent.CalculationType, allowance.Amount, allowance.Percentage,
-					salary.BasicSalary, salary.BasicSalary+grossAllowance, employee.MaritalStatus,
+					salary.BasicSalary, salary.BasicSalary+grossAllowance, employee.MaritalStatus, 23,
 				)
 
 				grossAllowance += allowanceAmount
@@ -502,6 +506,8 @@ func (s *payrollService) Calculate(
 				return err
 			}
 
+			attendanceDays := float64(0)
+			attendanceCounted := false
 			for _, deduction := range deductions {
 				salaryComponentID := deduction.SalaryComponentID
 				salaryComponent, err := s.SalaryComponentRepo.FindByID(tx, salaryComponentID)
@@ -509,9 +515,20 @@ func (s *payrollService) Calculate(
 					return err
 				}
 
+				if salaryComponent.CalculationType == dto.CalculationTypeAttendance && !attendanceCounted {
+					startDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth)-1, 21, 0, 0, 0, 0, time.Local).UnixMilli()
+					endDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth), 20, 0, 0, 0, 0, time.Local).UnixMilli()
+					count, err := s.AttendanceRepo.CountPresentByEmployeeIDAndDateRange(tx, employee.ID, startDate, endDate)
+					if err != nil {
+						return err
+					}
+					attendanceDays = float64(count)
+					attendanceCounted = true
+				}
+
 				deductionAmount, calculationValue := calculateComponentAmount(
 					salaryComponent.CalculationType, deduction.Amount, deduction.Percentage,
-					salary.BasicSalary, salary.BasicSalary+grossAllowance, employee.MaritalStatus,
+					salary.BasicSalary, salary.BasicSalary+grossAllowance, employee.MaritalStatus, attendanceDays,
 				)
 				detailDeduction += deductionAmount
 
@@ -566,14 +583,13 @@ func endOfMonth(year int, month int) int64 {
 	return firstOfNextMonth.Add(-time.Millisecond).UnixMilli()
 }
 
-func calculateComponentAmount(calculationType string, amount, percentage, basicSalary, gross float64, maritalStatus string) (float64, *float64) {
+func calculateComponentAmount(calculationType string, amount, percentage, basicSalary, gross float64, maritalStatus string, attendanceDays float64) (float64, *float64) {
 	switch calculationType {
 	case dto.CalculationTypeSalaryPercentage:
 		return basicSalary * percentage / 100, &percentage
 	case dto.CalculateTypeGrossPercentage:
 		return gross * percentage / 100, &percentage
 	case dto.CalculationTypeAttendance:
-		attendanceDays := float64(23)
 		return amount * attendanceDays, &attendanceDays
 	// case dto.CalculateTypeMaritalStatus:
 	// 	statusValue := map[string]float64{

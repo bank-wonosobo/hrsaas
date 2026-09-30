@@ -20,6 +20,19 @@ func NewAttendanceRepository(log *logrus.Logger) *AttendanceRepository {
 		Log: log,
 	}
 }
+
+func (r *AttendanceRepository) CountPresentByEmployeeIDAndDateRange(
+	db *gorm.DB,
+	employeeID string,
+	startDate, endDate int64,
+) (int64, error) {
+	var count int64
+	err := db.Model(&entity.Attendance{}).
+		Where("employee_id = ? AND date >= ? AND date <= ? AND status IN ?", employeeID, startDate, endDate, []string{"HADIR", "TERLAMBAT"}).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *AttendanceRepository) Update(db *gorm.DB, attendance *entity.Attendance) error {
 	attendance.UpdatedAt = time.Now().UnixMilli()
 
@@ -39,7 +52,10 @@ func (r *AttendanceRepository) Update(db *gorm.DB, attendance *entity.Attendance
 		Error
 }
 
-func (r *AttendanceRepository) Search(db *gorm.DB, request *model.SearchAttendanceRequest) ([]entity.Attendance, int64, error) {
+func (r *AttendanceRepository) Search(
+	db *gorm.DB,
+	request *model.SearchAttendanceRequest,
+) ([]entity.Attendance, int64, error) {
 	var attendances []entity.Attendance
 	if err := db.Scopes(r.FilterSearch(request)).
 		Order("date DESC").
@@ -60,7 +76,10 @@ func (r *AttendanceRepository) Search(db *gorm.DB, request *model.SearchAttendan
 	return attendances, total, nil
 }
 
-func (r *AttendanceRepository) SearchAll(db *gorm.DB, request *model.SearchAttendanceRequest) ([]entity.Attendance, error) {
+func (r *AttendanceRepository) SearchAll(
+	db *gorm.DB,
+	request *model.SearchAttendanceRequest,
+) ([]entity.Attendance, error) {
 	var attendances []entity.Attendance
 	if err := db.Scopes(r.FilterSearch(request)).
 		Order("date DESC").
@@ -73,7 +92,9 @@ func (r *AttendanceRepository) SearchAll(db *gorm.DB, request *model.SearchAtten
 	return attendances, nil
 }
 
-func (r *AttendanceRepository) FilterSearch(request *model.SearchAttendanceRequest) func(tx *gorm.DB) *gorm.DB {
+func (r *AttendanceRepository) FilterSearch(
+	request *model.SearchAttendanceRequest,
+) func(tx *gorm.DB) *gorm.DB {
 	return func(tx *gorm.DB) *gorm.DB {
 		tx = tx.Where("company_id = ?", request.CompanyID)
 
@@ -92,8 +113,10 @@ func (r *AttendanceRepository) FilterSearch(request *model.SearchAttendanceReque
 		if request.StartDate != "" && request.EndDate != "" {
 			if startT, err := time.Parse("2006-01-02", request.StartDate); err == nil {
 				if endT, err := time.Parse("2006-01-02", request.EndDate); err == nil {
-					startOfDay := time.Date(startT.Year(), startT.Month(), startT.Day(), 0, 0, 0, 0, time.Local).UnixMilli()
-					endOfDay := time.Date(endT.Year(), endT.Month(), endT.Day(), 0, 0, 0, 0, time.Local).UnixMilli()
+					startOfDay := time.Date(startT.Year(), startT.Month(), startT.Day(), 0, 0, 0, 0, time.Local).
+						UnixMilli()
+					endOfDay := time.Date(endT.Year(), endT.Month(), endT.Day(), 0, 0, 0, 0, time.Local).
+						UnixMilli()
 					tx = tx.Where("date >= ? AND date <= ?", startOfDay, endOfDay)
 				}
 			}
@@ -108,7 +131,12 @@ func (r *AttendanceRepository) FilterSearch(request *model.SearchAttendanceReque
 	}
 }
 
-func (r *AttendanceRepository) FindByEmployeeIDAndDate(db *gorm.DB, entity *entity.Attendance, employeeId string, date int64) error {
+func (r *AttendanceRepository) FindByEmployeeIDAndDate(
+	db *gorm.DB,
+	entity *entity.Attendance,
+	employeeId string,
+	date int64,
+) error {
 	t := time.UnixMilli(date)
 
 	startOfDay := time.Date(
@@ -126,4 +154,13 @@ func (r *AttendanceRepository) FindByEmployeeIDAndDate(db *gorm.DB, entity *enti
 		Where("employee_id = ? AND date = ?", employeeId, startOfDay).
 		Take(entity).
 		Error
+}
+
+func (r *AttendanceRepository) FindUnclosedBeforeDate(
+	db *gorm.DB, beforeDate int64,
+) ([]entity.Attendance, error) {
+	var list []entity.Attendance
+	err := db.Where("check_out_time = 0 AND date < ? AND status != ?", beforeDate, "LUPA_ABSEN").
+		Find(&list).Error
+	return list, err
 }

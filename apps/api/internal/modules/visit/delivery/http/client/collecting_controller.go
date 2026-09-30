@@ -97,6 +97,36 @@ func (c *CollectingController) ListCurrent(ctx *fiber.Ctx) error {
 	})
 }
 
+// List memuat penagihan kredit berdaarkan nomor pinjaman (no_pjm) tertentu. Digunakan untuk menampilkan riwayat penagihan kredit.
+func (c *CollectingController) ListByNoPjm(ctx *fiber.Ctx) error {
+	request := new(model.SearchRemidialVisitRequest)
+	request.NoPjm = ctx.Params("no_pjm")
+	request.StartDate = ctx.Query("start_date", "")
+	request.EndDate = ctx.Query("end_date", "")
+	request.NasabahName = ctx.Query("nama", "")
+	request.Page = ctx.QueryInt("page", 1)
+	request.Size = ctx.QueryInt("size", 10)
+
+	result, total, err := c.UseCase.List(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to list history remidial visits on this no_pjm")
+		return err
+	}
+
+	paging := &response.PageMetadata{
+		Page:      request.Page,
+		Size:      request.Size,
+		TotalItem: total,
+		TotalPage: int64(math.Ceil(float64(total) / float64(request.Size))),
+	}
+
+	return ctx.JSON(response.WebResponse[[]model.RemidialVisitResponse]{
+		Data:   result,
+		Paging: paging,
+	})
+
+}
+
 // Create mencatat hasil penagihan kredit atas nama karyawan yang sedang login.
 func (c *CollectingController) Create(ctx *fiber.Ctx) error {
 	request := new(model.CreateRemidialVisitRequest)

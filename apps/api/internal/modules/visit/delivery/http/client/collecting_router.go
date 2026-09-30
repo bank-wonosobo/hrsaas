@@ -13,6 +13,7 @@ func (c *CollectingController) RegisterRoutes(
 	route := router.Group("/collecting")
 
 	route.Get("/", client(c.ListCurrent)...)
+	route.Get("/:no_pjm/history", client(c.ListByNoPjm)...)
 	route.Post("/_search-nasabah", client(c.SearchNasabah)...)
 	route.Post("/", client(c.Create)...)
 }
