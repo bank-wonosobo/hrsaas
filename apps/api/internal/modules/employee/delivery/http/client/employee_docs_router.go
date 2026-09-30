@@ -14,5 +14,5 @@ func (c *EmployeeDocumentController) RegisterRoutes(
 
 	route.Post("/", client(c.Create)...)
 	route.Get("/", client(c.ListCurrent)...)
-	route.Put("/:doc_id", client(c.UpdateCurrent)...)
+	route.Put("/_current/:doc_id", client(c.UpdateCurrent)...)
 }

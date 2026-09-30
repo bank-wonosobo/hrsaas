@@ -14,5 +14,5 @@ func (c *EmployeeEducationController) RegisterRoutes(
 
 	route.Post("/", client(c.Create)...)
 	route.Get("/", client(c.ListCurrent)...)
-	route.Put("/:education_id", client(c.UpdateCurrent)...)
+	route.Put("_current/:education_id", client(c.UpdateCurrent)...)
 }

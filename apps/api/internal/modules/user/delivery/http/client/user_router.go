@@ -9,4 +9,5 @@ func (c *UserController) RegisterRoutes(
 	route := router.Group("/users")
 
 	route.Get("/_current", authMiddleware, c.GetCurrentUser)
+	route.Patch("/_change-password", authMiddleware, c.ChangePassword)
 }
