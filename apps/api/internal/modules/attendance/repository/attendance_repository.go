@@ -20,6 +20,19 @@ func NewAttendanceRepository(log *logrus.Logger) *AttendanceRepository {
 		Log: log,
 	}
 }
+
+func (r *AttendanceRepository) CountPresentByEmployeeIDAndDateRange(
+	db *gorm.DB,
+	employeeID string,
+	startDate, endDate int64,
+) (int64, error) {
+	var count int64
+	err := db.Model(&entity.Attendance{}).
+		Where("employee_id = ? AND date >= ? AND date <= ? AND status IN ?", employeeID, startDate, endDate, []string{"HADIR", "TERLAMBAT"}).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *AttendanceRepository) Update(db *gorm.DB, attendance *entity.Attendance) error {
 	attendance.UpdatedAt = time.Now().UnixMilli()
 
