@@ -516,8 +516,8 @@ func (s *payrollService) Calculate(
 				}
 
 				if salaryComponent.CalculationType == dto.CalculationTypeAttendance && !attendanceCounted {
-					startDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth)-1, 22, 0, 0, 0, 0, time.Local).UnixMilli()
-					endDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth), 22, 0, 0, 0, 0, time.Local).UnixMilli()
+					startDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth)-1, 21, 0, 0, 0, 0, time.Local).UnixMilli()
+					endDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth), 20, 0, 0, 0, 0, time.Local).UnixMilli()
 					count, err := s.AttendanceRepo.CountPresentByEmployeeIDAndDateRange(tx, employee.ID, startDate, endDate)
 					if err != nil {
 						return err
