@@ -357,6 +357,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		*employeeSalaryRepository,
 		*employeeAllowanceRepository,
 		*employeeDeductionRepository,
+		attendanceRepository,
 	)
 	// module visit
 	visitUseCase := visitUc.NewVisitUseCase(
