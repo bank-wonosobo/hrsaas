@@ -7,19 +7,7 @@ import (
 
 var ErrInvalidTimeFormat = errors.New("invalid time format")
 
-var jakartaLocation = func() *time.Location {
-	location, err := time.LoadLocation("Asia/Jakarta")
-	if err != nil {
-		return time.FixedZone("Asia/Jakarta", 7*60*60)
-	}
-	return location
-}()
-
-func JakartaLocation() *time.Location {
-	return jakartaLocation
-}
-
-// ParseTimeHHMMOrHHMMSS parses "15:04" and "15:04:05" into time.Time in Asia/Jakarta.
+// ParseTimeHHMMOrHHMMSS parses "15:04" and "15:04:05" into time.Time.
 func ParseTimeHHMMOrHHMMSS(value string) (time.Time, error) {
 	if value == "" {
 		return time.Time{}, nil
@@ -31,13 +19,17 @@ func ParseTimeHHMMOrHHMMSS(value string) (time.Time, error) {
 		if !ok {
 			return time.Time{}, ErrInvalidTimeFormat
 		}
-		return time.Date(0, 1, 1, hour, minute, 0, 0, jakartaLocation), nil
+
+		return time.Date(0, 1, 1, hour, minute, 0, 0, time.Local), nil
+
 	case 8:
 		hour, minute, second, ok := parseHHMMSS(value)
 		if !ok {
 			return time.Time{}, ErrInvalidTimeFormat
 		}
-		return time.Date(0, 1, 1, hour, minute, second, 0, jakartaLocation), nil
+
+		return time.Date(0, 1, 1, hour, minute, second, 0, time.Local), nil
+
 	default:
 		return time.Time{}, ErrInvalidTimeFormat
 	}
@@ -88,36 +80,31 @@ func parseTwoDigits(a, b byte) (int, bool) {
 	if a < '0' || a > '9' || b < '0' || b > '9' {
 		return 0, false
 	}
+
 	return int(a-'0')*10 + int(b-'0'), true
 }
 
 func ParseDateToUnixMilli(dateStr string) (int64, error) {
-
-	// Parse the string into a time.Time object in Asia/Jakarta.
-	t, err := time.ParseInLocation("2006-01-02", dateStr, jakartaLocation)
+	t, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return 0, err
 	}
 
-	// Convert to Unix epoch
 	return t.UnixMilli(), nil
 }
 
 func ParseDateToUnixMilli2(dateStr string) (int64, error) {
-
-	// Parse the string into a time.Time object in Asia/Jakarta.
-	t, err := time.ParseInLocation("02/01/2006", dateStr, jakartaLocation)
+	t, err := time.Parse("02/01/2006", dateStr)
 	if err != nil {
 		return 0, err
 	}
 
-	// Convert to Unix epoch
 	return t.UnixMilli(), nil
 }
 
-// ParseTimeToUnixMilli parses a wall-clock "15:04" string in Asia/Jakarta.
+// ParseTimeToUnixMilli parses a wall-clock "15:04" string.
 func ParseTimeToUnixMilli(timeStr string) (int64, error) {
-	t, err := time.ParseInLocation("15:04", timeStr, jakartaLocation)
+	t, err := time.Parse("15:04", timeStr)
 	if err != nil {
 		return 0, err
 	}
