@@ -4,6 +4,7 @@ import (
 	"hrsaas/internal/modules/employee/entity"
 	"hrsaas/internal/modules/employee/model"
 	"hrsaas/pkg/repository"
+	timeutil "hrsaas/pkg/time"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -36,8 +37,24 @@ func (r *EmployeeContractRepository) List(db *gorm.DB, request *model.SearchEmpl
 		query = query.Where("position_id = ?", request.PositionID)
 	}
 	if request.ActiveOnly {
-		now := time.Now().UnixMilli()
-		query = query.Where("is_active = ?", true).Where("end_date IS NULL OR end_date >= ?", now)
+		now := time.Now().In(timeutil.JakartaLocation())
+		startOfToday := time.Date(
+			now.Year(),
+			now.Month(),
+			now.Day(),
+			0,
+			0,
+			0,
+			0,
+			timeutil.JakartaLocation(),
+		).UnixMilli()
+		query = query.Where("is_active = ?", true).Where("end_date IS NULL OR end_date >= ?", startOfToday)
+	}
+	if request.EndDateFrom > 0 {
+		query = query.Where("end_date >= ?", request.EndDateFrom)
+	}
+	if request.EndDateTo > 0 {
+		query = query.Where("end_date <= ?", request.EndDateTo)
 	}
 
 	var total int64
@@ -45,6 +62,9 @@ func (r *EmployeeContractRepository) List(db *gorm.DB, request *model.SearchEmpl
 		return nil, 0, err
 	}
 
+	if request.EndDateFrom > 0 || request.EndDateTo > 0 {
+		query = query.Order("end_date ASC")
+	}
 	if err := query.Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}

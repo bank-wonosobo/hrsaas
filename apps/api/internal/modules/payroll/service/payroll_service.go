@@ -469,7 +469,6 @@ func (s *payrollService) Calculate(
 
 			var grossAllowance float64
 			attendanceDays := float64(0)
-			attendanceCounted := false
 			for _, allowance := range allowances {
 
 				salaryComponentID := allowance.SalaryComponentID
@@ -480,7 +479,7 @@ func (s *payrollService) Calculate(
 					return err
 				}
 
-				if salaryComponent.CalculationType == dto.CalculationTypeAttendance && !attendanceCounted {
+				if salaryComponent.CalculationType == dto.CalculationTypeAttendance {
 					startDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth)-1, 21, 0, 0, 0, 0, time.Local).UnixMilli()
 					endDate := time.Date(payroll.PeriodYear, time.Month(payroll.PeriodMonth), 20, 0, 0, 0, 0, time.Local).UnixMilli()
 					count, err := s.AttendanceRepo.CountPresentByEmployeeIDAndDateRange(tx, employee.ID, startDate, endDate)
@@ -488,7 +487,6 @@ func (s *payrollService) Calculate(
 						return err
 					}
 					attendanceDays = float64(count)
-					attendanceCounted = true
 				}
 
 				allowanceAmount, calculationValue := calculateComponentAmount(
