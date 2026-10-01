@@ -81,7 +81,9 @@ export function AssignPermissionsModal({ role }: Props) {
                 </label>
               ))}
               {!permissionsData?.data.length && (
-                <p className="text-sm text-gray-400">Belum ada permission tersedia.</p>
+                <p className="text-sm text-gray-400">
+                  Belum ada permission tersedia.
+                </p>
               )}
             </div>
           )}

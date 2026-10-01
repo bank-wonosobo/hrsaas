@@ -1,10 +1,10 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FileUploader from "@/components/ui/file-uploader/file-uploader";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { Controller } from "react-hook-form";
 import { useUpdateEmployeeTraining } from "../hooks/use-update-employee-training";
@@ -41,13 +41,30 @@ export function UpdateEmployeeTrainingForm({ training, open, onClose }: Props) {
   };
 
   return (
-    <Modal
-      isOpen={open}
-      onClose={onClose}
-      title="Edit Riwayat Pelatihan"
-      maxWidth="md"
-      footer={
-        <>
+    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit Riwayat Pelatihan</DialogTitle><DialogDescription>Perbarui informasi pelatihan dan sertifikat.</DialogDescription></DialogHeader>
+        <form id="form-update-employee-training" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {([
+          ["training_name", "Nama Pelatihan", "text"],
+          ["organizer", "Penyelenggara", "text"],
+          ["start_date", "Tanggal Mulai", "date"],
+          ["end_date", "Tanggal Selesai", "date"],
+        ] as const).map(([name, label, type]) => (
+          <div className="space-y-2" key={name}>
+            <Label htmlFor={name}>{label}{name !== "end_date" && <span className="text-destructive"> *</span>}</Label>
+            <Input id={name} type={type} {...form.register(name)} aria-invalid={!!form.formState.errors[name]} />
+            {form.formState.errors[name] && <p className="text-sm text-destructive">{form.formState.errors[name]?.message}</p>}
+          </div>
+        ))}
+        <div className="space-y-2">
+          <Label htmlFor="certificate_url">Sertifikat</Label>
+          <Controller name="certificate_url" control={form.control} render={({ field, fieldState }) => (
+            <FileUploader accept=".pdf,.jpg,.jpeg,.png" value={field.value} onChange={field.onChange} error={fieldState.error?.message} />
+          )} />
+        </div>
+        </form>
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={onClose}
@@ -58,71 +75,12 @@ export function UpdateEmployeeTrainingForm({ training, open, onClose }: Props) {
           <Button
             type="submit"
             form="form-update-employee-training"
-            loading={mutation.isPending}
+            disabled={mutation.isPending}
           >
-            Simpan
+            {mutation.isPending ? "Menyimpan..." : "Simpan"}
           </Button>
-        </>
-      }
-    >
-      <form
-        id="form-update-employee-training"
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4"
-      >
-        <FormField label="Nama Pelatihan" required>
-          <Input
-            label="Nama pelatihan / kursus"
-            type="text"
-            {...form.register("training_name")}
-            error={form.formState.errors.training_name?.message}
-          />
-        </FormField>
-
-        <FormField label="Penyelenggara" required>
-          <Input
-            label="Nama penyelenggara"
-            type="text"
-            {...form.register("organizer")}
-            error={form.formState.errors.organizer?.message}
-          />
-        </FormField>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Tanggal Mulai" required>
-            <Input
-              label="Tanggal mulai"
-              type="date"
-              {...form.register("start_date")}
-              error={form.formState.errors.start_date?.message}
-            />
-          </FormField>
-
-          <FormField label="Tanggal Selesai">
-            <Input
-              label="Tanggal selesai"
-              type="date"
-              {...form.register("end_date")}
-              error={form.formState.errors.end_date?.message}
-            />
-          </FormField>
-        </div>
-
-        <FormField label="Sertifikat">
-          <Controller
-            name="certificate_url"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <FileUploader
-                accept=".pdf,.jpg,.jpeg,.png"
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-        </FormField>
-      </form>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

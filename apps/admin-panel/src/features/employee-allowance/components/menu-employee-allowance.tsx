@@ -1,6 +1,7 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import FormEmployeeAllowance from "./form-employee-allowance";
@@ -19,17 +20,21 @@ export default function MenuEmployeeAllowance({ employeeId }: Props) {
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
       />
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Tunjangan</h2>
-        <Button
-          variant="secondary"
-          size="sm"
-          prefixIcon={<PlusCircle size={16} />}
-          onClick={() => setIsFormOpen(true)}
-        >
-          Tambah Tunjangan
-        </Button>
-      </div>
+      <Card className="shadow-none bg-secondary">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>Tunjangan</CardTitle>
+          <CardAction>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsFormOpen(true)}
+            >
+              <PlusCircle />
+              Tambah Tunjangan
+            </Button>
+          </CardAction>
+        </CardHeader>
+      </Card>
     </>
   );
 }

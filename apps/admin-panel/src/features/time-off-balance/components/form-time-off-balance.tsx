@@ -1,10 +1,10 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useGetAllTimeOffType } from "@/features/time-off-type/hooks/use-getall-time-off-type";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { mapToOptions } from "@/lib/utils";
@@ -34,7 +34,7 @@ export default function FormTimeOffBalance({ employeeId, isOpen, onClose }: Prop
     },
   });
 
-  const { data: timeOffTypes } = useGetAllTimeOffType();
+  const { data: timeOffTypes, isLoading: areTypesLoading, isError: typesError } = useGetAllTimeOffType();
 
   const typeOptions = mapToOptions(
     timeOffTypes ?? [],
@@ -54,79 +54,84 @@ export default function FormTimeOffBalance({ employeeId, isOpen, onClose }: Prop
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Tambah Saldo Cuti"
-      maxWidth="md"
-      footer={
-        <>
-          <Button variant="outline" onClick={handleClose} disabled={isPending}>
-            Batal
-          </Button>
-          <Button
-            type="submit"
-            form="form-time-off-balance"
-            loading={isPending}
-          >
-            Simpan
-          </Button>
-        </>
-      }
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Tambah Saldo Cuti</DialogTitle>
+          <DialogDescription>Lengkapi informasi saldo cuti karyawan.</DialogDescription>
+        </DialogHeader>
       <form
         id="form-time-off-balance"
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-4"
       >
-        <FormField label="Jenis Cuti" required>
+        <div className="space-y-2">
+          <Label htmlFor="time_off_type_id">Jenis Cuti <span className="text-destructive">*</span></Label>
           <Controller
             name="time_off_type_id"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Select
-                label="Jenis Cuti"
-                options={typeOptions}
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
+              <div className="space-y-1">
+                <Select value={field.value} onValueChange={field.onChange} disabled={areTypesLoading || !!typesError}>
+                  <SelectTrigger id="time_off_type_id" className="w-full" aria-invalid={!!fieldState.error}>
+                    <SelectValue placeholder={areTypesLoading ? "Memuat jenis cuti..." : "Pilih jenis cuti"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {typesError && <p className="text-sm text-destructive">Jenis cuti gagal dimuat.</p>}
+                {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+              </div>
             )}
           />
-        </FormField>
+        </div>
 
-        <FormField label="Tahun Periode" required>
+        <div className="space-y-2">
+          <Label htmlFor="period_year">Tahun Periode <span className="text-destructive">*</span></Label>
           <Input
-            label="Tahun Periode"
+            id="period_year"
             type="number"
             min={2000}
             {...form.register("period_year")}
-            error={form.formState.errors.period_year?.message}
+            aria-invalid={!!form.formState.errors.period_year}
           />
-        </FormField>
+          {form.formState.errors.period_year && <p className="text-sm text-destructive">{form.formState.errors.period_year.message}</p>}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Hak Cuti (hari)" required>
+          <div className="space-y-2">
+            <Label htmlFor="entitled_days">Hak Cuti (hari) <span className="text-destructive">*</span></Label>
             <Input
-              label="Hak Cuti"
+              id="entitled_days"
               type="number"
               min={0}
               {...form.register("entitled_days")}
-              error={form.formState.errors.entitled_days?.message}
+              aria-invalid={!!form.formState.errors.entitled_days}
             />
-          </FormField>
+            {form.formState.errors.entitled_days && <p className="text-sm text-destructive">{form.formState.errors.entitled_days.message}</p>}
+          </div>
 
-          <FormField label="Terpakai (hari)" required>
+          <div className="space-y-2">
+            <Label htmlFor="used_days">Terpakai (hari) <span className="text-destructive">*</span></Label>
             <Input
-              label="Terpakai"
+              id="used_days"
               type="number"
               min={0}
               {...form.register("used_days")}
-              error={form.formState.errors.used_days?.message}
+              aria-invalid={!!form.formState.errors.used_days}
             />
-          </FormField>
+            {form.formState.errors.used_days && <p className="text-sm text-destructive">{form.formState.errors.used_days.message}</p>}
+          </div>
         </div>
       </form>
-    </Modal>
+      <DialogFooter>
+        <Button variant="outline" onClick={handleClose} disabled={isPending}>Batal</Button>
+        <Button type="submit" form="form-time-off-balance" disabled={isPending}>
+          {isPending ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

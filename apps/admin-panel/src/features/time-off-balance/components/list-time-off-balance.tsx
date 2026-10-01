@@ -1,6 +1,9 @@
 "use client";
 
-import Table from "@/components/ui/table/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useGetTimeOffBalances } from "../hooks/use-get-time-off-balances";
 import { SearchTimeOffBalance } from "../schemas/time-off-balance-schema";
 
@@ -10,74 +13,40 @@ interface Props {
 }
 
 export default function ListTimeOffBalance({ employeeId, search }: Props) {
-  const { data, isLoading } = useGetTimeOffBalances({
+  const { data, isLoading, isError } = useGetTimeOffBalances({
     ...search,
     employee_id: employeeId,
   });
 
   if (isLoading) {
-    return <div className="text-sm text-zinc-400 py-4">Memuat data...</div>;
+    return <Card><CardContent className="space-y-3"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-3/4" /></CardContent></Card>;
+  }
+  if (isError) {
+    return <Card><CardContent className="py-6 text-sm text-destructive">Saldo cuti gagal dimuat. Coba muat ulang halaman.</CardContent></Card>;
+  }
+
+  const balances = data?.data ?? [];
+  if (balances.length === 0) {
+    return <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Belum ada saldo cuti untuk filter ini.</CardContent></Card>;
   }
 
   return (
-    <Table
-      data={data?.data ?? []}
-      keyExtractor={(row) => row.id}
-      columns={[
-        {
-          header: "Jenis Cuti",
-          accessor: (row) => (
-            <div className="flex flex-col">
-              <span className="font-medium">{row.time_off_type.name}</span>
-              <span className="text-xs text-zinc-400">{row.time_off_type.category}</span>
-            </div>
-          ),
-        },
-        {
-          header: "Tahun",
-          accessor: (row) => <span className="font-medium">{row.period_year}</span>,
-        },
-        {
-          header: "Hak Cuti",
-          accessor: (row) => (
-            <span>{row.entitled_days} hari</span>
-          ),
-        },
-        {
-          header: "Terpakai",
-          accessor: (row) => (
-            <span className="text-orange-600">{row.used_days} hari</span>
-          ),
-        },
-        {
-          header: "Sisa",
-          accessor: (row) => (
-            <span
-              className={
-                row.remaining_days <= 0
-                  ? "text-red-600 font-medium"
-                  : "text-green-600 font-medium"
-              }
-            >
-              {row.remaining_days} hari
-            </span>
-          ),
-        },
-        {
-          header: "Berbasis Kuota",
-          accessor: (row) => (
-            <span
-              className={`text-xs px-2 py-1 rounded-full font-medium ${
-                row.time_off_type.is_quota_based
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-zinc-100 text-zinc-500"
-              }`}
-            >
-              {row.time_off_type.is_quota_based ? "Ya" : "Tidak"}
-            </span>
-          ),
-        },
-      ]}
-    />
+    <Card><CardContent className="p-0">
+      <Table>
+        <TableHeader><TableRow>
+          {["Jenis Cuti", "Tahun", "Hak Cuti", "Terpakai", "Sisa", "Berbasis Kuota"].map((header) => <TableHead key={header}>{header}</TableHead>)}
+        </TableRow></TableHeader>
+        <TableBody>{balances.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell><div className="flex flex-col"><span className="font-medium">{row.time_off_type.name}</span><span className="text-xs text-muted-foreground">{row.time_off_type.category}</span></div></TableCell>
+            <TableCell className="font-medium">{row.period_year}</TableCell>
+            <TableCell>{row.entitled_days} hari</TableCell>
+            <TableCell className="text-orange-600">{row.used_days} hari</TableCell>
+            <TableCell className={row.remaining_days <= 0 ? "font-medium text-destructive" : "font-medium text-green-700"}>{row.remaining_days} hari</TableCell>
+            <TableCell><Badge variant={row.time_off_type.is_quota_based ? "default" : "secondary"}>{row.time_off_type.is_quota_based ? "Ya" : "Tidak"}</Badge></TableCell>
+          </TableRow>
+        ))}</TableBody>
+      </Table>
+    </CardContent></Card>
   );
 }

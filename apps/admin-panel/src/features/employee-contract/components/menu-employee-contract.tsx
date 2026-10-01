@@ -1,6 +1,6 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
+import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import FormEmployeeContract from "./form-employee-contract";
@@ -22,11 +22,12 @@ export default function MenuEmployeeContract({ employeeId }: Props) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Riwayat Kontrak</h2>
         <Button
-          variant="secondary"
+          type="button"
+          variant="default"
           size="sm"
-          prefixIcon={<PlusCircle size={16} />}
           onClick={() => setIsFormOpen(true)}
         >
+          <PlusCircle aria-hidden="true" />
           Tambah Kontrak
         </Button>
       </div>

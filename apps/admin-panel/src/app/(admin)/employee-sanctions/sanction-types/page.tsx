@@ -1,9 +1,9 @@
 import Title from "@/components/ui/title/title";
+import { serverApi } from "@/lib/server-api";
+import { getQueryclient } from "@/providers/get-query-client";
 import ListSanctionType from "@/features/sanction-type/components/list-sanction-type";
 import MenuSanctionType from "@/features/sanction-type/components/menu-sanction-type";
 import { SearchSanctionTypeRequest } from "@/features/sanction-type/schemas/sanction-type-schema";
-import { serverApi } from "@/lib/server-api";
-import { getQueryclient } from "@/providers/get-query-client";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type React from "react";
 

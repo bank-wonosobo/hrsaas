@@ -1,6 +1,7 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
 import FormEmployeeSalary from "./form-employee-salary";
@@ -19,17 +20,21 @@ export default function MenuEmployeeSalary({ employeeId }: Props) {
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
       />
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Riwayat Gaji Pokok</h2>
-        <Button
-          variant="secondary"
-          size="sm"
-          prefixIcon={<PlusCircle size={16} />}
-          onClick={() => setIsFormOpen(true)}
-        >
-          Tambah Gaji
-        </Button>
-      </div>
+      <Card className="bg-secondary shadow-none">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle>Riwayat Gaji Pokok</CardTitle>
+          <CardAction>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsFormOpen(true)}
+            >
+              <PlusCircle />
+              Tambah Gaji
+            </Button>
+          </CardAction>
+        </CardHeader>
+      </Card>
     </>
   );
 }

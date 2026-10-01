@@ -46,12 +46,14 @@ type UpdateEmployeeContractRequest struct {
 }
 
 type SearchEmployeeContractRequest struct {
-	EmployeeID string `json:"employee_id" validate:"max=100"`
-	DivisionID string `json:"division_id" validate:"max=100"`
-	PositionID string `json:"position_id" validate:"max=100"`
-	ActiveOnly bool   `json:"active_only"`
-	Page       int    `json:"page" validate:"min=1"`
-	Size       int    `json:"size" validate:"min=1,max=100"`
+	EmployeeID  string `json:"employee_id" validate:"max=100"`
+	DivisionID  string `json:"division_id" validate:"max=100"`
+	PositionID  string `json:"position_id" validate:"max=100"`
+	ActiveOnly  bool   `json:"active_only"`
+	EndDateFrom int64  `json:"end_date_from"`
+	EndDateTo   int64  `json:"end_date_to"`
+	Page        int    `json:"page" validate:"min=1"`
+	Size        int    `json:"size" validate:"min=1,max=100"`
 }
 
 func EmployeeContractToResponse(contract *entity.EmployeeContract) *EmployeeContractResponse {

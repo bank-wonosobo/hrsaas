@@ -1,9 +1,9 @@
 import Title from "@/components/ui/title/title";
+import { serverApi } from "@/lib/server-api";
+import { getQueryclient } from "@/providers/get-query-client";
 import ListOfficeLocation from "@/features/office-location/components/list-office-location";
 import MenuOfficeLocation from "@/features/office-location/components/menu-office-location";
 import { SearchOfficeLocationRequest } from "@/features/office-location/schemas/office-location-schema";
-import { serverApi } from "@/lib/server-api";
-import { getQueryclient } from "@/providers/get-query-client";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type React from "react";
 

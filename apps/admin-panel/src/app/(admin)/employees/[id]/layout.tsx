@@ -1,4 +1,6 @@
-import Tabs from "@/components/shared/tabs/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import EmployeeDetailTabs from "@/features/employee/components/detail/employee-detail-tabs";
+import EmployeeSummaryCard from "@/features/employee/components/detail/employee-summary-card";
 import Title from "@/components/ui/title/title";
 import { Tab } from "@/lib/type";
 
@@ -30,10 +32,16 @@ export default async function LayoutDetailEmployee({
   return (
     <>
       <Title title="Detail karyawan" previus="/employees" />
-      <div className="bg-white p-6 border rounded-2xl">
-        <Tabs tabs={tabs} />
-        {children}
+      <div className="sticky top-3 z-20 mb-5">
+        <EmployeeSummaryCard id={id} />
       </div>
+      <Card className="mt-5">
+        <CardContent>
+          <EmployeeDetailTabs id={id} tabs={tabs}>
+            {children}
+          </EmployeeDetailTabs>
+        </CardContent>
+      </Card>
     </>
   );
 }

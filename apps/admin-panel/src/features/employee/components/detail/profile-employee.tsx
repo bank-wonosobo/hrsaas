@@ -1,12 +1,29 @@
 "use client";
-"use client";
-import EditableField from "@/components/shared/editable-field/editable-field";
-import ImageViewer from "@/components/ui/image-viewer/image-viewer";
-import Switch from "@/components/ui/switch/switch";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Option } from "@/components/ui/select/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { blood_type, gender, maritalStatus, religion } from "@/lib/data";
-import toIDDate, { diffDateDetail } from "@/lib/utils";
-import { Globe, Mail, Phone } from "lucide-react";
-import React from "react";
+import toIDDate, { diffDateDetail, formatDate } from "@/lib/utils";
+import { format } from "date-fns";
+import { Check, Pencil, RefreshCw, X } from "lucide-react";
+import { useId, useState } from "react";
 import { useDetailEmployee } from "../../hooks/use-detail-employee";
 import { useUpdateEmployee } from "../../hooks/use-update-employee";
 
@@ -14,172 +31,295 @@ interface Props {
   id: string;
 }
 
-export default function ProfileEmployee({ id }: Props): React.ReactNode {
-  const { data } = useDetailEmployee(id);
+type ProfileFieldProps = {
+  label: string;
+  value?: string | null;
+  hint?: string;
+  type?: "text" | "date" | "select";
+  dateValue?: Date;
+  options?: Option[];
+  disabled?: boolean;
+  onSave: (value: string) => void;
+};
+
+function ProfileField({
+  label,
+  value = "",
+  hint,
+  type = "text",
+  dateValue,
+  options = [],
+  disabled,
+  onSave,
+}: ProfileFieldProps) {
+  const id = useId();
+  const dateTimestamp = dateValue?.getTime();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function cancelEdit() {
+    setEditing(false);
+  }
+
+  function startEdit() {
+    setDraft(
+      type === "date" && dateTimestamp
+        ? format(new Date(dateTimestamp), "yyyy-MM-dd")
+        : (value ?? ""),
+    );
+    setEditing(true);
+  }
+
+  function save() {
+    onSave(type === "date" ? formatDate(new Date(`${draft}T00:00:00`)) : draft);
+    setEditing(false);
+  }
+
+  const selectedOption = options.find((option) => option.value === value);
+
+  return (
+    <div className="flex min-h-28 flex-col justify-between gap-3 rounded-2xl border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
+          <Label htmlFor={id} className="text-muted-foreground">
+            {label}
+          </Label>
+          {editing ? (
+            type === "select" ? (
+              <Select
+                value={draft || undefined}
+                onValueChange={setDraft}
+                disabled={disabled}
+              >
+                <SelectTrigger id={id} className="w-full">
+                  <SelectValue placeholder={`Pilih ${label.toLowerCase()}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                id={id}
+                type={type === "date" ? "date" : "text"}
+                value={
+                  type === "date" && draft && !/^\d{4}-\d{2}-\d{2}$/.test(draft)
+                    ? ""
+                    : draft
+                }
+                onChange={(event) => setDraft(event.target.value)}
+                disabled={disabled}
+                autoFocus
+              />
+            )
+          ) : (
+            <p className="break-words text-sm font-medium">
+              {type === "select" && selectedOption
+                ? selectedOption.label
+                : value || "Belum diisi"}
+            </p>
+          )}
+        </div>
+        {!editing && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Edit ${label.toLowerCase()}`}
+            disabled={disabled}
+            onClick={startEdit}
+          >
+            <Pencil />
+          </Button>
+        )}
+      </div>
+      {editing && (
+        <div className="space-y-3">
+          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={cancelEdit}
+            >
+              <X />
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={disabled || (type === "date" && !draft)}
+              onClick={save}
+            >
+              <Check />
+              Simpan
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ProfileEmployee({ id }: Props) {
+  const { data, isLoading, isError, refetch } = useDetailEmployee(id);
   const { mutate: updateEmployee, isPending } = useUpdateEmployee(id);
   const employee = data?.data;
   const birthDate = employee?.birth_date
     ? new Date(employee.birth_date)
     : undefined;
-  const isActive = employee?.is_active ?? true;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-5 pt-5">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-56" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 10 }).map((_, index) => (
+            <Skeleton key={index} className="h-28 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !employee) {
+    return (
+      <Card className="mt-5">
+        <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="text-sm text-destructive">
+            {isError
+              ? "Informasi karyawan gagal dimuat."
+              : "Informasi karyawan tidak tersedia."}
+          </p>
+          {isError && (
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              <RefreshCw />
+              Coba lagi
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const age = birthDate
+    ? diffDateDetail(birthDate, new Date()).years
+    : undefined;
 
   return (
-    <div className="flex flex-col md:flex-row gap-4">
-      {/* profile card */}
-      <div className="p-6 bg-white border rounded-2xl h-fit w-[270px]">
-        <div className="flex justify-center items-center flex-col gap-4 border-b pb-3">
-          {employee?.user.image_url ? (
-            <ImageViewer
-              width={100}
-              height={100}
-              circle
-              src={employee?.user.image_url}
-            />
-          ) : (
-            <div className="h-12 w-12 rounded-full bg-zinc-100 text-zinc-700 font-semibold flex items-center justify-center text-sm shrink-0 overflow-hidden">
-              {employee?.fullname.charAt(0).toUpperCase()}
-            </div>
-          )}
-
-          <h2 className="font-semibold text-2xl text-center">
-            {employee?.fullname}
-          </h2>
-          <p>{employee?.contracts?.[0]?.position.name}</p>
-          <span
-            className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-              isActive
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-600"
-            }`}
-          >
-            {isActive ? "Aktif" : "Nonaktif"}
-          </span>
-        </div>
-        <div className="mt-6 space-y-5">
-          <div className="flex gap-2 items-center">
-            <Mail size={16} className="text-zinc-400" />
-            <span className="text-sm">{employee?.user.email}</span>
+    <div className="pt-5">
+      <Card>
+        <CardHeader className="flex flex-col gap-2 border-b sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Informasi umum</CardTitle>
+            <CardDescription className="mt-1">
+              Data pribadi karyawan{age !== undefined ? ` · ${age} tahun` : ""}.
+              Pilih ikon edit untuk memperbarui informasi.
+            </CardDescription>
           </div>
-          <div className="flex gap-2 items-center">
-            <Phone size={16} className="text-zinc-400" />
-            <span className="text-sm">{employee?.phone}</span>
-          </div>
-          <div className="flex gap-2 items-center">
-            <Globe size={16} className="text-zinc-400" />
-            <span className="text-sm">{employee?.timezone}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* form detail */}
-      <div className="border p-4 rounded-2xl w-full">
-        <div className="flex border-b pb-3 items-center justify-between">
-          <h2 className="text-lg font-semibold">
-            Informasi Karyawan{" "}
-            <span className="text-sm font-normal">
-              (
-              {birthDate
-                ? diffDateDetail(birthDate, new Date()).years + " Tahun"
-                : ""}
-              )
-            </span>
-          </h2>
-          <Switch
-            checked={isActive}
-            onChange={(val) => updateEmployee({ is_active: val })}
+          <Button
+            variant={employee.is_active === false ? "default" : "destructive"}
             disabled={isPending}
-            label={isActive ? "Aktif" : "Nonaktif"}
-          />
-        </div>
-        <div className="w-full py-5 space-y-5">
-          <EditableField
+            onClick={() =>
+              updateEmployee({ is_active: employee.is_active === false })
+            }
+          >
+            {isPending
+              ? "Memperbarui..."
+              : employee.is_active === false
+                ? "Aktifkan karyawan"
+                : "Nonaktifkan karyawan"}
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <ProfileField
             label="Nama lengkap"
-            value={employee?.fullname}
-            hint="Pastikan nama lengkap sesuai"
+            value={employee.fullname}
+            hint="Pastikan nama lengkap sesuai dokumen resmi."
+            disabled={isPending}
             onSave={(value) => updateEmployee({ fullname: value })}
           />
-          <div className="grid grid-cols-2 gap-5">
-            <EditableField
-              type="select"
-              label="Jenis Kelamin"
-              value={employee?.gender}
-              options={gender}
-              hint="Pastikan jenis kelamin sesuai"
-              onSave={(value) => updateEmployee({ gender: value })}
-            />
-            <EditableField
-              label="NIK / Nomor Identitas"
-              value={employee?.identity_number}
-              hint="Pastikan nomor identitas sesuai"
-              onSave={(value) => updateEmployee({ identity_number: value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <EditableField
-              label="Tempat Lahir"
-              value={employee?.birth_place}
-              hint="Pastikan tempat lahir sesuai"
-              onSave={(value) => updateEmployee({ birth_place: value })}
-            />
-            <EditableField
-              type="date"
-              label="Tanggal lahir"
-              value={birthDate ? toIDDate(birthDate) : ""}
-              dateValue={birthDate}
-              hint="Pastikan tanggal lahir sesuai"
-              onSave={(value) => updateEmployee({ birth_date: value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <EditableField
-              type="select"
-              label="Status Perkawinan"
-              value={employee?.marital_status}
-              options={maritalStatus}
-              hint="Pastikan status perkawinan sesuai"
-              onSave={(value) => updateEmployee({ marital_status: value })}
-            />
-            <EditableField
-              type="select"
-              label="Golongan darah"
-              value={employee?.blood_type}
-              options={blood_type}
-              hint="Pastikan golongan darah sesuai"
-              onSave={(value) => updateEmployee({ blood_type: value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <EditableField
-              label="Nomer telepon"
-              value={employee?.phone}
-              hint="Pastikan nomer telepon sesuai"
-              onSave={(value) => updateEmployee({ phone: value })}
-            />
-            <EditableField
-              type="select"
-              label="Agama"
-              value={employee?.religion}
-              options={religion}
-              hint="Pastikan agama sesuai"
-              onSave={(value) => updateEmployee({ religion: value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <EditableField
-              label="Alamat"
-              value={employee?.address}
-              hint="Pastikan alamat sesuai"
-              onSave={(value) => updateEmployee({ address: value })}
-            />
-            <EditableField
-              label="Kota"
-              value={employee?.city}
-              hint="Pastikan kota sesuai"
-              onSave={(value) => updateEmployee({ city: value })}
-            />
-          </div>
-        </div>
-      </div>
+          <ProfileField
+            label="Jenis kelamin"
+            value={employee.gender}
+            type="select"
+            options={gender}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ gender: value })}
+          />
+          <ProfileField
+            label="NIK / nomor identitas"
+            value={employee.identity_number}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ identity_number: value })}
+          />
+          <ProfileField
+            label="Tempat lahir"
+            value={employee.birth_place}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ birth_place: value })}
+          />
+          <ProfileField
+            label="Tanggal lahir"
+            type="date"
+            value={birthDate ? toIDDate(birthDate) : ""}
+            dateValue={birthDate}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ birth_date: value })}
+          />
+          <ProfileField
+            label="Status perkawinan"
+            value={employee.marital_status}
+            type="select"
+            options={maritalStatus}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ marital_status: value })}
+          />
+          <ProfileField
+            label="Golongan darah"
+            value={employee.blood_type}
+            type="select"
+            options={blood_type}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ blood_type: value })}
+          />
+          <ProfileField
+            label="Nomor telepon"
+            value={employee.phone}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ phone: value })}
+          />
+          <ProfileField
+            label="Agama"
+            value={employee.religion}
+            type="select"
+            options={religion}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ religion: value })}
+          />
+          <ProfileField
+            label="Alamat"
+            value={employee.address}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ address: value })}
+          />
+          <ProfileField
+            label="Kota"
+            value={employee.city}
+            disabled={isPending}
+            onSave={(value) => updateEmployee({ city: value })}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import { UserSchema } from "@/features/user/schemas/auth-schema";
 import { EmployeeContractSchema } from "@/features/employee-contract/schemas/employee-contract-schema";
 import { EmployeeDocumentSchema } from "@/features/employee-docs/schemas/employee-docs-schema";
+import { UserSchema } from "@/features/user/schemas/auth-schema";
 
 import z from "zod/v3";
 

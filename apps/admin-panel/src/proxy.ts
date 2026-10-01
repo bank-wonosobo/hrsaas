@@ -4,6 +4,10 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const pathname = request.nextUrl.pathname;
 
+  if (pathname === "/manifest.webmanifest") {
+    return NextResponse.next();
+  }
+
   const isAuthPage = pathname.startsWith("/sign-in");
   const isPublicPage =
     pathname.startsWith("/privacy") || pathname.startsWith("/support");

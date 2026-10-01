@@ -41,12 +41,14 @@ func (c *EmployeeContractController) CreateEmployeeContract(ctx *fiber.Ctx) erro
 
 func (c *EmployeeContractController) ListEmployeeContract(ctx *fiber.Ctx) error {
 	request := &model.SearchEmployeeContractRequest{
-		EmployeeID: ctx.Query("employee_id"),
-		DivisionID: ctx.Query("division_id"),
-		PositionID: ctx.Query("position_id"),
-		ActiveOnly: ctx.QueryBool("active_only", false),
-		Page:       ctx.QueryInt("page", 1),
-		Size:       ctx.QueryInt("size", 10),
+		EmployeeID:  ctx.Query("employee_id"),
+		DivisionID:  ctx.Query("division_id"),
+		PositionID:  ctx.Query("position_id"),
+		ActiveOnly:  ctx.QueryBool("active_only", false),
+		EndDateFrom: int64(ctx.QueryInt("end_date_from", 0)),
+		EndDateTo:   int64(ctx.QueryInt("end_date_to", 0)),
+		Page:        ctx.QueryInt("page", 1),
+		Size:        ctx.QueryInt("size", 10),
 	}
 
 	result, total, err := c.EmployeeContractUseCase.List(ctx.UserContext(), request)

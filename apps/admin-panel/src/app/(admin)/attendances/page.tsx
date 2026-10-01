@@ -1,6 +1,8 @@
 import Title from "@/components/ui/title/title";
+import ExportAttendance from "@/features/attendance/components/export-attendance";
 import ListAttendance from "@/features/attendance/components/list-attendance";
 import MenuAttendance from "@/features/attendance/components/menu-attendance";
+
 import { SearchAttendanceRequest } from "@/features/attendance/schemas/attendance-schema";
 import { serverApi } from "@/lib/server-api";
 import { getQueryclient } from "@/providers/get-query-client";
@@ -18,15 +20,31 @@ type Props = {
   }>;
 };
 
-export default async function AttendancePage({ searchParams }: Props): Promise<React.ReactNode> {
+function getTodayInJakarta() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const getPart = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
+}
+
+export default async function AttendancePage({
+  searchParams,
+}: Props): Promise<React.ReactNode> {
   const params = await searchParams;
+  const today = getTodayInJakarta();
 
   const search: SearchAttendanceRequest = {
     page: Number(params.page || 1),
     size: Number(params.size || 10),
     employee_id: params.employee_id || "",
-    start_date: params.start_date || "",
-    end_date: params.end_date || "",
+    start_date: params.start_date || today,
+    end_date: params.end_date || today,
     status: params.status || "",
   };
 
@@ -49,7 +67,10 @@ export default async function AttendancePage({ searchParams }: Props): Promise<R
     <>
       <Title title="Kehadiran Karyawan" />
       <HydrationBoundary state={dehydrate(queryClient)}>
-        <MenuAttendance search={search} />
+        <MenuAttendance
+          search={search}
+          exportAction={<ExportAttendance search={search} />}
+        />
         <ListAttendance search={search} />
       </HydrationBoundary>
     </>

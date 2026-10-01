@@ -45,8 +45,12 @@ export const SearchEmployeeDeductionRequestSchema = z.object({
 });
 
 export type EmployeeDeduction = z.infer<typeof EmployeeDeductionSchema>;
-export type CreateEmployeeDeduction = z.infer<typeof CreateEmployeeDeductionSchema>;
-export type UpdateEmployeeDeduction = z.infer<typeof UpdateEmployeeDeductionSchema>;
+export type CreateEmployeeDeduction = z.infer<
+  typeof CreateEmployeeDeductionSchema
+>;
+export type UpdateEmployeeDeduction = z.infer<
+  typeof UpdateEmployeeDeductionSchema
+>;
 export type SearchEmployeeDeductionRequest = z.infer<
   typeof SearchEmployeeDeductionRequestSchema
 >;

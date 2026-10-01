@@ -1,10 +1,10 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { Controller } from "react-hook-form";
 import { useUpdateEmployeeEducation } from "../hooks/use-update-employee-education";
@@ -57,13 +57,48 @@ export function UpdateEmployeeEducationForm({ education, open, onClose }: Props)
   };
 
   return (
-    <Modal
-      isOpen={open}
-      onClose={onClose}
-      title="Edit Riwayat Pendidikan"
-      maxWidth="md"
-      footer={
-        <>
+    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit Riwayat Pendidikan</DialogTitle><DialogDescription>Perbarui informasi pendidikan karyawan.</DialogDescription></DialogHeader>
+        <form id="form-update-employee-education" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="education_level">Jenjang Pendidikan <span className="text-destructive">*</span></Label>
+          <Controller name="education_level" control={form.control} render={({ field, fieldState }) => (
+            <div className="space-y-1">
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="education_level" className="w-full" aria-invalid={!!fieldState.error}><SelectValue placeholder="Pilih jenjang pendidikan" /></SelectTrigger>
+                <SelectContent>{EDUCATION_LEVEL_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+              </Select>
+              {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+            </div>
+          )} />
+        </div>
+        {([
+          ["institution_name", "Nama Institusi", "text"],
+          ["major", "Jurusan", "text"],
+          ["graduation_year", "Tahun Lulus", "date"],
+        ] as const).map(([name, label, type]) => (
+          <div className="space-y-2" key={name}>
+            <Label htmlFor={name}>{label} <span className="text-destructive">*</span></Label>
+            <Input id={name} type={type} {...form.register(name)} aria-invalid={!!form.formState.errors[name]} />
+            {form.formState.errors[name] && <p className="text-sm text-destructive">{form.formState.errors[name]?.message}</p>}
+          </div>
+        ))}
+        <div className="grid grid-cols-2 gap-4">
+          {([
+            ["start_year", "Tahun Masuk", "number"],
+            ["end_year", "Tahun Selesai", "number"],
+            ["gpa", "IPK / Nilai", "number"],
+          ] as const).map(([name, label, type]) => (
+            <div className="space-y-2" key={name}>
+              <Label htmlFor={name}>{label}</Label>
+              <Input id={name} type={type} step={name === "gpa" ? "0.01" : undefined} {...form.register(name, { valueAsNumber: true })} aria-invalid={!!form.formState.errors[name]} />
+              {form.formState.errors[name] && <p className="text-sm text-destructive">{form.formState.errors[name]?.message}</p>}
+            </div>
+          ))}
+        </div>
+        </form>
+        <DialogFooter>
           <Button
             variant="outline"
             onClick={onClose}
@@ -74,93 +109,12 @@ export function UpdateEmployeeEducationForm({ education, open, onClose }: Props)
           <Button
             type="submit"
             form="form-update-employee-education"
-            loading={mutation.isPending}
+            disabled={mutation.isPending}
           >
-            Simpan
+            {mutation.isPending ? "Menyimpan..." : "Simpan"}
           </Button>
-        </>
-      }
-    >
-      <form
-        id="form-update-employee-education"
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4"
-      >
-        <FormField label="Jenjang Pendidikan" required>
-          <Controller
-            name="education_level"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Select
-                label="Pilih jenjang pendidikan"
-                options={EDUCATION_LEVEL_OPTIONS}
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-        </FormField>
-
-        <FormField label="Nama Institusi" required>
-          <Input
-            label="Nama institusi / sekolah"
-            type="text"
-            {...form.register("institution_name")}
-            error={form.formState.errors.institution_name?.message}
-          />
-        </FormField>
-
-        <FormField label="Jurusan" required>
-          <Input
-            label="Jurusan / bidang studi"
-            type="text"
-            {...form.register("major")}
-            error={form.formState.errors.major?.message}
-          />
-        </FormField>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Tahun Masuk">
-            <Input
-              label="Tahun masuk"
-              type="number"
-              {...form.register("start_year", { valueAsNumber: true })}
-              error={form.formState.errors.start_year?.message}
-            />
-          </FormField>
-
-          <FormField label="Tahun Lulus" required>
-            <Input
-              label="Tahun lulus"
-              type="date"
-              {...form.register("graduation_year")}
-              error={form.formState.errors.graduation_year?.message}
-            />
-          </FormField>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Tahun Selesai">
-            <Input
-              label="Tahun selesai"
-              type="number"
-              {...form.register("end_year", { valueAsNumber: true })}
-              error={form.formState.errors.end_year?.message}
-            />
-          </FormField>
-
-          <FormField label="IPK / Nilai">
-            <Input
-              label="IPK (maks. 4.00)"
-              type="number"
-              step="0.01"
-              {...form.register("gpa", { valueAsNumber: true })}
-              error={form.formState.errors.gpa?.message}
-            />
-          </FormField>
-        </div>
-      </form>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

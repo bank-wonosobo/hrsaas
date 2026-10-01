@@ -1,9 +1,9 @@
-import MenuEmployeeAllowance from "@/features/employee-allowance/components/menu-employee-allowance";
 import ListEmployeeAllowance from "@/features/employee-allowance/components/list-employee-allowance";
-import MenuEmployeeDeduction from "@/features/employee-deduction/components/menu-employee-deduction";
+import MenuEmployeeAllowance from "@/features/employee-allowance/components/menu-employee-allowance";
 import ListEmployeeDeduction from "@/features/employee-deduction/components/list-employee-deduction";
-import MenuEmployeeSalary from "@/features/employee-salary/components/menu-employee-salary";
+import MenuEmployeeDeduction from "@/features/employee-deduction/components/menu-employee-deduction";
 import ListEmployeeSalary from "@/features/employee-salary/components/list-employee-salary";
+import MenuEmployeeSalary from "@/features/employee-salary/components/menu-employee-salary";
 
 type Props = {
   params: Promise<{ id: string }>;

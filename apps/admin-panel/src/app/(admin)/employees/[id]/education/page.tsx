@@ -2,8 +2,8 @@
 
 import ListEmployeeEducation from "@/features/employee-education/components/list-employee-education";
 import MenuEmployeeEducation from "@/features/employee-education/components/menu-employee-education";
-import { use } from "react";
 import { useSearchParams } from "next/navigation";
+import { use } from "react";
 
 type Props = {
   params: Promise<{ id: string }>;
