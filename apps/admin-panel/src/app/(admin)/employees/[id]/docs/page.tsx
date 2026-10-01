@@ -2,8 +2,8 @@
 
 import ListEmployeeDocs from "@/features/employee-docs/components/list-employee-docs";
 import MenuEmployeeDocs from "@/features/employee-docs/components/menu-employee-docs";
-import { use } from "react";
 import { useSearchParams } from "next/navigation";
+import { use } from "react";
 
 type Props = {
   params: Promise<{ id: string }>;

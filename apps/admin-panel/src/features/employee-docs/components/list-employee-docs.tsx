@@ -2,7 +2,17 @@
 
 import { PageSelector } from "@/components/shared/page-selector/page-selector";
 import { Pagination } from "@/components/shared/pagination/pagination";
-import Table from "@/components/ui/table/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import toIDDate from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useGetEmployeeDocs } from "../hooks/use-get-employee-docs";
@@ -14,7 +24,7 @@ interface Props {
 
 export default function ListEmployeeDocs({ search }: Props) {
   const router = useRouter();
-  const { data, isLoading, isFetching } = useGetEmployeeDocs(search);
+  const { data, isLoading, isFetching, isError } = useGetEmployeeDocs(search);
 
   const handlePaginate = (number: number) => {
     const params = new URLSearchParams(window.location.search);
@@ -30,70 +40,88 @@ export default function ListEmployeeDocs({ search }: Props) {
   };
 
   if (isLoading || isFetching) {
-    return <div className="text-sm text-zinc-400 py-4">Memuat data...</div>;
+    return (
+      <Card>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-3/4" />
+        </CardContent>
+      </Card>
+    );
+  }
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-sm text-destructive">
+          Dokumen karyawan gagal dimuat. Coba muat ulang halaman.
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <div>
-      <Table
-        data={data?.data ?? []}
-        keyExtractor={(row) => row.id}
-        columns={[
-          {
-            header: "Tipe",
-            accessor: (row) => (
-              <span className="text-xs font-medium bg-zinc-100 px-2 py-1 rounded">
-                {row.doc_type}
-              </span>
-            ),
-          },
-          {
-            header: "Nama Dokumen",
-            accessor: (row) => (
-              <span className="font-medium">{row.doc_name}</span>
-            ),
-          },
-          {
-            header: "Nomor Dokumen",
-            accessor: (row) => (
-              <span className="text-sm text-zinc-600">{row.doc_number}</span>
-            ),
-          },
-          {
-            header: "Tanggal Terbit",
-            accessor: (row) => (
-              <span className="text-sm whitespace-nowrap">
-                {toIDDate(new Date(row.issued))}
-              </span>
-            ),
-          },
-          {
-            header: "File",
-            accessor: (row) =>
-              row.file_url ? (
-                <a
-                  href={row.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline text-sm"
-                >
-                  Lihat File
-                </a>
-              ) : (
-                <span className="text-zinc-400 text-sm">-</span>
-              ),
-          },
-          {
-            header: "Tanggal Upload",
-            accessor: (row) => (
-              <span className="text-sm whitespace-nowrap">
-                {toIDDate(new Date(row.created_at))}
-              </span>
-            ),
-          },
-        ]}
-      />
-      {data && (
+      {data?.data?.length ? (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {[
+                    "Tipe",
+                    "Nama Dokumen",
+                    "Nomor Dokumen",
+                    "Tanggal Terbit",
+                    "File",
+                    "Tanggal Upload",
+                  ].map((header) => (
+                    <TableHead key={header}>{header}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.data.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <Badge variant="secondary">{row.doc_type}</Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {row.doc_name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.doc_number}
+                    </TableCell>
+                    <TableCell>{toIDDate(new Date(row.issued))}</TableCell>
+                    <TableCell>
+                      {row.file_url ? (
+                        <a
+                          href={row.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          Lihat File
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{toIDDate(new Date(row.created_at))}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            Belum ada dokumen karyawan.
+          </CardContent>
+        </Card>
+      )}
+      {data && data?.data?.length > 0 && (
         <div className="flex flex-col w-full gap-5 justify-center items-end mt-5">
           <div className="flex w-full items-center justify-between gap-x-1">
             <p className="font-bold text-xs">

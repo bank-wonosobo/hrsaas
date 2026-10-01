@@ -14,6 +14,8 @@ export function useGetEmployeeContracts(search: SearchEmployeeContractRequest) {
       search.division_id,
       search.position_id,
       search.active_only,
+      search.end_date_from,
+      search.end_date_to,
       search.page,
       search.size,
     ],

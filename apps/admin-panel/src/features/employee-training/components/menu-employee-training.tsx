@@ -1,6 +1,7 @@
 "use client";
 
 import { CreateEmployeeTrainingForm } from "./create-employee-training";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
   employeeId: string;
@@ -8,9 +9,11 @@ interface Props {
 
 export default function MenuEmployeeTraining({ employeeId }: Props) {
   return (
-    <div className="flex items-center justify-between">
-      <p className="font-semibold text-gray-700">Riwayat Pelatihan</p>
+    <Card>
+      <CardHeader><CardTitle>Riwayat Pelatihan</CardTitle></CardHeader>
+      <CardContent className="flex justify-end">
       <CreateEmployeeTrainingForm employeeId={employeeId} />
-    </div>
+      </CardContent>
+    </Card>
   );
 }

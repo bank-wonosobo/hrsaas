@@ -1,7 +1,22 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
-import Modal from "@/components/ui/modal/modal";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Download, FileSpreadsheet, Upload, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import * as XLSX from "xlsx";
@@ -174,51 +189,54 @@ export default function ImportEmployee({ isOpen, onClose }: ImportEmployeeProps)
   const displayHeaders = visibleHeaders.length > 0 ? visibleHeaders : headers.slice(0, 6);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Import Data Karyawan"
-      maxWidth="xl"
-      footer={
-        <>
-          <Button variant="outline" onClick={handleClose} disabled={isPending}>
-            Batal
-          </Button>
-          <Button onClick={handleSubmit} disabled={!file || isPending} loading={isPending}>
-            Import {rows.length > 0 ? `(${rows.length} data)` : ""}
-          </Button>
-        </>
-      }
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isPending) handleClose();
+      }}
     >
-      <div className="space-y-4">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>Import data karyawan</DialogTitle>
+          <DialogDescription>
+            Unggah file Excel untuk menambahkan data karyawan secara massal.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
         {!file ? (
           <div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${
+            className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed p-10 transition-colors ${
               isDragging
                 ? "border-primary bg-primary/5"
-                : "border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50"
+                : "border-border bg-muted/20 hover:border-ring hover:bg-muted/40"
             }`}
           >
-            <div className="p-4 bg-zinc-100 rounded-full">
-              <Upload size={28} className="text-zinc-500" />
+            <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Upload className="size-7" />
             </div>
             <div className="text-center">
-              <p className="font-medium text-zinc-700">Seret &amp; lepas file di sini</p>
-              <p className="text-sm text-zinc-400 mt-1">atau klik untuk memilih file</p>
+              <p className="font-medium">Seret &amp; lepas file di sini</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                atau klik untuk memilih file
+              </p>
             </div>
-            <p className="text-xs text-zinc-400">Format yang didukung: .xlsx, .xls</p>
-            <button
+            <p className="text-xs text-muted-foreground">
+              Format yang didukung: .xlsx, .xls
+            </p>
+            <Button
               type="button"
+              variant="link"
+              size="sm"
               onClick={(e) => { e.stopPropagation(); handleDownloadTemplate(); }}
-              className="flex items-center gap-1.5 text-xs text-primary hover:underline mt-1"
+              className="mt-1"
             >
-              <Download size={13} />
+              <Download />
               Download template
-            </button>
+            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -228,75 +246,97 @@ export default function ImportEmployee({ isOpen, onClose }: ImportEmployeeProps)
             />
           </div>
         ) : (
-          <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
+          <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/40">
             <div className="flex items-center gap-3">
-              <FileSpreadsheet size={22} className="text-green-600" />
+              <FileSpreadsheet className="size-6 text-emerald-700 dark:text-emerald-300" />
               <div>
-                <p className="text-sm font-medium text-zinc-800">{file.name}</p>
-                <p className="text-xs text-zinc-500">{rows.length} baris data ditemukan</p>
+                <p className="text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {rows.length} baris data ditemukan
+                </p>
               </div>
             </div>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Hapus file yang dipilih"
               onClick={handleRemoveFile}
-              className="p-1.5 rounded-full hover:bg-green-100 transition"
             >
-              <X size={16} className="text-zinc-500" />
-            </button>
+              <X />
+            </Button>
           </div>
         )}
 
         {rows.length > 0 && (
           <div>
-            <p className="text-sm font-medium text-zinc-700 mb-2">
-              Preview Data ({Math.min(rows.length, 5)} dari {rows.length} baris)
+            <p className="mb-2 text-sm font-medium">
+              Preview data ({Math.min(rows.length, 5)} dari {rows.length} baris)
             </p>
-            <div className="overflow-x-auto rounded-xl border border-zinc-200">
-              <table className="w-full text-xs">
-                <thead className="bg-zinc-50 border-b border-zinc-200">
-                  <tr>
-                    <th className="px-3 py-2.5 text-left text-zinc-500 font-medium w-8">#</th>
+            <div className="overflow-x-auto rounded-2xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8">#</TableHead>
                     {displayHeaders.map((header) => (
-                      <th
+                      <TableHead
                         key={header}
-                        className="px-3 py-2.5 text-left text-zinc-500 font-medium whitespace-nowrap"
                       >
                         {COLUMN_LABELS[header.toLowerCase()] ?? header}
-                      </th>
+                      </TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {rows.slice(0, 5).map((row, i) => (
-                    <tr
+                    <TableRow
                       key={i}
-                      className="border-b border-zinc-100 last:border-none hover:bg-zinc-50"
                     >
-                      <td className="px-3 py-2.5 text-zinc-400">{i + 1}</td>
+                      <TableCell className="text-muted-foreground">
+                        {i + 1}
+                      </TableCell>
                       {displayHeaders.map((header) => (
-                        <td
+                        <TableCell
                           key={header}
-                          className="px-3 py-2.5 text-zinc-700 whitespace-nowrap max-w-40 truncate"
+                          className="max-w-40 truncate"
                         >
                           {row[header] !== null && row[header] !== undefined ? (
                             String(row[header])
                           ) : (
-                            <span className="text-zinc-300">-</span>
+                            <span className="text-muted-foreground">—</span>
                           )}
-                        </td>
+                        </TableCell>
                       ))}
-                    </tr>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             {rows.length > 5 && (
-              <p className="text-xs text-zinc-400 mt-2 text-center">
+              <p className="mt-2 text-center text-xs text-muted-foreground">
                 + {rows.length - 5} baris lainnya tidak ditampilkan
               </p>
             )}
           </div>
         )}
       </div>
-    </Modal>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isPending}
+          >
+            Batal
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!file || isPending}
+          >
+            {isPending ? "Mengimpor..." : "Import"}
+            {rows.length > 0 ? ` (${rows.length} data)` : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

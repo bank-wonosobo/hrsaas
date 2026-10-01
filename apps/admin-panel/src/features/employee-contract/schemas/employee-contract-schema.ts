@@ -11,13 +11,23 @@ const EmployeeRefSchema = z.object({
 });
 
 export const EMPLOYEE_STATUS_OPTIONS = [
-  "A1", "A2", "A3", "A4",
-  "B1", "B2", "B3", "B4",
-  "C1", "C2", "C3", "C4",
-  "D1", "D2",
+  "A1",
+  "A2",
+  "A3",
+  "A4",
+  "B1",
+  "B2",
+  "B3",
+  "B4",
+  "C1",
+  "C2",
+  "C3",
+  "C4",
+  "D1",
+  "D2",
 ] as const;
 
-export type EmployeeStatus = typeof EMPLOYEE_STATUS_OPTIONS[number];
+export type EmployeeStatus = (typeof EMPLOYEE_STATUS_OPTIONS)[number];
 
 export const EmployeeContractSchema = z.object({
   id: z.string(),
@@ -51,6 +61,8 @@ export const SearchEmployeeContractRequestSchema = z.object({
   division_id: z.string().optional(),
   position_id: z.string().optional(),
   active_only: z.string().optional(),
+  end_date_from: z.number().optional(),
+  end_date_to: z.number().optional(),
   page: z.number().optional(),
   size: z.number().optional(),
 });
@@ -66,6 +78,12 @@ export const UpdateEmployeeContractSchema = z.object({
 });
 
 export type EmployeeContract = z.infer<typeof EmployeeContractSchema>;
-export type CreateEmployeeContract = z.infer<typeof CreateEmployeeContractSchema>;
-export type UpdateEmployeeContract = z.infer<typeof UpdateEmployeeContractSchema>;
-export type SearchEmployeeContractRequest = z.infer<typeof SearchEmployeeContractRequestSchema>;
+export type CreateEmployeeContract = z.infer<
+  typeof CreateEmployeeContractSchema
+>;
+export type UpdateEmployeeContract = z.infer<
+  typeof UpdateEmployeeContractSchema
+>;
+export type SearchEmployeeContractRequest = z.infer<
+  typeof SearchEmployeeContractRequestSchema
+>;

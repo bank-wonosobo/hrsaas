@@ -1,9 +1,9 @@
 import Title from "@/components/ui/title/title";
+import { serverApi } from "@/lib/server-api";
+import { getQueryclient } from "@/providers/get-query-client";
 import ListUser from "@/features/user/components/list-user";
 import MenuUser from "@/features/user/components/menu-user";
 import { SearchUserRequest } from "@/features/user/schemas/auth-schema";
-import { serverApi } from "@/lib/server-api";
-import { getQueryclient } from "@/providers/get-query-client";
 import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import type React from "react";
 

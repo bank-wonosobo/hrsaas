@@ -1,10 +1,20 @@
 "use client";
 
-import SelectSearch from "@/components/ui/select-search/select-search";
-import Select from "@/components/ui/select/select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useGetEmployees } from "@/features/employee/hooks/use-get-employee";
 import { mapToOptions } from "@/lib/utils";
-import { CalendarDays, ChevronDown, Filter, List, RotateCcw, User, X } from "lucide-react";
+import { CalendarDays, Filter, List, RotateCcw, User, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SearchTimeOffRequest } from "../schemas/time-off-schema";
@@ -16,18 +26,15 @@ const STATUS_OPTIONS = [
   { label: "Ditolak", value: "REJECTED" },
 ];
 
-const STATUS_COLOR: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700 border-amber-200",
-  APPROVED: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  REJECTED: "bg-red-100 text-red-700 border-red-200",
-};
-
 interface Props {
   search: SearchTimeOffRequest;
   view: string;
 }
 
-export default function MenuTimeOffRequest({ search, view }: Props): React.ReactNode {
+export default function MenuTimeOffRequest({
+  search,
+  view,
+}: Props): React.ReactNode {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -36,7 +43,11 @@ export default function MenuTimeOffRequest({ search, view }: Props): React.React
   const [status, setStatus] = useState(search.request_status ?? "");
 
   const { data: employees } = useGetEmployees({ size: 500 });
-  const employeeOptions = mapToOptions(employees?.data ?? [], (e) => e.fullname, (e) => e.id);
+  const employeeOptions = mapToOptions(
+    employees?.data ?? [],
+    (e) => e.fullname,
+    (e) => e.id,
+  );
 
   function updateQuery(newParams: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -49,11 +60,18 @@ export default function MenuTimeOffRequest({ search, view }: Props): React.React
     router.push(`?${params.toString()}`, { scroll: false });
   }
 
-  function handleEmployee(val: string) { setEmployeeID(val); updateQuery({ employee_id: val || null }); }
-  function handleStatus(val: string) { setStatus(val); updateQuery({ request_status: val || null }); }
+  function handleEmployee(val: string) {
+    setEmployeeID(val);
+    updateQuery({ employee_id: val || null });
+  }
+  function handleStatus(val: string) {
+    setStatus(val);
+    updateQuery({ request_status: val || null });
+  }
 
   function handleReset() {
-    setEmployeeID(""); setStatus("");
+    setEmployeeID("");
+    setStatus("");
     router.push("?page=1&size=10", { scroll: false });
   }
 
@@ -63,111 +81,160 @@ export default function MenuTimeOffRequest({ search, view }: Props): React.React
     router.push(`?${params.toString()}`, { scroll: false });
   }
 
-  const activeFilters: { key: string; label: string; onRemove: () => void }[] = [];
-  if (employeeID) activeFilters.push({ key: "employee", label: employeeOptions.find((o) => o.value === employeeID)?.label ?? employeeID, onRemove: () => handleEmployee("") });
-  if (status) activeFilters.push({ key: "status", label: STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status, onRemove: () => handleStatus("") });
+  const activeFilters: { key: string; label: string; onRemove: () => void }[] =
+    [];
+  if (employeeID)
+    activeFilters.push({
+      key: "employee",
+      label:
+        employeeOptions.find((o) => o.value === employeeID)?.label ??
+        employeeID,
+      onRemove: () => handleEmployee(""),
+    });
+  if (status)
+    activeFilters.push({
+      key: "status",
+      label: STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status,
+      onRemove: () => handleStatus(""),
+    });
 
   const hasFilters = activeFilters.length > 0;
 
   return (
-    <div className="mb-5 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      {/* Top bar – view toggle + action (always visible) */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-        <div className="flex items-center gap-1 p-1 bg-zinc-100 rounded-xl">
-          <button
-            onClick={() => setView("table")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view !== "calendar" ? "bg-white shadow-sm text-black" : "text-zinc-500 hover:text-zinc-700"}`}
-          >
-            <List className="w-4 h-4" />
-            Tabel
-          </button>
-          <button
-            onClick={() => setView("calendar")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "calendar" ? "bg-white shadow-sm text-black" : "text-zinc-500 hover:text-zinc-700"}`}
-          >
-            <CalendarDays className="w-4 h-4" />
-            Kalender
-          </button>
-        </div>
+    <Card className="mb-5 gap-0 overflow-hidden py-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b p-4 sm:px-5">
+        <ToggleGroup
+          type="single"
+          value={view === "calendar" ? "calendar" : "table"}
+          onValueChange={(value) => value && setView(value)}
+          variant="outline"
+          size="sm"
+          spacing={0}
+          aria-label="Tampilan pengajuan cuti"
+        >
+          <ToggleGroupItem value="table" aria-label="Tampilan tabel">
+            <List />
+            <span className="hidden sm:inline">Tabel</span>
+          </ToggleGroupItem>
+          <ToggleGroupItem value="calendar" aria-label="Tampilan kalender">
+            <CalendarDays />
+            <span className="hidden sm:inline">Kalender</span>
+          </ToggleGroupItem>
+        </ToggleGroup>
         <CreateTimeOffForm />
-      </div>
+      </CardHeader>
 
-      {/* Filter header – collapsible toggle */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((p) => !p)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((p) => !p); }}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-zinc-50 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-100">
-            <Filter className="h-3.5 w-3.5 text-zinc-600" />
-          </div>
-          <span className="text-sm font-semibold text-zinc-800">Filter</span>
-          {hasFilters && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white">
-              {activeFilters.length}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasFilters && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); handleReset(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleReset(); } }}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              aria-expanded={open}
+              onClick={() => setOpen((previous) => !previous)}
+              className="justify-start px-2"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </span>
-          )}
-          <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </div>
-      </div>
-
-      {/* Collapsible filter body */}
-      {open && (
-        <div className="border-t border-zinc-100">
-          <div className="px-5 pt-4 pb-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  <User className="h-3 w-3" />
-                  Karyawan
-                </label>
-                <SelectSearch label="Pilih karyawan" options={employeeOptions} value={employeeID} onChange={handleEmployee} />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Status
-                </label>
-                <Select label="Pilih status" options={STATUS_OPTIONS} value={status} onChange={handleStatus} />
-              </div>
-            </div>
+              <Filter className="size-4" />
+              Filter
+            </Button>
+            {hasFilters && (
+              <Badge variant="secondary">{activeFilters.length}</Badge>
+            )}
           </div>
-
           {hasFilters && (
-            <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-5 py-3 bg-zinc-50">
-              {activeFilters.map((f) => (
-                <span
-                  key={f.key}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${STATUS_COLOR[f.key === "status" ? status : ""] ?? "bg-zinc-100 text-zinc-700 border-zinc-200"}`}
-                >
-                  {f.label}
-                  <button onClick={f.onRemove} className="rounded-full opacity-60 hover:opacity-100 transition-opacity">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+            >
+              <RotateCcw />
+              Reset
+            </Button>
           )}
         </div>
-      )}
-    </div>
+
+        {open && (
+          <div className="space-y-4 border-t p-4 sm:px-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="size-4 text-muted-foreground" />
+                  Karyawan
+                </Label>
+                <Select
+                  value={employeeID || "all"}
+                  onValueChange={(value) =>
+                    handleEmployee(value === "all" ? "" : value)
+                  }
+                >
+                  <SelectTrigger id="time-off-employee" className="w-full">
+                    <SelectValue placeholder="Pilih karyawan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua karyawan</SelectItem>
+                    {employeeOptions.map((employee) => (
+                      <SelectItem key={employee.value} value={employee.value}>
+                        {employee.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="time-off-status">Status</Label>
+                <Select
+                  value={status || "all"}
+                  onValueChange={(value) =>
+                    handleStatus(value === "all" ? "" : value)
+                  }
+                >
+                  <SelectTrigger id="time-off-status" className="w-full">
+                    <SelectValue placeholder="Pilih status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua status</SelectItem>
+                    {STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {hasFilters && (
+              <div className="flex flex-wrap gap-2 border-t pt-4">
+                {activeFilters.map((filter) => (
+                  <Badge
+                    key={filter.key}
+                    variant={
+                      filter.key === "status" && status === "REJECTED"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                    className="gap-1.5 py-1 pr-1"
+                  >
+                    {filter.label}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={`Hapus filter ${filter.label}`}
+                      onClick={filter.onRemove}
+                      className="rounded-full"
+                    >
+                      <X />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

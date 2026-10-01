@@ -10,7 +10,9 @@ type Props = {
   searchParams: Promise<{ key?: string; page?: string; size?: string }>;
 };
 
-export default async function AnnouncementsPage({ searchParams }: Props): Promise<React.ReactNode> {
+export default async function AnnouncementsPage({
+  searchParams,
+}: Props): Promise<React.ReactNode> {
   const params = await searchParams;
   const search: SearchAnnouncementRequest = {
     key: params.key ?? "",

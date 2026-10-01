@@ -17,6 +17,8 @@ export const getEmployeeContracts = async (
       division_id: search.division_id,
       position_id: search.position_id,
       active_only: search.active_only,
+      end_date_from: search.end_date_from,
+      end_date_to: search.end_date_to,
       page: search.page,
       size: search.size,
     },

@@ -23,6 +23,8 @@ export const AttendanceSchema = z.object({
   date: z.number(),
   check_in_time: z.number(),
   check_out_time: z.number(),
+  total_work_minutes: z.number(),
+  total_break_minutes: z.number(),
   status: z.string(),
   logs: z.array(AttendanceLogSchema).optional(),
 });

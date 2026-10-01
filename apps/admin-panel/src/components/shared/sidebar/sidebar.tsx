@@ -161,7 +161,9 @@ export default function Sidebar() {
       },
       {
         title: "Informasi",
-        items: [{ label: "Pengumuman", icon: Megaphone, path: "/announcements" }],
+        items: [
+          { label: "Pengumuman", icon: Megaphone, path: "/announcements" },
+        ],
       },
     ],
     [timeOffApproval],

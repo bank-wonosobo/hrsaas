@@ -1,14 +1,23 @@
 "use client";
 
-import { DateRange } from "@/components/shared/date-range-picker/date-range-picker";
-import InputDateRange from "@/components/ui/input-date-range/input-date-range";
-import Select from "@/components/ui/select/select";
-import SelectSearch from "@/components/ui/select-search/select-search";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useGetEmployees } from "@/features/employee/hooks/use-get-employee";
 import { mapToOptions } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { CalendarDays, ChevronDown, Filter, RotateCcw, X } from "lucide-react";
+import { Filter, RotateCcw, User, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type React from "react";
 import { useState } from "react";
 import { SearchAttendanceRequest } from "../schemas/attendance-schema";
 
@@ -20,16 +29,28 @@ const STATUS_OPTIONS = [
 
 interface Props {
   search: SearchAttendanceRequest;
+  exportAction: React.ReactNode;
 }
 
-export default function MenuAttendance({ search }: Props) {
+function getTodayInJakarta() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const getPart = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
+}
+
+export default function MenuAttendance({ search, exportAction }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  const [open, setOpen] = useState(false);
   const [employeeID, setEmployeeID] = useState(search.employee_id ?? "");
   const [status, setStatus] = useState(search.status ?? "");
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState({
     start: search.start_date ? parseISO(search.start_date) : null,
     end: search.end_date ? parseISO(search.end_date) : null,
   });
@@ -37,8 +58,8 @@ export default function MenuAttendance({ search }: Props) {
   const { data: employees } = useGetEmployees({ size: 500 });
   const employeeOptions = mapToOptions(
     employees?.data ?? [],
-    (e) => e.fullname,
-    (e) => e.id,
+    (employee) => employee.fullname,
+    (employee) => employee.id,
   );
 
   function updateQuery(newParams: Record<string, string | null>) {
@@ -48,158 +69,212 @@ export default function MenuAttendance({ search }: Props) {
       else params.set(key, value);
     });
     params.set("page", "1");
-    params.set("size", "10");
+    params.set("size", search.size?.toString() ?? "10");
     router.push(`?${params.toString()}`, { scroll: false });
   }
 
-  function handleEmployee(val: string) {
-    setEmployeeID(val);
-    updateQuery({ employee_id: val || null });
+  function handleEmployee(value: string) {
+    const nextValue = value === "all" ? "" : value;
+    setEmployeeID(nextValue);
+    updateQuery({ employee_id: nextValue || null });
   }
 
-  function handleStatus(val: string) {
-    setStatus(val);
-    updateQuery({ status: val || null });
+  function handleStatus(value: string) {
+    const nextValue = value === "all" ? "" : value;
+    setStatus(nextValue);
+    updateQuery({ status: nextValue || null });
   }
 
-  function handleDateRange(range: DateRange) {
-    setDateRange(range);
+  function handleDateChange(field: "start" | "end", value: string) {
+    const nextValue = value ? parseISO(value) : null;
+    const nextRange = { ...dateRange, [field]: nextValue };
+    setDateRange(nextRange);
     updateQuery({
-      start_date: range.start ? format(range.start, "yyyy-MM-dd") : null,
-      end_date: range.end ? format(range.end, "yyyy-MM-dd") : null,
+      start_date: nextRange.start
+        ? format(nextRange.start, "yyyy-MM-dd")
+        : null,
+      end_date: nextRange.end ? format(nextRange.end, "yyyy-MM-dd") : null,
     });
   }
 
   function handleReset() {
+    const today = getTodayInJakarta();
+    const todayDate = parseISO(today);
     setEmployeeID("");
     setStatus("");
-    setDateRange({ start: null, end: null });
-    router.push("?page=1&size=10", { scroll: false });
+    setDateRange({ start: todayDate, end: todayDate });
+    router.push(
+      `?page=1&size=${search.size ?? 10}&start_date=${today}&end_date=${today}`,
+      { scroll: false },
+    );
   }
 
-  const activeFilters: { key: string; label: string; onRemove: () => void }[] = [];
+  const activeFilters: { key: string; label: string; onRemove: () => void }[] =
+    [];
   if (employeeID) {
     activeFilters.push({
       key: "employee",
-      label: employeeOptions.find((o) => o.value === employeeID)?.label ?? employeeID,
-      onRemove: () => handleEmployee(""),
+      label:
+        employeeOptions.find((option) => option.value === employeeID)?.label ??
+        employeeID,
+      onRemove: () => handleEmployee("all"),
     });
   }
   if (status) {
     activeFilters.push({
       key: "status",
-      label: STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status,
-      onRemove: () => handleStatus(""),
+      label:
+        STATUS_OPTIONS.find((option) => option.value === status)?.label ??
+        status,
+      onRemove: () => handleStatus("all"),
     });
   }
   if (dateRange.start && dateRange.end) {
+    const today = getTodayInJakarta();
     activeFilters.push({
       key: "date",
-      label: `${format(dateRange.start, "dd MMM yyyy")} – ${format(dateRange.end, "dd MMM yyyy")}`,
-      onRemove: () => handleDateRange({ start: null, end: null }),
+      label:
+        format(dateRange.start, "yyyy-MM-dd") === today &&
+        format(dateRange.end, "yyyy-MM-dd") === today
+          ? "Hari ini"
+          : `${format(dateRange.start, "dd MMM yyyy")} – ${format(dateRange.end, "dd MMM yyyy")}`,
+      onRemove: handleReset,
     });
   }
 
-  const hasFilters = activeFilters.length > 0;
-
   return (
-    <div className="mb-5 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((p) => !p)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((p) => !p); }}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100">
-            <Filter className="h-4 w-4 text-zinc-600" />
+    <Card className="mb-5 gap-0 overflow-hidden py-0 shadow-sm">
+      <CardHeader className="flex flex-col gap-4 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-muted">
+            <Filter className="size-4 text-muted-foreground" />
           </div>
-          <span className="font-semibold text-zinc-800">Filter</span>
-          {hasFilters && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white">
-              {activeFilters.length}
-            </span>
+          <div>
+            <p className="font-semibold">Filter kehadiran</p>
+            <p className="text-xs text-muted-foreground">
+              Saring data berdasarkan karyawan, status, dan tanggal.
+            </p>
+          </div>
+          {activeFilters.length > 0 && (
+            <Badge variant="secondary">{activeFilters.length}</Badge>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {hasFilters && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); handleReset(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleReset(); } }}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+        <div className="flex flex-wrap items-center gap-2">
+          {activeFilters.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw />
               Reset
-            </span>
+            </Button>
           )}
-          <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          {exportAction}
         </div>
-      </div>
+      </CardHeader>
 
-      {open && (
-        <div className="border-t border-zinc-100">
-          <div className="px-5 pt-4 pb-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Karyawan
-                </label>
-                <SelectSearch
-                  label="Pilih karyawan"
-                  options={employeeOptions}
-                  value={employeeID}
-                  onChange={handleEmployee}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Status
-                </label>
-                <Select
-                  label="Pilih status"
-                  options={STATUS_OPTIONS}
-                  value={status}
-                  onChange={handleStatus}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                <CalendarDays className="h-3 w-3" />
-                Rentang Tanggal
-              </label>
-              <InputDateRange
-                labelStart="Tanggal mulai"
-                labelEnd="Tanggal selesai"
-                value={dateRange}
-                onChange={handleDateRange}
-              />
-            </div>
+      <CardContent className="space-y-4 p-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-2">
+            <Label
+              htmlFor="attendance-employee"
+              className="flex items-center gap-2"
+            >
+              <User className="size-4 text-muted-foreground" />
+              Karyawan
+            </Label>
+            <Select value={employeeID || "all"} onValueChange={handleEmployee}>
+              <SelectTrigger id="attendance-employee" className="w-full">
+                <SelectValue placeholder="Pilih karyawan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua karyawan</SelectItem>
+                {employeeOptions.map((employee) => (
+                  <SelectItem key={employee.value} value={employee.value}>
+                    {employee.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {hasFilters && (
-            <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-5 py-3 bg-zinc-50">
-              {activeFilters.map((f) => (
-                <span
-                  key={f.key}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium bg-zinc-100 text-zinc-700 border-zinc-200"
-                >
-                  {f.label}
-                  <button onClick={f.onRemove} className="rounded-full opacity-60 hover:opacity-100 transition-opacity">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="attendance-status">Status</Label>
+            <Select value={status || "all"} onValueChange={handleStatus}>
+              <SelectTrigger id="attendance-status" className="w-full">
+                <SelectValue placeholder="Semua status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua status</SelectItem>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="attendance-start-date">Dari tanggal</Label>
+            <Input
+              id="attendance-start-date"
+              type="date"
+              value={
+                dateRange.start ? format(dateRange.start, "yyyy-MM-dd") : ""
+              }
+              max={
+                dateRange.end ? format(dateRange.end, "yyyy-MM-dd") : undefined
+              }
+              onChange={(event) =>
+                handleDateChange("start", event.target.value)
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="attendance-end-date">Sampai tanggal</Label>
+            <Input
+              id="attendance-end-date"
+              type="date"
+              value={dateRange.end ? format(dateRange.end, "yyyy-MM-dd") : ""}
+              min={
+                dateRange.start
+                  ? format(dateRange.start, "yyyy-MM-dd")
+                  : undefined
+              }
+              onChange={(event) => handleDateChange("end", event.target.value)}
+            />
+          </div>
         </div>
-      )}
-    </div>
+
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap gap-2 border-t pt-4">
+            {activeFilters.map((filter) => (
+              <Badge
+                key={filter.key}
+                variant="secondary"
+                className="gap-1.5 py-1 pr-1"
+              >
+                {filter.label}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Hapus filter ${filter.label}`}
+                  onClick={filter.onRemove}
+                  className="rounded-full"
+                >
+                  <X />
+                </Button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

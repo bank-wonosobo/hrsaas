@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import { getAuthUser } from "@/lib/auth-storage";
 import { useEffect, useState } from "react";

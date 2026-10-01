@@ -1,5 +1,9 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, UserCheck } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -155,184 +159,196 @@ export default function CalendarTimeOff({ employeeId, requestStatus }: Props) {
   const selectedDate = selectedDay ? new Date(year, month, selectedDay) : null;
 
   return (
-    <div className="flex gap-4 flex-col lg:flex-row">
-      {/* ── Kalender ── */}
-      <div className="bg-white rounded-2xl border p-5 flex-1 min-w-0">
-        {/* Navigation */}
-        <div className="flex items-center justify-between mb-5">
-          <button
+    <div className="flex flex-col gap-4 lg:flex-row">
+      <Card className="min-w-0 flex-1 gap-0">
+        <CardHeader className="flex flex-row items-center justify-between border-b">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Bulan sebelumnya"
             onClick={prevMonth}
-            className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <h2 className="text-sm font-semibold">
+            <ChevronLeft />
+          </Button>
+          <CardTitle>
             {MONTH_LABELS[month]} {year}
-          </h2>
-          <button
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Bulan berikutnya"
             onClick={nextMonth}
-            className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors"
           >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+            <ChevronRight />
+          </Button>
+        </CardHeader>
 
-        {/* Day headers */}
-        <div className="grid grid-cols-7 mb-1">
-          {DAY_LABELS.map((d) => (
-            <div
-              key={d}
-              className="text-center text-[11px] font-medium text-zinc-400 py-1"
-            >
-              {d}
-            </div>
-          ))}
-        </div>
-
-        {/* Grid */}
-        {isLoading ? (
-          <div className="h-64 flex items-center justify-center text-sm text-zinc-400">
-            Memuat data...
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 gap-px bg-zinc-100 rounded-xl overflow-hidden">
-            {cells.map((day, i) => {
-              const requests = day ? (requestsByDay[day] ?? []) : [];
-              const isSelected = day !== null && day === selectedDay;
-              const approvedCount = requests.filter(
-                (r) => r.request_status === "APPROVED",
-              ).length;
-
-              return (
-                <div
-                  key={i}
-                  onClick={() => day && setSelectedDay(day)}
-                  className={cn(
-                    "bg-white min-h-20 p-1.5 flex flex-col transition-colors",
-                    !day && "bg-zinc-50/60",
-                    day && "cursor-pointer hover:bg-zinc-50",
-                    isSelected && "bg-zinc-50 ring-1 ring-inset ring-zinc-300",
-                  )}
-                >
-                  {day && (
-                    <>
-                      <span
-                        className={cn(
-                          "text-xs font-medium inline-flex w-6 h-6 items-center justify-center rounded-full mb-1 self-start",
-                          isTodayCell(day)
-                            ? "bg-black text-white"
-                            : "text-zinc-600",
-                        )}
-                      >
-                        {day}
-                      </span>
-
-                      <div className="flex flex-col gap-0.5">
-                        {requests.slice(0, 3).map((req, j) => (
-                          <div
-                            key={j}
-                            title={`${req.employee.fullname} — ${req.time_off_type.name}`}
-                            className={cn(
-                              "text-[10px] px-1 py-0.5 rounded border truncate leading-tight",
-                              statusColor(req.request_status),
-                            )}
-                          >
-                            {req.employee.fullname}
-                          </div>
-                        ))}
-                        {requests.length > 3 && (
-                          <span className="text-[10px] text-zinc-400 pl-0.5">
-                            +{requests.length - 3} lagi
-                          </span>
-                        )}
-                      </div>
-
-                      {/* dot indicator approved */}
-                      {approvedCount > 0 && (
-                        <div className="mt-auto pt-1 flex items-center gap-0.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                          <span className="text-[9px] text-green-600 font-medium">
-                            {approvedCount} cuti
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="flex items-center gap-5 mt-4 flex-wrap">
-          {[
-            { label: "Pending", cls: "bg-amber-100 border-amber-200" },
-            { label: "Disetujui", cls: "bg-green-100 border-green-200" },
-            { label: "Ditolak", cls: "bg-red-100 border-red-200" },
-          ].map(({ label, cls }) => (
-            <div key={label} className="flex items-center gap-1.5">
-              <div className={cn("w-3 h-3 rounded-sm border", cls)} />
-              <span className="text-xs text-zinc-500">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Panel: Sedang Cuti ── */}
-      <div className="bg-white rounded-2xl border p-5 w-full lg:w-72 shrink-0">
-        <div className="flex items-center gap-2 mb-4">
-          <UserCheck className="w-4 h-4 text-green-600" />
-          <h3 className="text-sm font-semibold">Sedang Cuti</h3>
-        </div>
-
-        {selectedDate && (
-          <p className="text-xs text-zinc-400 mb-3">
-            {selectedDate.getDate()} {MONTH_LABELS[selectedDate.getMonth()]}{" "}
-            {selectedDate.getFullYear()}
-          </p>
-        )}
-
-        {isLoading ? (
-          <p className="text-xs text-zinc-400">Memuat...</p>
-        ) : onLeaveToday.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-zinc-300" />
-            </div>
-            <p className="text-xs text-zinc-400">
-              {selectedDay ? "Tidak ada karyawan yang cuti" : "Pilih tanggal"}
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {onLeaveToday.map((req) => (
+        <CardContent className="space-y-4 p-4">
+          <div className="grid grid-cols-7">
+            {DAY_LABELS.map((dayLabel) => (
               <div
-                key={req.id}
-                className="flex items-start gap-2.5 p-2.5 rounded-xl bg-green-50 border border-green-100"
+                key={dayLabel}
+                className="py-2 text-center text-xs font-medium text-muted-foreground"
               >
-                {/* Avatar */}
-                <div className="w-8 h-8 rounded-full bg-green-200 text-green-800 text-xs font-semibold flex items-center justify-center shrink-0">
-                  {req.employee.fullname.charAt(0).toUpperCase()}
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-zinc-800 truncate">
-                    {req.employee.fullname}
-                  </p>
-                  <p className="text-[11px] text-zinc-500 truncate">
-                    {req.time_off_type.name}
-                  </p>
-                  <p className="text-[10px] text-green-600 mt-0.5">
-                    {formatShortDate(req.start_date)} –{" "}
-                    {formatShortDate(req.end_date)} ({req.requested_days} hari)
-                  </p>
-                </div>
+                {dayLabel}
               </div>
             ))}
           </div>
-        )}
-      </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border bg-border">
+              {cells.map((_, index) => (
+                <Skeleton key={index} className="min-h-20 rounded-none" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-px overflow-hidden rounded-md border bg-border">
+              {cells.map((day, index) => {
+                const requests = day ? (requestsByDay[day] ?? []) : [];
+                const isSelected = day !== null && day === selectedDay;
+                const approvedCount = requests.filter(
+                  (request) => request.request_status === "APPROVED",
+                ).length;
+
+                const dayContent = day ? (
+                  <>
+                    <span
+                      className={cn(
+                        "mb-1 inline-flex size-6 items-center justify-center self-start rounded-full text-xs font-medium",
+                        isTodayCell(day)
+                          ? "bg-primary text-primary-foreground"
+                          : "text-foreground",
+                      )}
+                    >
+                      {day}
+                    </span>
+                    <div className="flex w-full min-w-0 flex-col gap-0.5">
+                      {requests.slice(0, 3).map((request) => (
+                        <Badge
+                          key={request.id}
+                          variant="outline"
+                          title={`${request.employee.fullname} — ${request.time_off_type.name}`}
+                          className={cn(
+                            "block h-4 w-full max-w-full truncate rounded-sm px-1 py-0 text-left text-[9px] leading-4",
+                            statusColor(request.request_status),
+                          )}
+                        >
+                          {request.employee.fullname}
+                        </Badge>
+                      ))}
+                      {requests.length > 3 && (
+                        <span className="truncate pl-0.5 text-[10px] text-muted-foreground">
+                          +{requests.length - 3} lagi
+                        </span>
+                      )}
+                    </div>
+                    {approvedCount > 0 && (
+                      <span className="mt-auto flex items-center gap-1 pt-1 text-[9px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <span className="size-1.5 rounded-full bg-emerald-500" />
+                        {approvedCount} cuti
+                      </span>
+                    )}
+                  </>
+                ) : null;
+
+                return day ? (
+                  <Button
+                    key={index}
+                    type="button"
+                    variant={isSelected ? "secondary" : "ghost"}
+                    onClick={() => setSelectedDay(day)}
+                    className={cn(
+                      "flex h-auto min-h-20 min-w-0 flex-col items-start justify-start gap-0 overflow-hidden rounded-none bg-background p-1.5 text-left hover:bg-muted/50",
+                      isSelected && "ring-1 ring-inset ring-ring",
+                    )}
+                  >
+                    {dayContent}
+                  </Button>
+                ) : (
+                  <div
+                    key={index}
+                    aria-hidden="true"
+                    className="min-h-20 bg-muted/30"
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "Pending", status: "PENDING" },
+              { label: "Disetujui", status: "APPROVED" },
+              { label: "Ditolak", status: "REJECTED" },
+            ].map(({ label, status }) => (
+              <Badge
+                key={status}
+                variant="outline"
+                className={cn("font-normal", statusColor(status))}
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="w-full shrink-0 gap-0 lg:w-72">
+        <CardHeader className="border-b">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <UserCheck className="size-4 text-emerald-600" />
+            Sedang Cuti
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          {selectedDate && (
+            <p className="text-sm text-muted-foreground">
+              {selectedDate.getDate()} {MONTH_LABELS[selectedDate.getMonth()]}{" "}
+              {selectedDate.getFullYear()}
+            </p>
+          )}
+
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : onLeaveToday.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+              <UserCheck className="size-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                {selectedDay ? "Tidak ada karyawan yang cuti" : "Pilih tanggal"}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {onLeaveToday.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-start gap-2.5 rounded-md border bg-muted/30 p-3"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                    {request.employee.fullname.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {request.employee.fullname}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {request.time_off_type.name}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatShortDate(request.start_date)} –{" "}
+                      {formatShortDate(request.end_date)} (
+                      {request.requested_days} hari)
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
