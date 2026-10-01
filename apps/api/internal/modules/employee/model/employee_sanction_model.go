@@ -27,6 +27,7 @@ type CreateEmSancRequest struct {
 	Reason      string `json:"reason"             validate:"required"`
 	StartDate   string `json:"start_date"         validate:"required"`
 	EndDate     string `json:"end_date,omitempty"`
+	CreatedBy   string `json:"-"                  validate:"required"`
 	DocumentUrl string `json:"document_url"`
 }
 
@@ -45,6 +46,7 @@ type SearchEmSancRequest struct {
 	Reason     string `json:"reason"      validate:"max=100"`
 	StartDate  string `json:"start_date"`
 	EndDate    string `json:"end_date"`
+	CreatedBy  string `json:"-"           validate:"required"`
 	Status     string `json:"status"      validate:"max=10"`
 	Page       int    `json:"page"        validate:"min=1"`
 	Size       int    `json:"size"        validate:"min=1,max=100"`

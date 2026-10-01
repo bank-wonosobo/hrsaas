@@ -515,6 +515,43 @@ func (c *AttendanceUseCase) Export(
 				hasRow[key] = true
 			}
 		}
+
+		// ===== Tidak Hadir =====
+		// hari kerja sesuai shift tanpa attendance & tanpa cuti
+		if from > 0 && to > 0 {
+			today := dayStart(time.Now().In(jakarta))
+			first := dayStart(time.UnixMilli(from).In(jakarta))
+			last := dayStart(time.UnixMilli(to).In(jakarta))
+
+			for empID, sheet := range employeeMap {
+				for d := first; !d.After(last) && d.Before(today); d = d.AddDate(0, 0, 1) {
+					key := empID + ":" + d.Format("2006-01-02")
+					if hasRow[key] {
+						continue
+					}
+
+					shiftDay, hasShift, err := getShiftDay(empID, d)
+					if err != nil {
+						c.Log.WithError(err).Error("error getting shift day for absent export")
+						return nil, fiber.ErrInternalServerError
+					}
+					if hasShift && shiftDay == nil {
+						continue // hari libur menurut shift
+					}
+					if !hasShift && d.Weekday() == time.Sunday {
+						continue // Weekday
+					}
+
+					sheet.Data = append(sheet.Data, model.AttendanceRow{
+						Date:         d.UnixMilli(),
+						Status:       "TIDAK HADIR",
+						LateCheckIn:  "-",
+						LateCheckOut: "-",
+					})
+					hasRow[key] = true
+				}
+			}
+		}
 	}
 
 	// urutkan tanggal DESC lalu nomori ulang
@@ -835,6 +872,7 @@ func (c *AttendanceUseCase) CheckIn(
 		Lng:                request.Lng,
 		LocationDistance:   distance,
 		IsLocationVerified: isLocationVerified,
+		IsFaceVerified:     faceResult.Match,
 		FaceImageURL:       faceImageURL,
 		IsApproved:         isLocationVerified,
 		DeviceInfo:         request.DeviceInfo,
@@ -890,31 +928,10 @@ func (c *AttendanceUseCase) CheckOut(
 		return nil, fiber.NewError(fiber.StatusBadRequest, "Sudah check-out hari ini")
 	}
 
-	isInRange := false
-	locationDistance := 0.0
-	locations, err := c.LocationRepository.GetByEmployeeID(tx, request.EmployeeID)
+	locationDistance, isInRange, err := c.verifyCheckInLocation(tx, request)
 	if err != nil {
-		return nil, fiber.ErrInternalServerError
+		return nil, err
 	}
-
-	for _, location := range locations {
-		lat, err := strconv.ParseFloat(location.Lat, 64)
-		if err != nil {
-			continue
-		}
-		lng, err := strconv.ParseFloat(location.Lng, 64)
-		if err != nil {
-			continue
-		}
-		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
-		if distance <= float64(location.Radius) {
-			isInRange = true
-			locationDistance = distance
-			break
-		}
-	}
-
-	isApproved := isInRange
 
 	faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
 	if err != nil {
@@ -947,7 +964,7 @@ func (c *AttendanceUseCase) CheckOut(
 		// FaceConfidence:     0, // Python /recognize belum mengembalikan confidence
 		FaceImageURL: faceImageURL,
 		DeviceInfo:   request.DeviceInfo,
-		IsApproved:   isApproved,
+		IsApproved:   isInRange,
 	}
 
 	if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
@@ -1017,31 +1034,10 @@ func (c *AttendanceUseCase) BreakIn(
 	// 	return nil, fiber.NewError(400, "Anda tidak diizinkan melakukan break-in disini")
 	// }
 
-	isInRange := false
-	locationDistance := 0.0
-	locations, err := c.LocationRepository.GetByEmployeeID(tx, request.EmployeeID)
+	locationDistance, isInRange, err := c.verifyCheckInLocation(tx, request)
 	if err != nil {
-		return nil, fiber.ErrInternalServerError
+		return nil, err
 	}
-
-	for _, location := range locations {
-		lat, err := strconv.ParseFloat(location.Lat, 64)
-		if err != nil {
-			continue
-		}
-		lng, err := strconv.ParseFloat(location.Lng, 64)
-		if err != nil {
-			continue
-		}
-		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
-		if distance <= float64(location.Radius) {
-			isInRange = true
-			locationDistance = distance
-			break
-		}
-	}
-
-	isApproved := isInRange
 
 	faceImageURL, err := c.uploadFace(ctx, request.File)
 	if err != nil {
@@ -1060,7 +1056,7 @@ func (c *AttendanceUseCase) BreakIn(
 		FaceConfidence:     0,
 		FaceImageURL:       faceImageURL,
 		DeviceInfo:         request.DeviceInfo,
-		IsApproved:         isApproved,
+		IsApproved:         isInRange,
 	}
 
 	if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
@@ -1136,31 +1132,10 @@ func (c *AttendanceUseCase) BreakOut(
 	// 	return nil, fiber.NewError(400, "Anda tidak diizinkan melakukan break-out disini")
 	// }
 
-	isInRange := false
-	locationDistance := 0.0
-	locations, err := c.LocationRepository.GetByEmployeeID(tx, request.EmployeeID)
+	locationDistance, isInRange, err := c.verifyCheckInLocation(tx, request)
 	if err != nil {
-		return nil, fiber.ErrInternalServerError
+		return nil, err
 	}
-
-	for _, location := range locations {
-		lat, err := strconv.ParseFloat(location.Lat, 64)
-		if err != nil {
-			continue
-		}
-		lng, err := strconv.ParseFloat(location.Lng, 64)
-		if err != nil {
-			continue
-		}
-		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
-		if distance <= float64(location.Radius) {
-			isInRange = true
-			locationDistance = distance
-			break
-		}
-	}
-
-	isApproved := isInRange
 
 	breakDuration := int(now.Sub(time.UnixMilli(lastBreakIn.Time)).Minutes())
 	attendance.TotalBreakMinutes += breakDuration
@@ -1187,7 +1162,7 @@ func (c *AttendanceUseCase) BreakOut(
 		FaceConfidence:     0,
 		FaceImageURL:       faceImageURL,
 		DeviceInfo:         request.DeviceInfo,
-		IsApproved:         isApproved,
+		IsApproved:         isInRange,
 	}
 
 	if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {

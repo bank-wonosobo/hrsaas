@@ -92,7 +92,7 @@ type SearchPendingLogRequest struct {
 }
 
 type ReviewLogRequest struct {
-	Approve *bool   `json:"approve" validate:"required"` // pointer, supaya false tidak dianggap kosong
+	Approve *bool   `json:"approve" validate:"required"`
 	Reason  *string `json:"reason"`
 }
 
