@@ -14,8 +14,14 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "id-ID",
     icons: [
       {
-        src: "/aksesplus-desk.png",
-        sizes: "1688x1688",
+        src: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
       },

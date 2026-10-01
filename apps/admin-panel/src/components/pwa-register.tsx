@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -62,7 +63,12 @@ export function PwaInstallButton() {
   }, []);
 
   async function handleInstall() {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      toast(
+        "Install belum tersedia. Gunakan menu browser: Install app atau Tambahkan ke Layar Utama.",
+      );
+      return;
+    }
 
     await installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
@@ -79,11 +85,10 @@ export function PwaInstallButton() {
       variant="outline"
       size="sm"
       onClick={handleInstall}
-      disabled={!installPrompt}
       title={
         installPrompt
           ? "Install aplikasi"
-          : "Install belum tersedia di browser ini"
+          : "Buka menu browser untuk menginstall aplikasi"
       }
     >
       <Download />
