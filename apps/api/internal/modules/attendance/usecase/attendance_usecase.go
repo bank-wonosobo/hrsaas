@@ -427,6 +427,32 @@ func (c *AttendanceUseCase) Export(
 		employeeMap[empID].Data = append(employeeMap[empID].Data, row)
 	}
 
+	// ===== Populate Missing Active Employees =====
+	var activeEmployees []employeeEntity.Employee
+	if request.EmployeeID != "" {
+		var emp employeeEntity.Employee
+		if err := tx.Where("id = ?", request.EmployeeID).First(&emp).Error; err == nil {
+			activeEmployees = append(activeEmployees, emp)
+		}
+	} else {
+		var err error
+		activeEmployees, err = c.EmployeeRepository.ListActiveByCompany(tx, request.CompanyID)
+		if err != nil {
+			c.Log.WithError(err).Error("error getting active employees for export")
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	for _, emp := range activeEmployees {
+		if _, exists := employeeMap[emp.ID]; !exists {
+			employeeMap[emp.ID] = &model.AttendanceSheet{
+				Name:  emp.Fullname,
+				Data:  []model.AttendanceRow{},
+				Total: 0,
+			}
+		}
+	}
+
 	// ===== Cuti =====
 	if request.Status == "" {
 		from, to := exportPeriod(request)
@@ -1380,4 +1406,124 @@ func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, err
 		return 0, err
 	}
 	return len(stale), nil
+}
+
+func (c *AttendanceUseCase) ManualInput(
+	ctx context.Context,
+	companyID string,
+	request *model.ManualAttendanceRequest,
+) (*model.AttendanceResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate request body")
+		return nil, fiber.ErrBadRequest
+	}
+
+	jakarta := time.Local
+	checkInTime := time.UnixMilli(request.CheckInTime).In(jakarta)
+	startOfDay := time.Date(
+		checkInTime.Year(), checkInTime.Month(), checkInTime.Day(),
+		0, 0, 0, 0,
+		jakarta,
+	)
+	startOfDayMilli := startOfDay.UnixMilli()
+
+	// === CHECK-IN (sama persis kaya flow CheckIn) ===
+	attendance := new(entity.Attendance)
+	err := c.AttendanceRepository.FindByEmployeeIDAndDate(
+		tx, attendance, request.EmployeeID, request.CheckInTime,
+	)
+	existingAttendance := err == nil
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.Log.WithError(err).Error("Failed to find attendance")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if !existingAttendance {
+		// Resolve status (HADIR / TERLAMBAT) berdasarkan shift, sama kaya CheckIn
+		status, err := c.resolveCheckInStatus(tx, request.EmployeeID, checkInTime)
+		if err != nil {
+			return nil, err
+		}
+
+		attendance = &entity.Attendance{
+			CompanyID:   companyID,
+			EmployeeID:  request.EmployeeID,
+			Date:        startOfDayMilli,
+			CheckInTime: request.CheckInTime,
+			Status:      status,
+			CreatedAt:   checkInTime.UnixMilli(),
+			UpdatedAt:   checkInTime.UnixMilli(),
+		}
+
+		if err := c.AttendanceRepository.Create(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to create attendance on manual check-in")
+			return nil, fiber.ErrInternalServerError
+		}
+	} else {
+		// Kalau sudah ada, update check-in time
+		attendance.CheckInTime = request.CheckInTime
+		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to update attendance check-in")
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	// Buat attendance log CHECK_IN (sama kaya CheckIn)
+	checkInLog := &entity.AttendanceLog{
+		AttendanceID:       attendance.ID,
+		Type:               "CHECK_IN",
+		Time:               request.CheckInTime,
+		IsLocationVerified: true,
+		IsFaceVerified:     true,
+		IsApproved:         true,
+		DeviceInfo:         request.DeviceInfo,
+	}
+	if err := c.AttendanceLogRepo.Create(tx, checkInLog); err != nil {
+		c.Log.WithError(err).Error("Failed to create manual check-in log")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// === CHECK-OUT (sama persis kaya flow CheckOut) ===
+	if request.CheckOutTime != nil && *request.CheckOutTime > 0 {
+		attendance.CheckOutTime = *request.CheckOutTime
+
+		// Hitung TotalWorkMinutes sama kaya CheckOut
+		checkIn := time.UnixMilli(attendance.CheckInTime)
+		checkOut := time.UnixMilli(*request.CheckOutTime)
+		totalWorkMinutes := max(
+			int(checkOut.Sub(checkIn).Minutes())-attendance.TotalBreakMinutes,
+			0,
+		)
+		attendance.TotalWorkMinutes = totalWorkMinutes
+
+		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to update attendance on manual check-out")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		// Buat attendance log CHECK_OUT (sama kaya CheckOut)
+		checkOutLog := &entity.AttendanceLog{
+			AttendanceID:       attendance.ID,
+			Type:               "CHECK_OUT",
+			Time:               *request.CheckOutTime,
+			IsLocationVerified: true,
+			IsFaceVerified:     true,
+			IsApproved:         true,
+			DeviceInfo:         "Manual Input",
+		}
+		if err := c.AttendanceLogRepo.Create(tx, checkOutLog); err != nil {
+			c.Log.WithError(err).Error("Failed to create manual check-out log")
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return model.AttendandeToResponse(attendance), nil
 }

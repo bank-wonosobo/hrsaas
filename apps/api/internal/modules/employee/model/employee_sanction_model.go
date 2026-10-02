@@ -14,6 +14,7 @@ type EmSancResponse struct {
 	EndDate     *int64           `json:"end_date,omitempty"`
 	Status      string           `json:"status,omitempty"`
 	DocumentUrl string           `json:"document_url"`
+	CreatedBy   string           `json:"created_by"`
 	Employee    EmployeeResponse `json:"employee"`
 	Sanction    SanctionResponse `json:"sanction"`
 	CreatedAt   int64            `json:"created_at"`
@@ -46,7 +47,7 @@ type SearchEmSancRequest struct {
 	Reason     string `json:"reason"      validate:"max=100"`
 	StartDate  string `json:"start_date"`
 	EndDate    string `json:"end_date"`
-	CreatedBy  string `json:"-"           validate:"required"`
+	CreatedBy  string `json:"-"`
 	Status     string `json:"status"      validate:"max=10"`
 	Page       int    `json:"page"        validate:"min=1"`
 	Size       int    `json:"size"        validate:"min=1,max=100"`
@@ -67,6 +68,7 @@ func EmSancToResponse(emSanc *entity.EmployeeSanction) *EmSancResponse {
 		EndDate:     emSanc.EndDate,
 		CompanyID:   emSanc.CompanyID,
 		Status:      status,
+		CreatedBy:   emSanc.CreatedBy,
 		Employee:    *EmployeeToResponse(&emSanc.Employee),
 		DocumentUrl: emSanc.DocumentUrl,
 		Sanction:    *SanctionToResponse(&emSanc.Sanction),
