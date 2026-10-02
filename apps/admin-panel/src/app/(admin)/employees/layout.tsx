@@ -1,5 +1,4 @@
 "use client";
-import Tabs from "@/components/shared/tabs/tabs";
 import { Tab } from "@/lib/type";
 
 interface Props {
@@ -14,7 +13,7 @@ const tabs: Tab[] = [
 export default function CompanyLayout({ children }: Props) {
   return (
     <div>
-      <Tabs tabs={tabs} />
+      {/* <Tabs tabs={tabs} /> */}
       {/* Conten */}
       {children}
     </div>

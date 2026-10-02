@@ -1,4 +1,3 @@
-import Title from "@/components/ui/title/title";
 import ListEmployee from "@/features/employee/components/list-employee";
 import MenuEmployee from "@/features/employee/components/menu-employee";
 import { SearchEmployeeRequest } from "@/features/employee/schemas/employee-schema";
@@ -43,7 +42,6 @@ export default async function EmployeePage({
 
   return (
     <>
-      <Title title="Data karyawan" />
       <MenuEmployee />
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ListEmployee search={search} />

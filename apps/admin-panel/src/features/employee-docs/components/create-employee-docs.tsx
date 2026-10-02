@@ -1,11 +1,11 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import FileUploader from "@/components/ui/file-uploader/file-uploader";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { PlusCircle } from "lucide-react";
 import { useState } from "react";
@@ -60,21 +60,51 @@ export function CreateEmployeeDocsForm({ employeeId }: Props) {
   return (
     <>
       <Button
-        variant="secondary"
+        variant="outline"
         size="sm"
-        prefixIcon={<PlusCircle size={16} />}
         onClick={() => setOpen(true)}
       >
-        Tambah Dokumen
+        <PlusCircle size={16} /> Tambah Dokumen
       </Button>
 
-      <Modal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        title="Tambah Dokumen Karyawan"
-        maxWidth="md"
-        footer={
-          <>
+      <Dialog open={open} onOpenChange={(value) => { if (!value) setOpen(false); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tambah Dokumen Karyawan</DialogTitle>
+            <DialogDescription>Tambahkan dokumen dan file pendukung karyawan.</DialogDescription>
+          </DialogHeader>
+          <form id="form-employee-docs" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="doc_type">Tipe Dokumen <span className="text-destructive">*</span></Label>
+            <Controller name="doc_type" control={form.control} render={({ field, fieldState }) => (
+              <div className="space-y-1">
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="doc_type" className="w-full" aria-invalid={!!fieldState.error}><SelectValue placeholder="Pilih tipe dokumen" /></SelectTrigger>
+                  <SelectContent>{DOC_TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+                </Select>
+                {fieldState.error && <p className="text-sm text-destructive">{fieldState.error.message}</p>}
+              </div>
+            )} />
+          </div>
+          {([
+            ["doc_name", "Nama Dokumen", "text"],
+            ["doc_number", "Nomor Dokumen", "text"],
+            ["issued", "Tanggal Terbit", "date"],
+          ] as const).map(([name, label, type]) => (
+            <div className="space-y-2" key={name}>
+              <Label htmlFor={name}>{label} <span className="text-destructive">*</span></Label>
+              <Input id={name} type={type} {...form.register(name)} aria-invalid={!!form.formState.errors[name]} />
+              {form.formState.errors[name] && <p className="text-sm text-destructive">{form.formState.errors[name]?.message}</p>}
+            </div>
+          ))}
+          <div className="space-y-2">
+            <Label htmlFor="file_url">File Dokumen <span className="text-destructive">*</span></Label>
+            <Controller name="file_url" control={form.control} render={({ field, fieldState }) => (
+              <FileUploader value={field.value} onChange={field.onChange} error={fieldState.error?.message} />
+            )} />
+          </div>
+          </form>
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setOpen(false)}
@@ -85,76 +115,13 @@ export function CreateEmployeeDocsForm({ employeeId }: Props) {
             <Button
               type="submit"
               form="form-employee-docs"
-              loading={mutation.isPending}
+              disabled={mutation.isPending}
             >
-              Simpan
+              {mutation.isPending ? "Menyimpan..." : "Simpan"}
             </Button>
-          </>
-        }
-      >
-        <form
-          id="form-employee-docs"
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-4"
-        >
-          <FormField label="Tipe Dokumen" required>
-            <Controller
-              name="doc_type"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Select
-                  label="Tipe Dokumen"
-                  options={DOC_TYPE_OPTIONS}
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={fieldState.error?.message}
-                />
-              )}
-            />
-          </FormField>
-
-          <FormField label="Nama Dokumen" required>
-            <Input
-              label="Nama Dokumen"
-              type="text"
-              {...form.register("doc_name")}
-              error={form.formState.errors.doc_name?.message}
-            />
-          </FormField>
-
-          <FormField label="Nomor Dokumen" required>
-            <Input
-              label="Nomor Dokumen"
-              type="text"
-              {...form.register("doc_number")}
-              error={form.formState.errors.doc_number?.message}
-            />
-          </FormField>
-
-          <FormField label="Tanggal Terbit" required>
-            <Input
-              label="Tanggal Terbit"
-              type="date"
-              {...form.register("issued")}
-              error={form.formState.errors.issued?.message}
-            />
-          </FormField>
-
-          <FormField label="File Dokumen" required>
-            <Controller
-              name="file_url"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <FileUploader
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={fieldState.error?.message}
-                />
-              )}
-            />
-          </FormField>
-        </form>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -8,7 +8,14 @@ import { useGetEmployees } from "@/features/employee/hooks/use-get-employee";
 import { useGetAllTimeOffType } from "@/features/time-off-type/hooks/use-getall-time-off-type";
 import { mapToOptions } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { CalendarDays, ChevronDown, Filter, RotateCcw, User, X } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  Filter,
+  RotateCcw,
+  User,
+  X,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SearchTimeOffApproval } from "../schemas/time-off-approval-schema";
@@ -127,8 +134,7 @@ export default function MenuTimeOffApproval({ search }: Props) {
     });
   }
   if (typeID) {
-    const name =
-      typeOptions.find((o) => o.value === typeID)?.label ?? typeID;
+    const name = typeOptions.find((o) => o.value === typeID)?.label ?? typeID;
     activeFilters.push({
       key: "type",
       label: name,
@@ -166,13 +172,14 @@ export default function MenuTimeOffApproval({ search }: Props) {
 
   return (
     <div className="mb-5 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-
       {/* Header – clickable toggle */}
       <div
         role="button"
         tabIndex={0}
         onClick={() => setOpen((prev) => !prev)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((prev) => !prev); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setOpen((prev) => !prev);
+        }}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2.5">
@@ -192,8 +199,16 @@ export default function MenuTimeOffApproval({ search }: Props) {
             <span
               role="button"
               tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); handleReset(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleReset(); } }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReset();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.stopPropagation();
+                  handleReset();
+                }
+              }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
             >
               <RotateCcw className="h-3.5 w-3.5" />
@@ -306,7 +321,6 @@ export default function MenuTimeOffApproval({ search }: Props) {
           )}
         </div>
       )}
-
     </div>
   );
 }

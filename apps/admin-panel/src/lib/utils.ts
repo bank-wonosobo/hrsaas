@@ -1,11 +1,7 @@
 import { Option } from "@/components/ui/select/select";
 import { Position } from "@/features/position/schemas/position-schema";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export { cn } from "cn";
 
 export const formatDate = (date?: Date) => {
   if (!date) return "";

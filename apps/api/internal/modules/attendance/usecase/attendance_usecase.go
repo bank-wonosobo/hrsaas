@@ -21,7 +21,6 @@ import (
 	distances "hrsaas/pkg/distance"
 	excel "hrsaas/pkg/excel"
 	face "hrsaas/pkg/face_recognition"
-	timepkg "hrsaas/pkg/time"
 	timedifference "hrsaas/pkg/time_difference"
 	"hrsaas/pkg/timezone"
 
@@ -259,9 +258,8 @@ func (c *AttendanceUseCase) Search(
 }
 
 func exportPeriod(request *model.SearchAttendanceRequest) (from, to int64) {
-	loc := timepkg.JakartaLocation()
 	parse := func(s string) (time.Time, bool) {
-		t, err := time.ParseInLocation("2006-01-02", s, loc)
+		t, err := time.ParseInLocation("2006-01-02", s, time.Local)
 		return t, err == nil
 	}
 
@@ -286,7 +284,7 @@ func (c *AttendanceUseCase) Export(
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
-	jakarta := timepkg.JakartaLocation()
+	jakarta := time.Local
 
 	if err := c.Validate.Struct(request); err != nil {
 		c.Log.WithError(err).Error("error validating request body")
@@ -321,7 +319,7 @@ func (c *AttendanceUseCase) Export(
 			return nil, false, nil
 		}
 
-		date := dt.In(timepkg.JakartaLocation())
+		date := dt.In(time.Local)
 		weekday := (int(date.Weekday())+6)%7 + 1 // Senin=1 ... Minggu=7
 		cacheKey := employeeID + ":" + strconv.Itoa(weekday)
 		if day, ok := shiftDays[cacheKey]; ok {
@@ -370,7 +368,7 @@ func (c *AttendanceUseCase) Export(
 		checkInSchedule := "07:45:00"
 		checkOutSchedule := "17:00:00"
 		if time.UnixMilli(attendance.Date).
-			In(timepkg.JakartaLocation()).
+			In(time.Local).
 			Weekday() ==
 			time.Saturday {
 			checkOutSchedule = "12:00:00"
@@ -385,7 +383,7 @@ func (c *AttendanceUseCase) Export(
 		}
 
 		if attendance.CheckInTime > 0 && checkInSchedule != "" {
-			tIn := time.UnixMilli(attendance.CheckInTime).In(timepkg.JakartaLocation())
+			tIn := time.UnixMilli(attendance.CheckInTime).In(time.Local)
 			diffStr, _ := timedifference.GetTimeDifference(checkInSchedule, tIn.Format("15:04:05"))
 			if diffStr != "" {
 				lateCheckIn = diffStr
@@ -394,7 +392,7 @@ func (c *AttendanceUseCase) Export(
 
 		var catatan string
 		if attendance.CheckOutTime > 0 && checkOutSchedule != "" {
-			tOut := time.UnixMilli(attendance.CheckOutTime).In(timepkg.JakartaLocation())
+			tOut := time.UnixMilli(attendance.CheckOutTime).In(time.Local)
 			diffStr, _ := timedifference.GetTimeDifference(
 				tOut.Format("15:04:05"),
 				checkOutSchedule,
@@ -801,7 +799,7 @@ func (c *AttendanceUseCase) CheckIn(
 		return nil, err
 	}
 
-	now := time.Now().In(timepkg.JakartaLocation())
+	now := time.Now()
 
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
@@ -1233,12 +1231,21 @@ func (c *AttendanceUseCase) verifyCheckInLocation(
 	return nearest, verified, nil
 }
 
+func parseShiftTime(value string) (time.Time, error) {
+	for _, layout := range []string{"15:04", "15:04:05"} {
+		if t, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, errors.New("invalid time format")
+}
+
 func (c *AttendanceUseCase) resolveCheckInStatus(
 	tx *gorm.DB,
 	employeeID string,
 	now time.Time,
 ) (string, error) {
-	jakarta := timepkg.JakartaLocation()
+	jakarta := time.Local
 	now = now.In(jakarta)
 
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
@@ -1268,7 +1275,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	if shiftDay.CheckIn == "" {
 		return "HADIR", nil
 	}
-	shiftTime, err := timepkg.ParseTimeHHMMOrHHMMSS(shiftDay.CheckIn)
+	shiftTime, err := parseShiftTime(shiftDay.CheckIn)
 	if err != nil {
 		c.Log.WithError(err).Error("Invalid shift check-in time")
 		return "", fiber.ErrInternalServerError

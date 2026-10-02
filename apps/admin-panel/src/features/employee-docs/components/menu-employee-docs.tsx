@@ -1,6 +1,7 @@
 "use client";
 
 import { CreateEmployeeDocsForm } from "./create-employee-docs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
   employeeId: string;
@@ -8,9 +9,11 @@ interface Props {
 
 export default function MenuEmployeeDocs({ employeeId }: Props) {
   return (
-    <div className="flex items-center justify-between">
-      <p className="font-semibold text-gray-700">Dokumen Karyawan</p>
+    <Card>
+      <CardHeader><CardTitle>Dokumen Karyawan</CardTitle></CardHeader>
+      <CardContent className="flex justify-end">
       <CreateEmployeeDocsForm employeeId={employeeId} />
-    </div>
+      </CardContent>
+    </Card>
   );
 }

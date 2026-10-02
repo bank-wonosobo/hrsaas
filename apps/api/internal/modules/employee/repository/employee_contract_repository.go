@@ -19,42 +19,90 @@ func NewEmployeeContractRepository(log *logrus.Logger) *EmployeeContractReposito
 	return &EmployeeContractRepository{Log: log}
 }
 
-func (r *EmployeeContractRepository) List(db *gorm.DB, request *model.SearchEmployeeContractRequest, withRelations bool) ([]entity.EmployeeContract, int64, error) {
+func (r *EmployeeContractRepository) List(
+	db *gorm.DB,
+	request *model.SearchEmployeeContractRequest,
+	withRelations bool,
+) ([]entity.EmployeeContract, int64, error) {
 	var items []entity.EmployeeContract
 
 	query := db.Model(&entity.EmployeeContract{})
+
 	if withRelations {
-		query = query.Preload("Employee").Preload("Employee.User").Preload("Division").Preload("Position")
+		query = query.
+			Preload("Employee").
+			Preload("Employee.User").
+			Preload("Division").
+			Preload("Position")
 	}
+
 	if request.EmployeeID != "" {
 		query = query.Where("employee_id = ?", request.EmployeeID)
 	}
+
 	if request.DivisionID != "" {
 		query = query.Where("division_id = ?", request.DivisionID)
 	}
+
 	if request.PositionID != "" {
 		query = query.Where("position_id = ?", request.PositionID)
 	}
+
 	if request.ActiveOnly {
-		now := time.Now().UnixMilli()
-		query = query.Where("is_active = ?", true).Where("end_date IS NULL OR end_date >= ?", now)
+		now := time.Now()
+
+		startOfToday := time.Date(
+			now.Year(),
+			now.Month(),
+			now.Day(),
+			0,
+			0,
+			0,
+			0,
+			time.Local,
+		).UnixMilli()
+
+		query = query.
+			Where("is_active = ?", true).
+			Where("end_date IS NULL OR end_date >= ?", startOfToday)
+	}
+
+	if request.EndDateFrom > 0 {
+		query = query.Where("end_date >= ?", request.EndDateFrom)
+	}
+
+	if request.EndDateTo > 0 {
+		query = query.Where("end_date <= ?", request.EndDateTo)
 	}
 
 	var total int64
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := query.Offset((request.Page - 1) * request.Size).Limit(request.Size).Find(&items).Error; err != nil {
+	if request.EndDateFrom > 0 || request.EndDateTo > 0 {
+		query = query.Order("end_date ASC")
+	}
+
+	if err := query.
+		Offset((request.Page - 1) * request.Size).
+		Limit(request.Size).
+		Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
 
 	return items, total, nil
 }
 
-func (r *EmployeeContractRepository) FindLatestActiveByEmployee(db *gorm.DB, employeeID string) (*entity.EmployeeContract, error) {
+func (r *EmployeeContractRepository) FindLatestActiveByEmployee(
+	db *gorm.DB,
+	employeeID string,
+) (*entity.EmployeeContract, error) {
 	var item entity.EmployeeContract
+
 	now := time.Now().UnixMilli()
+
 	if err := db.
 		Where("employee_id = ?", employeeID).
 		Where("is_active = ?", true).
@@ -64,25 +112,40 @@ func (r *EmployeeContractRepository) FindLatestActiveByEmployee(db *gorm.DB, emp
 		Take(&item).Error; err != nil {
 		return nil, err
 	}
+
 	return &item, nil
 }
 
-func (r *EmployeeContractRepository) FindByID(db *gorm.DB, id string, withRelations bool) (*entity.EmployeeContract, error) {
+func (r *EmployeeContractRepository) FindByID(
+	db *gorm.DB,
+	id string,
+	withRelations bool,
+) (*entity.EmployeeContract, error) {
 	var item entity.EmployeeContract
 
 	query := db.Model(&entity.EmployeeContract{})
+
 	if withRelations {
-		query = query.Preload("Employee").Preload("Employee.User").Preload("Division").Preload("Position")
+		query = query.
+			Preload("Employee").
+			Preload("Employee.User").
+			Preload("Division").
+			Preload("Position")
 	}
 
-	if err := query.Where("id = ?", id).Take(&item).Error; err != nil {
+	if err := query.
+		Where("id = ?", id).
+		Take(&item).Error; err != nil {
 		return nil, err
 	}
 
 	return &item, nil
 }
 
-func (r *EmployeeContractRepository) DeactivateActiveByEmployee(db *gorm.DB, employeeID string) error {
+func (r *EmployeeContractRepository) DeactivateActiveByEmployee(
+	db *gorm.DB,
+	employeeID string,
+) error {
 	return db.Model(&entity.EmployeeContract{}).
 		Where("employee_id = ?", employeeID).
 		Where("is_active = ?", true).

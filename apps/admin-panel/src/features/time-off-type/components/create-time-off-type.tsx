@@ -1,10 +1,23 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Switch from "@/components/ui/switch/switch";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { PlusCircle } from "lucide-react";
@@ -12,8 +25,8 @@ import { useState } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import { useCreateTimeOffType } from "../hooks/use-create-time-off-type";
 import {
-  CreateTimeOffType,
   CreateTimeOffTypeSchema,
+  type CreateTimeOffType,
 } from "../schemas/time-off-type-schema";
 
 export function CreateTimeOffTypeForm() {
@@ -44,50 +57,59 @@ export function CreateTimeOffTypeForm() {
   };
 
   return (
-    <>
-      <Button
-        variant="secondary"
-        onClick={() => setOpen(true)}
-        prefixIcon={<PlusCircle size={18} />}
-      >
-        Tambah
-      </Button>
-
-      <Modal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        title="Tambah jenis cuti"
-        maxWidth="sm"
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-3 space-y-5">
-          <FormField label="Nama">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="secondary">
+          <PlusCircle />
+          Tambah
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Tambah jenis cuti</DialogTitle>
+        </DialogHeader>
+        <form
+          id="create-time-off-type"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-5"
+        >
+          <Field>
+            <FieldLabel htmlFor="time-off-type-name">Nama</FieldLabel>
             <Input
-              label="Nama jenis cuti"
-              type="text"
+              id="time-off-type-name"
+              placeholder="Nama jenis cuti"
+              aria-invalid={!!form.formState.errors.name}
               {...form.register("name")}
-              error={form.formState.errors.name?.message}
             />
-          </FormField>
+            <FieldError>{form.formState.errors.name?.message}</FieldError>
+          </Field>
 
-          <FormField label="Kategori">
+          <Field>
+            <FieldLabel htmlFor="time-off-type-category">Kategori</FieldLabel>
             <Controller
               name="category"
               control={form.control}
               render={({ field, fieldState }) => (
-                <Select
-                  label="Kategori"
-                  options={[
-                    { label: "Izin", value: "IZIN" },
-                    { label: "Sakit", value: "SAKIT" },
-                    { label: "Cuti", value: "CUTI" },
-                  ]}
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={fieldState.error?.message}
-                />
+                <>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id="time-off-type-category"
+                      className="w-full"
+                      aria-invalid={!!fieldState.error}
+                    >
+                      <SelectValue placeholder="Pilih kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="IZIN">Izin</SelectItem>
+                      <SelectItem value="SAKIT">Sakit</SelectItem>
+                      <SelectItem value="CUTI">Cuti</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </>
               )}
             />
-          </FormField>
+          </Field>
 
           <Controller
             name="is_quota_based"
@@ -102,22 +124,39 @@ export function CreateTimeOffTypeForm() {
             )}
           />
 
-          <FormField label="Kuota default">
+          <Field>
+            <FieldLabel htmlFor="time-off-type-quota">Kuota default</FieldLabel>
             <Input
-              label="Kuota default"
+              id="time-off-type-quota"
               type="number"
               min={0}
               disabled={!isQuotaBased}
+              aria-invalid={!!form.formState.errors.default_quota_days}
               {...form.register("default_quota_days")}
-              error={form.formState.errors.default_quota_days?.message}
             />
-          </FormField>
-
-          <Button type="submit" disabled={mutation.isPending}>
+            <FieldError>
+              {form.formState.errors.default_quota_days?.message}
+            </FieldError>
+          </Field>
+        </form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOpen(false)}
+            disabled={mutation.isPending}
+          >
+            Batal
+          </Button>
+          <Button
+            type="submit"
+            form="create-time-off-type"
+            disabled={mutation.isPending}
+          >
             {mutation.isPending ? "Menyimpan..." : "Simpan"}
           </Button>
-        </form>
-      </Modal>
-    </>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

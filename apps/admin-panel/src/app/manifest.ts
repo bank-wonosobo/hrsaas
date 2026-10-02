@@ -2,23 +2,28 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "BW Akses +",
-    short_name: "BWA+",
-    description: "Aplikasi HR Bank Wonosobo",
-    start_url: "/ ",
+    name: "HR SaaS Admin",
+    short_name: "HR Admin",
+    description: "Admin dashboard for HR SaaS application",
+    start_url: "/",
+    scope: "/",
     display: "standalone",
+    orientation: "any",
     background_color: "#ffffff",
-    theme_color: "#000000",
+    theme_color: "#9ae600",
+    lang: "id-ID",
     icons: [
       {
-        src: "/logo.png",
+        src: "/icon-192.png",
         sizes: "192x192",
         type: "image/png",
+        purpose: "any",
       },
       {
-        src: "/logo.png",
+        src: "/icon-512.png",
         sizes: "512x512",
         type: "image/png",
+        purpose: "maskable",
       },
     ],
   };
