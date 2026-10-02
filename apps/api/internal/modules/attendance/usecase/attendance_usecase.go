@@ -762,7 +762,7 @@ func (c *AttendanceUseCase) CheckIn(
 		return nil, err
 	}
 
-	now := time.Now().In(time.Local)
+	now := time.Now()
 
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
@@ -1255,7 +1255,6 @@ func (c *AttendanceUseCase) verifyCheckInLocation(
 
 	return nearest, verified, nil
 }
-
 
 func parseShiftTime(value string) (time.Time, error) {
 	for _, layout := range []string{"15:04", "15:04:05"} {
