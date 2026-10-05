@@ -40,6 +40,7 @@ type EmployeeSanction struct {
 	EndDate     *int64  `gorm:"column:end_date"`
 	Status      *string `gorm:"column:status"`
 	DocumentUrl string  `gorm:"column:document_url"`
+	CreatedBy   string  `gorm:"column:created_by"`
 	CreatedAt   int64   `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt   int64   `gorm:"column:updated_at;autoUpdateTime"`
 

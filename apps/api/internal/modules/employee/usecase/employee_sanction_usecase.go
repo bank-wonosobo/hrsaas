@@ -97,6 +97,7 @@ func (c *EmSancUseCase) Create(
 		EndDate:     &endDate,
 		Status:      &status,
 		DocumentUrl: request.DocumentUrl,
+		CreatedBy:   request.CreatedBy,
 	}
 
 	err = c.EmSancRepository.Create(tx, employeeSanction)

@@ -213,3 +213,20 @@ func (c *AttendanceController) ReviewLog(ctx *fiber.Ctx) error {
 
 	return ctx.JSON(response.WebResponse[*model.AttendanceLogResponse]{Data: result})
 }
+
+func (c *AttendanceController) ManualInput(ctx *fiber.Ctx) error {
+	request := new(model.ManualAttendanceRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+
+	companyID := auth.GetCompanyId(ctx)
+	result, err := c.UseCase.ManualInput(ctx.UserContext(), companyID, request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to process manual attendance")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.AttendanceResponse]{Data: result})
+}

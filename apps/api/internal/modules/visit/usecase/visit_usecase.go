@@ -65,9 +65,9 @@ func (c *VisitUseCase) Create(
 		)
 	}
 
-	if request.FileUrl == nil || strings.TrimSpace(*request.FileUrl) == "" {
-		return nil, fiber.NewError(fiber.StatusBadRequest, "Bukti kunjungan harus diunggah")
-	}
+	// if request.FileUrl == nil || strings.TrimSpace(*request.FileUrl) == "" {
+	// 	return nil, fiber.NewError(fiber.StatusBadRequest, "Bukti kunjungan harus diunggah")
+	// }
 
 	now := time.Now()
 

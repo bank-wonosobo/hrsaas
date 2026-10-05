@@ -427,6 +427,32 @@ func (c *AttendanceUseCase) Export(
 		employeeMap[empID].Data = append(employeeMap[empID].Data, row)
 	}
 
+	// ===== Populate Missing Active Employees =====
+	var activeEmployees []employeeEntity.Employee
+	if request.EmployeeID != "" {
+		var emp employeeEntity.Employee
+		if err := tx.Where("id = ?", request.EmployeeID).First(&emp).Error; err == nil {
+			activeEmployees = append(activeEmployees, emp)
+		}
+	} else {
+		var err error
+		activeEmployees, err = c.EmployeeRepository.ListActiveByCompany(tx, request.CompanyID)
+		if err != nil {
+			c.Log.WithError(err).Error("error getting active employees for export")
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	for _, emp := range activeEmployees {
+		if _, exists := employeeMap[emp.ID]; !exists {
+			employeeMap[emp.ID] = &model.AttendanceSheet{
+				Name:  emp.Fullname,
+				Data:  []model.AttendanceRow{},
+				Total: 0,
+			}
+		}
+	}
+
 	// ===== Cuti =====
 	if request.Status == "" {
 		from, to := exportPeriod(request)
@@ -511,6 +537,43 @@ func (c *AttendanceUseCase) Export(
 					Note:         note,
 				})
 				hasRow[key] = true
+			}
+		}
+
+		// ===== Tidak Hadir =====
+		// hari kerja sesuai shift tanpa attendance & tanpa cuti
+		if from > 0 && to > 0 {
+			today := dayStart(time.Now().In(jakarta))
+			first := dayStart(time.UnixMilli(from).In(jakarta))
+			last := dayStart(time.UnixMilli(to).In(jakarta))
+
+			for empID, sheet := range employeeMap {
+				for d := first; !d.After(last) && d.Before(today); d = d.AddDate(0, 0, 1) {
+					key := empID + ":" + d.Format("2006-01-02")
+					if hasRow[key] {
+						continue
+					}
+
+					shiftDay, hasShift, err := getShiftDay(empID, d)
+					if err != nil {
+						c.Log.WithError(err).Error("error getting shift day for absent export")
+						return nil, fiber.ErrInternalServerError
+					}
+					if hasShift && shiftDay == nil {
+						continue // hari libur menurut shift
+					}
+					if !hasShift && d.Weekday() == time.Sunday {
+						continue // Weekday
+					}
+
+					sheet.Data = append(sheet.Data, model.AttendanceRow{
+						Date:         d.UnixMilli(),
+						Status:       "TIDAK HADIR",
+						LateCheckIn:  "-",
+						LateCheckOut: "-",
+					})
+					hasRow[key] = true
+				}
 			}
 		}
 	}
@@ -833,6 +896,7 @@ func (c *AttendanceUseCase) CheckIn(
 		Lng:                request.Lng,
 		LocationDistance:   distance,
 		IsLocationVerified: isLocationVerified,
+		IsFaceVerified:     faceResult.Match,
 		FaceImageURL:       faceImageURL,
 		IsApproved:         isLocationVerified,
 		DeviceInfo:         request.DeviceInfo,
@@ -888,31 +952,10 @@ func (c *AttendanceUseCase) CheckOut(
 		return nil, fiber.NewError(fiber.StatusBadRequest, "Sudah check-out hari ini")
 	}
 
-	isInRange := false
-	locationDistance := 0.0
-	locations, err := c.LocationRepository.GetByEmployeeID(tx, request.EmployeeID)
+	locationDistance, isInRange, err := c.verifyCheckInLocation(tx, request)
 	if err != nil {
-		return nil, fiber.ErrInternalServerError
+		return nil, err
 	}
-
-	for _, location := range locations {
-		lat, err := strconv.ParseFloat(location.Lat, 64)
-		if err != nil {
-			continue
-		}
-		lng, err := strconv.ParseFloat(location.Lng, 64)
-		if err != nil {
-			continue
-		}
-		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
-		if distance <= float64(location.Radius) {
-			isInRange = true
-			locationDistance = distance
-			break
-		}
-	}
-
-	isApproved := isInRange
 
 	faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
 	if err != nil {
@@ -945,7 +988,7 @@ func (c *AttendanceUseCase) CheckOut(
 		// FaceConfidence:     0, // Python /recognize belum mengembalikan confidence
 		FaceImageURL: faceImageURL,
 		DeviceInfo:   request.DeviceInfo,
-		IsApproved:   isApproved,
+		IsApproved:   isInRange,
 	}
 
 	if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
@@ -1015,31 +1058,10 @@ func (c *AttendanceUseCase) BreakIn(
 	// 	return nil, fiber.NewError(400, "Anda tidak diizinkan melakukan break-in disini")
 	// }
 
-	isInRange := false
-	locationDistance := 0.0
-	locations, err := c.LocationRepository.GetByEmployeeID(tx, request.EmployeeID)
+	locationDistance, isInRange, err := c.verifyCheckInLocation(tx, request)
 	if err != nil {
-		return nil, fiber.ErrInternalServerError
+		return nil, err
 	}
-
-	for _, location := range locations {
-		lat, err := strconv.ParseFloat(location.Lat, 64)
-		if err != nil {
-			continue
-		}
-		lng, err := strconv.ParseFloat(location.Lng, 64)
-		if err != nil {
-			continue
-		}
-		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
-		if distance <= float64(location.Radius) {
-			isInRange = true
-			locationDistance = distance
-			break
-		}
-	}
-
-	isApproved := isInRange
 
 	faceImageURL, err := c.uploadFace(ctx, request.File)
 	if err != nil {
@@ -1058,7 +1080,7 @@ func (c *AttendanceUseCase) BreakIn(
 		FaceConfidence:     0,
 		FaceImageURL:       faceImageURL,
 		DeviceInfo:         request.DeviceInfo,
-		IsApproved:         isApproved,
+		IsApproved:         isInRange,
 	}
 
 	if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
@@ -1134,31 +1156,10 @@ func (c *AttendanceUseCase) BreakOut(
 	// 	return nil, fiber.NewError(400, "Anda tidak diizinkan melakukan break-out disini")
 	// }
 
-	isInRange := false
-	locationDistance := 0.0
-	locations, err := c.LocationRepository.GetByEmployeeID(tx, request.EmployeeID)
+	locationDistance, isInRange, err := c.verifyCheckInLocation(tx, request)
 	if err != nil {
-		return nil, fiber.ErrInternalServerError
+		return nil, err
 	}
-
-	for _, location := range locations {
-		lat, err := strconv.ParseFloat(location.Lat, 64)
-		if err != nil {
-			continue
-		}
-		lng, err := strconv.ParseFloat(location.Lng, 64)
-		if err != nil {
-			continue
-		}
-		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
-		if distance <= float64(location.Radius) {
-			isInRange = true
-			locationDistance = distance
-			break
-		}
-	}
-
-	isApproved := isInRange
 
 	breakDuration := int(now.Sub(time.UnixMilli(lastBreakIn.Time)).Minutes())
 	attendance.TotalBreakMinutes += breakDuration
@@ -1185,7 +1186,7 @@ func (c *AttendanceUseCase) BreakOut(
 		FaceConfidence:     0,
 		FaceImageURL:       faceImageURL,
 		DeviceInfo:         request.DeviceInfo,
-		IsApproved:         isApproved,
+		IsApproved:         isInRange,
 	}
 
 	if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
@@ -1405,4 +1406,124 @@ func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, err
 		return 0, err
 	}
 	return len(stale), nil
+}
+
+func (c *AttendanceUseCase) ManualInput(
+	ctx context.Context,
+	companyID string,
+	request *model.ManualAttendanceRequest,
+) (*model.AttendanceResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate request body")
+		return nil, fiber.ErrBadRequest
+	}
+
+	jakarta := time.Local
+	checkInTime := time.UnixMilli(request.CheckInTime).In(jakarta)
+	startOfDay := time.Date(
+		checkInTime.Year(), checkInTime.Month(), checkInTime.Day(),
+		0, 0, 0, 0,
+		jakarta,
+	)
+	startOfDayMilli := startOfDay.UnixMilli()
+
+	// === CHECK-IN (sama persis kaya flow CheckIn) ===
+	attendance := new(entity.Attendance)
+	err := c.AttendanceRepository.FindByEmployeeIDAndDate(
+		tx, attendance, request.EmployeeID, request.CheckInTime,
+	)
+	existingAttendance := err == nil
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.Log.WithError(err).Error("Failed to find attendance")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if !existingAttendance {
+		// Resolve status (HADIR / TERLAMBAT) berdasarkan shift, sama kaya CheckIn
+		status, err := c.resolveCheckInStatus(tx, request.EmployeeID, checkInTime)
+		if err != nil {
+			return nil, err
+		}
+
+		attendance = &entity.Attendance{
+			CompanyID:   companyID,
+			EmployeeID:  request.EmployeeID,
+			Date:        startOfDayMilli,
+			CheckInTime: request.CheckInTime,
+			Status:      status,
+			CreatedAt:   checkInTime.UnixMilli(),
+			UpdatedAt:   checkInTime.UnixMilli(),
+		}
+
+		if err := c.AttendanceRepository.Create(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to create attendance on manual check-in")
+			return nil, fiber.ErrInternalServerError
+		}
+	} else {
+		// Kalau sudah ada, update check-in time
+		attendance.CheckInTime = request.CheckInTime
+		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to update attendance check-in")
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	// Buat attendance log CHECK_IN (sama kaya CheckIn)
+	checkInLog := &entity.AttendanceLog{
+		AttendanceID:       attendance.ID,
+		Type:               "CHECK_IN",
+		Time:               request.CheckInTime,
+		IsLocationVerified: true,
+		IsFaceVerified:     true,
+		IsApproved:         true,
+		DeviceInfo:         request.DeviceInfo,
+	}
+	if err := c.AttendanceLogRepo.Create(tx, checkInLog); err != nil {
+		c.Log.WithError(err).Error("Failed to create manual check-in log")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// === CHECK-OUT (sama persis kaya flow CheckOut) ===
+	if request.CheckOutTime != nil && *request.CheckOutTime > 0 {
+		attendance.CheckOutTime = *request.CheckOutTime
+
+		// Hitung TotalWorkMinutes sama kaya CheckOut
+		checkIn := time.UnixMilli(attendance.CheckInTime)
+		checkOut := time.UnixMilli(*request.CheckOutTime)
+		totalWorkMinutes := max(
+			int(checkOut.Sub(checkIn).Minutes())-attendance.TotalBreakMinutes,
+			0,
+		)
+		attendance.TotalWorkMinutes = totalWorkMinutes
+
+		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to update attendance on manual check-out")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		// Buat attendance log CHECK_OUT (sama kaya CheckOut)
+		checkOutLog := &entity.AttendanceLog{
+			AttendanceID:       attendance.ID,
+			Type:               "CHECK_OUT",
+			Time:               *request.CheckOutTime,
+			IsLocationVerified: true,
+			IsFaceVerified:     true,
+			IsApproved:         true,
+			DeviceInfo:         "Manual Input",
+		}
+		if err := c.AttendanceLogRepo.Create(tx, checkOutLog); err != nil {
+			c.Log.WithError(err).Error("Failed to create manual check-out log")
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return model.AttendandeToResponse(attendance), nil
 }

@@ -73,6 +73,13 @@ type UpdateAttendanceRequest struct {
 	Status            *string `json:"status,omitempty"              validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
 }
 
+type ManualAttendanceRequest struct {
+	EmployeeID   string `json:"employee_id" validate:"required,uuid4"`
+	CheckInTime  int64  `json:"check_in_time" validate:"required"`
+	CheckOutTime *int64 `json:"check_out_time,omitempty"`
+	DeviceInfo   string `json:"device_info" validate:"required"`
+}
+
 type SearchAttendanceRequest struct {
 	CompanyID  string `json:"-"                     validate:"required,uuid4"`
 	EmployeeID string `json:"employee_id,omitempty" validate:"omitempty,uuid4"`
@@ -92,7 +99,7 @@ type SearchPendingLogRequest struct {
 }
 
 type ReviewLogRequest struct {
-	Approve *bool   `json:"approve" validate:"required"` // pointer, supaya false tidak dianggap kosong
+	Approve *bool   `json:"approve" validate:"required"`
 	Reason  *string `json:"reason"`
 }
 

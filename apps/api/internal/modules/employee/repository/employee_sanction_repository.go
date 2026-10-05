@@ -61,6 +61,10 @@ func (r *EmSancRepository) FilterSearch(
 			tx = tx.Where("status = ?", status)
 		}
 
+		if createdBy := request.CreatedBy; createdBy != "" {
+			tx = tx.Where("created_by = ?", createdBy)
+		}
+
 		startDate, _ := pkg.ParseDateToUnixMilli(request.StartDate)
 		endDate, _ := pkg.ParseDateToUnixMilli(request.EndDate)
 
