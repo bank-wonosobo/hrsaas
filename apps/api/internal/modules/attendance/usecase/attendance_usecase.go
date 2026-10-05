@@ -829,7 +829,7 @@ func (c *AttendanceUseCase) CheckIn(
 
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
-		tx, attendance, request.EmployeeID, now.UnixMilli(),
+		tx, attendance, request.EmployeeID, now.Unix(),
 	)
 	isCheckOut := err == nil
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -851,7 +851,7 @@ func (c *AttendanceUseCase) CheckIn(
 	logType := "CHECK_IN"
 	if isCheckOut {
 		logType = "CHECK_OUT"
-		attendance.CheckOutTime = now.UnixMilli()
+		attendance.CheckOutTime = now.Unix()
 		attendance.TotalWorkMinutes = int(
 			(attendance.CheckOutTime - attendance.CheckInTime) / 60000,
 		)
@@ -1271,8 +1271,6 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	employeeID string,
 	now time.Time,
 ) (string, error) {
-	jakarta := time.Local
-	now = now.In(jakarta)
 
 	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, employeeID)
 	if err != nil {
@@ -1296,7 +1294,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	now = time.Date(
 		now.Year(), now.Month(), now.Day(),
 		now.Hour(), now.Minute(), 0, 0,
-		jakarta,
+		time.UTC,
 	)
 	if shiftDay.CheckIn == "" {
 		return "HADIR", nil
@@ -1309,7 +1307,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	scheduled := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		shiftTime.Hour(), shiftTime.Minute(), 0, 0,
-		jakarta,
+		time.UTC,
 	)
 	deadline := scheduled.Add(time.Duration(shift.LateTolerance) * time.Minute)
 
@@ -1421,12 +1419,12 @@ func (c *AttendanceUseCase) ManualInput(
 		return nil, fiber.ErrBadRequest
 	}
 
-	jakarta := time.Local
-	checkInTime := time.UnixMilli(request.CheckInTime).In(jakarta)
+	utc := time.UTC
+	checkInTime := time.UnixMilli(request.CheckInTime).In(utc)
 	startOfDay := time.Date(
 		checkInTime.Year(), checkInTime.Month(), checkInTime.Day(),
 		0, 0, 0, 0,
-		jakarta,
+		utc,
 	)
 	startOfDayMilli := startOfDay.UnixMilli()
 
@@ -1523,6 +1521,169 @@ func (c *AttendanceUseCase) ManualInput(
 	if err := tx.Commit().Error; err != nil {
 		c.Log.WithError(err).Error("Failed to commit transaction")
 		return nil, fiber.ErrInternalServerError
+	}
+
+	return model.AttendandeToResponse(attendance), nil
+}
+
+func (c *AttendanceUseCase) ClockIn(
+	ctx context.Context,
+	request *model.CheckInAttendanceRequest,
+) (*model.AttendanceResponse, error) {
+	// validate request
+	if request.EmployeeID == "" {
+		return nil, fiber.NewError(400, "User tidak bisa melakukan check-in karena bukan karyawan")
+	}
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate check in request")
+		return nil, fiber.ErrBadRequest
+	}
+
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	now := time.Now().In(loc)
+
+	todayAttendance := new(entity.Attendance)
+	err := c.AttendanceRepository.FindByEmployeeIDAndExactDate(
+		c.DB.WithContext(ctx),
+		todayAttendance,
+		request.EmployeeID,
+		now.UnixMilli(),
+	)
+	if err == nil && todayAttendance.CheckInTime > 0 {
+		return nil, fiber.NewError(
+			fiber.StatusConflict,
+			"Anda sudah melakukan check-in hari ini",
+		)
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.Log.WithError(err).Error("Failed to check today's attendance before clock in")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	// verifikasi checkin location
+	locations, err := c.LocationRepository.GetByEmployeeID(c.DB.WithContext(ctx), request.EmployeeID)
+	if err != nil {
+		return nil, fiber.NewError(500, "Failed to verify check-in location")
+	}
+	if len(locations) == 0 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Karyawan belum memiliki lokasi kantor",
+		)
+	}
+
+	// distance dan verifikasi lokasi
+	nearest := math.MaxFloat64
+	locationVerified := false
+
+	for _, location := range locations {
+		lat, err := strconv.ParseFloat(location.Lat, 64)
+		if err != nil {
+			continue
+		}
+		lng, err := strconv.ParseFloat(location.Lng, 64)
+		if err != nil {
+			continue
+		}
+
+		distance := distances.DistanceMeter(request.Lat, request.Lng, lat, lng)
+		if distance < nearest {
+			nearest = distance
+		}
+		if distance <= float64(location.Radius) {
+			locationVerified = true
+		}
+	}
+
+	if nearest == math.MaxFloat64 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Koordinat lokasi kantor tidak valid",
+		)
+	}
+
+	// validasi face
+	faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
+	if err != nil {
+		return nil, err
+	}
+	if !faceResult.Match {
+		return nil, fiber.NewError(fiber.StatusBadRequest, faceResult.Message)
+	}
+
+	// validasi shift dan status
+	shifts, err := c.ShiftRepository.FindByEmployeeID(c.DB.WithContext(ctx), request.CompanyID)
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	if shifts == nil {
+		return nil, fiber.NewError(fiber.StatusNotFound, "Shift tidak ditemukan")
+	}
+
+	shiftDay := new(entity.ShiftDay)
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(c.DB.WithContext(ctx), shiftDay, shifts[0].ID, int(time.Now().Weekday()))
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+
+	shiftTime, err := time.Parse("15:04:05", shiftDay.CheckIn)
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+
+	targetShif := time.Date(now.Year(), now.Month(), now.Day(), shiftTime.Hour(), shiftTime.Minute(), shiftTime.Second(), 0, loc)
+
+	deadline := targetShif.Add(time.Duration(shifts[0].LateTolerance) * time.Minute)
+
+	var status string
+	if now.After(deadline) {
+		status = "TERLAMBAT"
+	} else {
+		status = "HADIR"
+	}
+
+	// attendance
+	attendance := &entity.Attendance{
+		CompanyID:   request.CompanyID,
+		EmployeeID:  request.EmployeeID,
+		Date:        now.UnixMilli(),
+		CheckInTime: now.UnixMilli(),
+		Status:      status,
+		CreatedAt:   now.UnixMilli(),
+		UpdatedAt:   now.UnixMilli(),
+	}
+
+	attendanceLog := &entity.AttendanceLog{
+		AttendanceID:       attendance.ID,
+		Type:               "CHECK_IN",
+		Time:               now.UnixMilli(),
+		Lat:                request.Lat,
+		Lng:                request.Lng,
+		LocationDistance:   nearest,
+		IsLocationVerified: locationVerified,
+		IsFaceVerified:     faceResult.Match,
+		FaceImageURL:       faceImageURL,
+		IsApproved:         locationVerified,
+		DeviceInfo:         request.DeviceInfo,
+	}
+
+	err = c.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := c.AttendanceRepository.Create(tx, attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to create attendance on clock in")
+			return fiber.ErrInternalServerError
+		}
+
+		if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
+			c.Log.WithError(err).Error("Failed to create attendance log on clock in")
+			return fiber.ErrInternalServerError
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return model.AttendandeToResponse(attendance), nil

@@ -156,6 +156,18 @@ func (r *AttendanceRepository) FindByEmployeeIDAndDate(
 		Error
 }
 
+func (r *AttendanceRepository) FindByEmployeeIDAndExactDate(
+	db *gorm.DB,
+	attendance *entity.Attendance,
+	employeeID string,
+	date int64,
+) error {
+	return db.
+		Where("employee_id = ? AND date = ?", employeeID, date).
+		Take(attendance).
+		Error
+}
+
 func (r *AttendanceRepository) FindUnclosedBeforeDate(
 	db *gorm.DB, beforeDate int64,
 ) ([]entity.Attendance, error) {
