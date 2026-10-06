@@ -29,6 +29,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
@@ -1540,15 +1541,23 @@ func (c *AttendanceUseCase) ClockIn(
 		return nil, fiber.ErrBadRequest
 	}
 
-	loc, _ := time.LoadLocation("Asia/Jakarta")
+	var status string
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to load attendance timezone")
+		return nil, fiber.ErrInternalServerError
+	}
 	now := time.Now().In(loc)
 
+	//start of day untuk mencari attendance hari ini
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
 	todayAttendance := new(entity.Attendance)
-	err := c.AttendanceRepository.FindByEmployeeIDAndExactDate(
+	err = c.AttendanceRepository.FindByEmployeeIDAndDateRange(
 		c.DB.WithContext(ctx),
 		todayAttendance,
 		request.EmployeeID,
-		now.UnixMilli(),
+		startOfDay.UnixMilli(),
+		startOfDay.AddDate(0, 0, 1).UnixMilli(),
 	)
 	if err == nil && todayAttendance.CheckInTime > 0 {
 		return nil, fiber.NewError(
@@ -1608,12 +1617,9 @@ func (c *AttendanceUseCase) ClockIn(
 	if err != nil {
 		return nil, err
 	}
-	if !faceResult.Match {
-		return nil, fiber.NewError(fiber.StatusBadRequest, faceResult.Message)
-	}
 
 	// validasi shift dan status
-	shifts, err := c.ShiftRepository.FindByEmployeeID(c.DB.WithContext(ctx), request.CompanyID)
+	shifts, err := c.ShiftRepository.FindByEmployeeID(c.DB.WithContext(ctx), request.EmployeeID)
 	if err != nil {
 		return nil, fiber.ErrInternalServerError
 	}
@@ -1636,18 +1642,28 @@ func (c *AttendanceUseCase) ClockIn(
 
 	deadline := targetShif.Add(time.Duration(shifts[0].LateTolerance) * time.Minute)
 
-	var status string
+	fmt.Println("===== now =====")
+	fmt.Println(now)
+	fmt.Println("===== target shift =====")
+	fmt.Println(targetShif)
+	fmt.Println("===== deadline =====")
+	fmt.Println(deadline)
 	if now.After(deadline) {
 		status = "TERLAMBAT"
 	} else {
 		status = "HADIR"
 	}
+	if !locationVerified || !faceResult.Match {
+		status = "PENDING"
+	}
 
 	// attendance
+	attendanceID := uuid.NewString()
 	attendance := &entity.Attendance{
+		ID:          attendanceID,
 		CompanyID:   request.CompanyID,
 		EmployeeID:  request.EmployeeID,
-		Date:        now.UnixMilli(),
+		Date:        startOfDay.UnixMilli(),
 		CheckInTime: now.UnixMilli(),
 		Status:      status,
 		CreatedAt:   now.UnixMilli(),
@@ -1655,7 +1671,7 @@ func (c *AttendanceUseCase) ClockIn(
 	}
 
 	attendanceLog := &entity.AttendanceLog{
-		AttendanceID:       attendance.ID,
+		AttendanceID:       attendanceID,
 		Type:               "CHECK_IN",
 		Time:               now.UnixMilli(),
 		Lat:                request.Lat,
@@ -1664,7 +1680,7 @@ func (c *AttendanceUseCase) ClockIn(
 		IsLocationVerified: locationVerified,
 		IsFaceVerified:     faceResult.Match,
 		FaceImageURL:       faceImageURL,
-		IsApproved:         locationVerified,
+		IsApproved:         locationVerified && faceResult.Match,
 		DeviceInfo:         request.DeviceInfo,
 	}
 
@@ -1686,5 +1702,10 @@ func (c *AttendanceUseCase) ClockIn(
 		return nil, err
 	}
 
-	return model.AttendandeToResponse(attendance), nil
+	response := model.AttendandeToResponse(attendance)
+	if !locationVerified || !faceResult.Match {
+		response.Message = "Check-in berhasil, namun verifikasi lokasi dan/atau wajah belum valid. Mohon tunggu persetujuan admin."
+	}
+
+	return response, nil
 }
