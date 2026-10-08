@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/select";
 import { useSearchSalaryComponent } from "@/features/salary-component/hooks/use-search-salary-component";
 import { useZodForm } from "@/hooks/use-zod-form";
-import { Controller } from "react-hook-form";
+import { useEffect } from "react";
+import { Controller, useWatch } from "react-hook-form";
 import { useCreateEmployeeDeduction } from "../hooks/use-create-employee-deduction";
 import {
   CreateEmployeeDeduction,
@@ -32,6 +33,13 @@ interface Props {
   onClose: () => void;
 }
 
+const CALCULATION_TYPE = {
+  FIXED: "FIXED",
+  SALARY_PERCENTAGE: "SALARY_PERCENTAGE",
+  ATTENDANCE: "ATTENDANCE",
+  GROSS_PERCENTAGE: "GROSS_PERCENTAGE",
+} as const;
+
 function toDateInputValue(value?: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -42,6 +50,21 @@ function toDateISOString(value: string) {
   return value
     ? new Date(`${value.slice(0, 10)}T00:00:00.000Z`).toISOString()
     : "";
+}
+
+function getCalculationDescription(calculationType?: string) {
+  switch (calculationType) {
+    case CALCULATION_TYPE.FIXED:
+      return "Nominal potongan ditentukan dalam jumlah tetap.";
+    case CALCULATION_TYPE.ATTENDANCE:
+      return "Nominal potongan dihitung berdasarkan kehadiran karyawan.";
+    case CALCULATION_TYPE.SALARY_PERCENTAGE:
+      return "Potongan dihitung berdasarkan persentase dari gaji pokok.";
+    case CALCULATION_TYPE.GROSS_PERCENTAGE:
+      return "Potongan dihitung berdasarkan persentase dari total pendapatan (gross).";
+    default:
+      return "Pilih komponen potongan untuk menentukan metode perhitungan.";
+  }
 }
 
 export default function FormEmployeeDeduction({
@@ -70,8 +93,57 @@ export default function FormEmployeeDeduction({
     size: 100,
   });
   const components = componentData?.data ?? [];
+  const salaryComponentId = useWatch({
+    control: form.control,
+    name: "salary_component_id",
+  });
+  const selectedComponent = components.find(
+    (component) => component.id === salaryComponentId,
+  );
+  const calculationType = selectedComponent?.calculation_type;
+  const isFixed = calculationType === CALCULATION_TYPE.FIXED;
+  const isAttendance = calculationType === CALCULATION_TYPE.ATTENDANCE;
+  const isSalaryPercentage =
+    calculationType === CALCULATION_TYPE.SALARY_PERCENTAGE;
+  const isGrossPercentage =
+    calculationType === CALCULATION_TYPE.GROSS_PERCENTAGE;
+  const isAmountDisabled =
+    !selectedComponent || isSalaryPercentage || isGrossPercentage;
+  const isPercentageDisabled =
+    !selectedComponent || isFixed || isAttendance;
+
+  useEffect(() => {
+    if (!selectedComponent) {
+      form.setValue("amount", 0);
+      form.setValue("percentage", 0);
+      return;
+    }
+
+    switch (selectedComponent.calculation_type) {
+      case CALCULATION_TYPE.FIXED:
+      case CALCULATION_TYPE.ATTENDANCE:
+        form.setValue("percentage", 0);
+        break;
+      case CALCULATION_TYPE.SALARY_PERCENTAGE:
+      case CALCULATION_TYPE.GROSS_PERCENTAGE:
+        form.setValue("amount", 0);
+        break;
+      default:
+        form.setValue("amount", 0);
+        form.setValue("percentage", 0);
+        break;
+    }
+  }, [selectedComponent, form]);
+
   const handleClose = () => {
-    form.reset();
+    form.reset({
+      employee_id: employeeId,
+      salary_component_id: "",
+      amount: 0,
+      percentage: 0,
+      effective_date: "",
+      end_date: "",
+    });
     onClose();
   };
   const { mutate, isPending } = useCreateEmployeeDeduction(handleClose);
@@ -144,6 +216,12 @@ export default function FormEmployeeDeduction({
               </p>
             )}
             {componentError && <p className="text-sm text-destructive">{componentError}</p>}
+            <div className="rounded-md bg-primary/20 px-3 py-2">
+              <p className="text-sm font-medium">Metode Perhitungan</p>
+              <p className="text-sm text-muted-foreground">
+                {getCalculationDescription(calculationType)}
+              </p>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -152,10 +230,21 @@ export default function FormEmployeeDeduction({
                 id="employee-deduction-amount"
                 type="number"
                 min={0}
+                disabled={isAmountDisabled}
                 aria-invalid={!!amountError}
-                {...form.register("amount")}
+                {...form.register("amount", { valueAsNumber: true })}
               />
-              <p className="text-sm text-muted-foreground">Isi salah satu: nominal atau %.</p>
+              <p className="text-sm text-muted-foreground">
+                {isFixed && "Masukkan nominal potongan tetap."}
+                {isAttendance &&
+                  "Masukkan nominal potongan per hari kehadiran."}
+                {isSalaryPercentage &&
+                  "Tidak digunakan karena potongan dihitung dari persentase gaji pokok."}
+                {isGrossPercentage &&
+                  "Tidak digunakan karena potongan dihitung dari persentase total pendapatan."}
+                {!selectedComponent &&
+                  "Pilih komponen potongan terlebih dahulu."}
+              </p>
               {amountError && <p className="text-sm text-destructive">{amountError}</p>}
             </div>
             <div className="space-y-2">
@@ -166,10 +255,20 @@ export default function FormEmployeeDeduction({
                 step="any"
                 min={0}
                 max={100}
+                disabled={isPercentageDisabled}
                 aria-invalid={!!percentageError}
-                {...form.register("percentage")}
+                {...form.register("percentage", { valueAsNumber: true })}
               />
-              <p className="text-sm text-muted-foreground">Dari gaji pokok.</p>
+              <p className="text-sm text-muted-foreground">
+                {isSalaryPercentage && "Persentase dari gaji pokok."}
+                {isGrossPercentage &&
+                  "Persentase dari total pendapatan (gross)."}
+                {isFixed && "Tidak digunakan untuk komponen nominal tetap."}
+                {isAttendance &&
+                  "Tidak digunakan untuk komponen berbasis kehadiran."}
+                {!selectedComponent &&
+                  "Pilih komponen potongan terlebih dahulu."}
+              </p>
               {percentageError && <p className="text-sm text-destructive">{percentageError}</p>}
             </div>
           </div>
@@ -200,7 +299,13 @@ export default function FormEmployeeDeduction({
                   id="employee-deduction-end"
                   type="date"
                   value={toDateInputValue(field.value)}
-                  onChange={(event) => field.onChange(toDateISOString(event.target.value))}
+                  onChange={(event) =>
+                    field.onChange(
+                      event.target.value
+                        ? toDateISOString(event.target.value)
+                        : "",
+                    )
+                  }
                   aria-invalid={!!endDateError}
                 />
               )}
