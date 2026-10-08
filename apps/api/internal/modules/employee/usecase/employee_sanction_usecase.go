@@ -7,6 +7,7 @@ import (
 	"hrsaas/internal/modules/employee/repository"
 	s3Client "hrsaas/pkg/s3"
 	pkg "hrsaas/pkg/time"
+	"net/url"
 	"strings"
 	"time"
 
@@ -144,12 +145,14 @@ func (c *EmSancUseCase) Search(
 	responses := make([]model.EmSancResponse, len(emSancs))
 	presignClient := s3.NewPresignClient(c.S3Client.Client)
 	for i, emSanc := range emSancs {
-		url, err := c.S3Client.GenerateDownloadURL(presignClient, emSancs[i].DocumentUrl)
-		if err != nil {
-			return nil, 0, err
-		}
-		emSanc.DocumentUrl = url
 		responses[i] = *model.EmSancToResponse(&emSanc)
+		if strings.TrimSpace(emSanc.DocumentUrl) != "" {
+			documentURL, err := c.generateDocumentURL(presignClient, emSanc.DocumentUrl)
+			if err != nil {
+				return nil, 0, err
+			}
+			responses[i].DocumentUrl = documentURL
+		}
 	}
 
 	return responses, total, nil
@@ -169,12 +172,41 @@ func (c *EmSancUseCase) Detail(
 		return nil, fiber.ErrNotFound
 	}
 
+	if strings.TrimSpace(item.DocumentUrl) != "" {
+		presignClient := s3.NewPresignClient(c.S3Client.Client)
+		documentURL, err := c.generateDocumentURL(presignClient, item.DocumentUrl)
+		if err != nil {
+			return nil, err
+		}
+		item.DocumentUrl = documentURL
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		c.Log.WithError(err).Error("Gagal menyelesaikan transaksi")
 		return nil, fiber.ErrInternalServerError
 	}
 
 	return model.EmSancToResponse(item), nil
+}
+
+func (c *EmSancUseCase) generateDocumentURL(
+	presignClient *s3.PresignClient,
+	documentURL string,
+) (string, error) {
+	documentURL = strings.TrimSpace(documentURL)
+	publicURL := strings.TrimRight(c.S3Client.Config.GetString("s3.public_url"), "/")
+
+	if publicURL != "" && strings.HasPrefix(documentURL, publicURL+"/") {
+		objectKey := strings.TrimPrefix(documentURL, publicURL+"/")
+		return c.S3Client.GenerateDownloadURL(presignClient, objectKey, true)
+	}
+
+	parsedURL, err := url.Parse(documentURL)
+	if err == nil && parsedURL.IsAbs() {
+		return documentURL, nil
+	}
+
+	return c.S3Client.GenerateDownloadURL(presignClient, documentURL)
 }
 
 func (c *EmSancUseCase) Update(
