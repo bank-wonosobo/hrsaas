@@ -1,12 +1,21 @@
 "use client";
-import EditableField from "@/components/shared/editable-field/editable-field";
-import Button from "@/components/ui/button/button";
-import Modal from "@/components/ui/modal/modal";
-import SelectSearch from "@/components/ui/select-search/select-search";
-import Switch from "@/components/ui/switch/switch";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useGetEmployees } from "@/features/employee/hooks/use-get-employee";
-import { mapToOptions } from "@/lib/utils";
-import { MapPin, Trash2, Users } from "lucide-react";
+import { MapPin, Search, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { useAssignEmployeeOfficeLocation } from "../hooks/use-assign-employee-office-location";
 import { useDeleteOfficeLocation } from "../hooks/use-delete-office-location";
@@ -19,29 +28,116 @@ interface Props {
   onClose: () => void;
 }
 
-export default function DetailOfficeLocationModal({ id, isOpen, onClose }: Props) {
-  const { data } = useDetailOfficeLocation(id);
+function EditableLocationField({
+  id,
+  label,
+  value,
+  type = "text",
+  onSave,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  type?: "text" | "number";
+  onSave: (value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      {editing ? (
+        <div className="flex gap-2">
+          <Input
+            id={id}
+            type={type}
+            step={type === "number" ? "any" : undefined}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              onSave(draft);
+              setEditing(false);
+            }}
+          >
+            Simpan
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setDraft(value);
+              setEditing(false);
+            }}
+          >
+            Batal
+          </Button>
+        </div>
+      ) : (
+        <div className="flex min-h-9 items-center justify-between gap-3 rounded-xl border px-3 py-2">
+          <span className="text-sm">{value || "-"}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDraft(value);
+              setEditing(true);
+            }}
+          >
+            Ubah
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function DetailOfficeLocationModal({
+  id,
+  isOpen,
+  onClose,
+}: Props) {
+  const { data, isLoading, isError } = useDetailOfficeLocation(id);
   const updateMutation = useUpdateOfficeLocation(id);
   const deleteMutation = useDeleteOfficeLocation();
   const assignMutation = useAssignEmployeeOfficeLocation();
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
-  const { data: employeesData } = useGetEmployees({ key: "", page: 1, size: 200 });
-  const employeeOptions = mapToOptions(
-    employeesData?.data ?? [],
-    (emp) => `${emp.fullname} (${emp.employee_number})`,
-    (emp) => emp.id,
-  );
+  const {
+    data: employeesData,
+    isLoading: employeesLoading,
+    isError: employeesError,
+  } = useGetEmployees({ key: employeeSearch, page: 1, size: 200 });
 
   const location = data?.data;
+  const assignedEmployees = location?.employees ?? [];
+  const assignedIds = new Set(assignedEmployees.map((employee) => employee.id));
+  const availableEmployees = (employeesData?.data ?? []).filter(
+    (employee) => !assignedIds.has(employee.id),
+  );
+  const selectedEmployee = availableEmployees.find(
+    (employee) => employee.id === selectedEmployeeId,
+  );
 
   const handleAssign = () => {
     if (!selectedEmployeeId) return;
     assignMutation.mutate(
       { employeeId: selectedEmployeeId, officeLocationId: id },
-      { onSuccess: () => setSelectedEmployeeId("") },
+      {
+        onSuccess: () => {
+          setSelectedEmployeeId("");
+          setEmployeeSearch("");
+        },
+      },
     );
   };
 
@@ -54,168 +150,312 @@ export default function DetailOfficeLocationModal({ id, isOpen, onClose }: Props
     });
   };
 
+  if (!isOpen) return null;
+
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title="Detail Lokasi Kantor" maxWidth="md">
-        {/* Header */}
-        <div className="flex items-center gap-4 pb-5 mb-2 border-b">
-          <div className="h-12 w-12 rounded-full bg-zinc-100 flex items-center justify-center shrink-0">
-            <MapPin className="h-5 w-5 text-zinc-600" />
-          </div>
-          <div>
-            <p className="font-semibold text-lg">{location?.name}</p>
-            <p className="text-sm text-gray-500">{location?.address}</p>
-          </div>
-        </div>
-
-        {/* Editable fields */}
-        <div className="space-y-0 mt-4">
-          <EditableField
-            label="Nama"
-            value={location?.name}
-            onSave={(val) => updateMutation.mutate({ name: val })}
-          />
-          <EditableField
-            label="Alamat"
-            value={location?.address}
-            onSave={(val) => updateMutation.mutate({ address: val })}
-          />
-          <EditableField
-            label="Latitude"
-            value={location?.lat?.toString()}
-            onSave={(val) => {
-              const num = parseFloat(val);
-              if (!isNaN(num)) updateMutation.mutate({ lat: num });
-            }}
-          />
-          <EditableField
-            label="Longitude"
-            value={location?.lng?.toString()}
-            onSave={(val) => {
-              const num = parseFloat(val);
-              if (!isNaN(num)) updateMutation.mutate({ lng: num });
-            }}
-          />
-          <EditableField
-            label="Radius (meter)"
-            value={location?.radius_meters?.toString()}
-            onSave={(val) => {
-              const num = parseInt(val, 10);
-              if (!isNaN(num) && num >= 0) updateMutation.mutate({ radius: num });
-            }}
-          />
-
-          <div className="flex flex-col w-full justify-start items-center pb-6 border-b border-gray-200">
-            <div className="flex w-full justify-between gap-y-1 items-center">
-              <label className="text-md font-semibold">Status Aktif</label>
-              <Switch
-                checked={location?.is_active ?? false}
-                onChange={(val) => updateMutation.mutate({ is_active: val })}
-              />
-            </div>
-            <div className="flex w-full justify-start mt-1">
-              <p className="text-sm text-gray-500">
-                {location?.is_active ? "Aktif" : "Tidak aktif"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Assign Employee Section */}
-        <div className="mt-6 pb-6 border-b border-gray-200">
-          <div className="flex items-center gap-1.5 mb-4">
-            <Users size={15} className="text-gray-500" />
-            <p className="text-md font-semibold">Karyawan Terdaftar</p>
-          </div>
-
-          {/* Assigned employees list */}
-          <div className="space-y-2 mb-4">
-            {location?.employees && location.employees.length > 0 ? (
-              location.employees.map((emp) => (
-                <div
-                  key={emp.id}
-                  className="flex items-center gap-3 py-2 border-b border-zinc-100 last:border-0"
-                >
-                  <div className="h-8 w-8 rounded-full bg-zinc-100 flex items-center justify-center text-sm font-medium shrink-0">
-                    {emp.fullname.charAt(0).toUpperCase()}
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          {isLoading ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Detail Lokasi Kantor</DialogTitle>
+                <DialogDescription>Memuat informasi lokasi...</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-40 w-full" />
+              </div>
+            </>
+          ) : isError || !location ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Detail Lokasi Kantor</DialogTitle>
+                <DialogDescription className="text-destructive">
+                  Data lokasi gagal dimuat.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Tutup
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <MapPin className="size-5 text-muted-foreground" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{emp.fullname}</p>
-                    <p className="text-xs text-gray-400">{emp.employee_number}</p>
+                  <div className="min-w-0">
+                    <DialogTitle className="truncate">{location.name}</DialogTitle>
+                    <DialogDescription className="line-clamp-2">
+                      {location.address}
+                    </DialogDescription>
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">Belum ada karyawan terdaftar</p>
-            )}
-          </div>
+              </DialogHeader>
 
-          {/* Assign form */}
-          <div className="flex gap-2 items-start">
-            <div className="flex-1">
-              <SelectSearch
-                label="Cari karyawan"
-                value={selectedEmployeeId}
-                options={employeeOptions}
-                onChange={setSelectedEmployeeId}
-              />
-            </div>
-            <Button
-              onClick={handleAssign}
-              loading={assignMutation.isPending}
-              disabled={!selectedEmployeeId}
-              className="mt-0.5"
-            >
-              Assign
-            </Button>
-          </div>
-        </div>
+              <div className="space-y-5">
+                <Card size="sm">
+                  <CardHeader>
+                    <CardTitle>Informasi Lokasi</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 sm:grid-cols-2">
+                    <EditableLocationField
+                      id="location-name"
+                      label="Nama"
+                      value={location.name}
+                      onSave={(value) =>
+                        updateMutation.mutate({ name: value })
+                      }
+                    />
+                    <EditableLocationField
+                      id="location-address"
+                      label="Alamat"
+                      value={location.address}
+                      onSave={(value) =>
+                        updateMutation.mutate({ address: value })
+                      }
+                    />
+                    <EditableLocationField
+                      id="location-latitude"
+                      label="Latitude"
+                      type="number"
+                      value={location.lat.toString()}
+                      onSave={(value) => {
+                        const number = Number(value);
+                        if (Number.isFinite(number)) {
+                          updateMutation.mutate({ lat: number });
+                        }
+                      }}
+                    />
+                    <EditableLocationField
+                      id="location-longitude"
+                      label="Longitude"
+                      type="number"
+                      value={location.lng.toString()}
+                      onSave={(value) => {
+                        const number = Number(value);
+                        if (Number.isFinite(number)) {
+                          updateMutation.mutate({ lng: number });
+                        }
+                      }}
+                    />
+                    <EditableLocationField
+                      id="location-radius"
+                      label="Radius (meter)"
+                      type="number"
+                      value={location.radius_meters.toString()}
+                      onSave={(value) => {
+                        const number = Number(value);
+                        if (Number.isFinite(number) && number >= 0) {
+                          updateMutation.mutate({ radius: number });
+                        }
+                      }}
+                    />
+                    <div className="space-y-2">
+                      <Label>Status Lokasi</Label>
+                      <div className="flex min-h-9 items-center gap-3 rounded-xl border px-3 py-2">
+                        <Checkbox
+                          id="location-active"
+                          checked={location.is_active}
+                          onCheckedChange={(checked) =>
+                            updateMutation.mutate({
+                              is_active: checked === true,
+                            })
+                          }
+                        />
+                        <Label htmlFor="location-active">
+                          {location.is_active ? "Aktif" : "Nonaktif"}
+                        </Label>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Delete Section */}
-        <div className="mt-6 pt-4 border-t">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-md font-semibold">Hapus Lokasi</p>
-              <p className="text-sm text-gray-500">Tindakan ini tidak dapat dibatalkan</p>
-            </div>
+                <Card size="sm">
+                  <CardHeader className="flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Karyawan Ter-assign</CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {assignedEmployees.length} karyawan ditugaskan ke lokasi ini.
+                      </p>
+                    </div>
+                    <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+                      <Users className="size-5 text-muted-foreground" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {assignedEmployees.length ? (
+                      <div className="max-h-48 divide-y overflow-y-auto rounded-xl border px-3">
+                        {assignedEmployees.map((employee) => (
+                          <div
+                            key={employee.id}
+                            className="flex items-center gap-3 py-3"
+                          >
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+                              {employee.fullname.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {employee.fullname}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {employee.employee_number}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-xl border p-4 text-center text-sm text-muted-foreground">
+                        Belum ada karyawan yang ditugaskan.
+                      </p>
+                    )}
+
+                    <div className="space-y-2 border-t pt-4">
+                      <Label htmlFor="assign-employee-search">
+                        Cari karyawan untuk ditugaskan
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="assign-employee-search"
+                          value={employeeSearch}
+                          onChange={(event) => {
+                            setEmployeeSearch(event.target.value);
+                            setSelectedEmployeeId("");
+                          }}
+                          placeholder="Nama atau nomor karyawan..."
+                          className="pl-9"
+                        />
+                      </div>
+                      {employeesLoading ? (
+                        <Skeleton className="h-12 w-full" />
+                      ) : employeesError ? (
+                        <p className="text-sm text-destructive">
+                          Daftar karyawan gagal dimuat.
+                        </p>
+                      ) : availableEmployees.length ? (
+                        <div className="max-h-40 space-y-1 overflow-y-auto rounded-xl border p-2">
+                          {availableEmployees.map((employee) => (
+                            <Button
+                              key={employee.id}
+                              type="button"
+                              variant={
+                                selectedEmployeeId === employee.id
+                                  ? "secondary"
+                                  : "ghost"
+                              }
+                              onClick={() => setSelectedEmployeeId(employee.id)}
+                              className="h-auto w-full justify-between gap-3 px-3 py-2 text-left"
+                            >
+                              <span className="truncate text-sm font-medium">
+                                {employee.fullname}
+                              </span>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {employee.employee_number}
+                              </span>
+                            </Button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {employeeSearch
+                            ? "Tidak ada karyawan yang cocok atau semua hasil sudah ditugaskan."
+                            : "Tidak ada karyawan yang dapat ditugaskan."}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {selectedEmployee
+                            ? `Dipilih: ${selectedEmployee.fullname}`
+                            : "Pilih karyawan dari hasil pencarian."}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAssign}
+                          disabled={
+                            !selectedEmployeeId || assignMutation.isPending
+                          }
+                        >
+                          {assignMutation.isPending
+                            ? "Mengassign..."
+                            : "Assign Karyawan"}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card size="sm">
+                  <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium">Hapus Lokasi</p>
+                      <p className="text-sm text-muted-foreground">
+                        Tindakan ini tidak dapat dibatalkan.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setConfirmDelete(true)}
+                    >
+                      <Trash2 />
+                      Hapus Lokasi
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Tutup
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={(open) => setConfirmDelete(open)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hapus Lokasi Kantor</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus lokasi{" "}
+              <span className="font-semibold text-foreground">
+                {location?.name}
+              </span>
+              ? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
             <Button
+              type="button"
               variant="outline"
-              prefixIcon={<Trash2 size={16} />}
-              onClick={() => setConfirmDelete(true)}
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleteMutation.isPending}
             >
-              Hapus
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Confirm Delete Modal */}
-      <Modal
-        isOpen={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title="Hapus Lokasi Kantor"
-        maxWidth="sm"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
               Batal
             </Button>
             <Button
-              variant="outline"
+              type="button"
+              variant="destructive"
               onClick={handleDelete}
-              loading={deleteMutation.isPending}
+              disabled={deleteMutation.isPending}
             >
-              Hapus
+              {deleteMutation.isPending ? "Menghapus..." : "Hapus Lokasi"}
             </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-gray-600">
-          Apakah Anda yakin ingin menghapus lokasi{" "}
-          <span className="font-semibold">{location?.name}</span>? Tindakan ini
-          tidak dapat dibatalkan.
-        </p>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

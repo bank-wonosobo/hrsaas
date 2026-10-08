@@ -1,12 +1,33 @@
 "use client";
 
-import Badge from "@/components/ui/badge/badge";
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
-import Table from "@/components/ui/table/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { paymentStatusOptions } from "@/lib/data";
 import { formatRupiah } from "@/lib/utils";
@@ -20,11 +41,22 @@ import {
   UpdatePayrollPaymentStatusSchema,
 } from "../schemas/payroll-schema";
 
-const statusVariant: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
-  PENDING: "default",
-  PROCESSING: "warning",
-  SUCCESS: "success",
-  FAILED: "danger",
+const statusConfig: Record<
+  string,
+  { label: string; variant: "outline" | "secondary" | "destructive"; className?: string }
+> = {
+  PENDING: { label: "Menunggu", variant: "outline" },
+  PROCESSING: {
+    label: "Diproses",
+    variant: "secondary",
+    className: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  },
+  SUCCESS: {
+    label: "Berhasil",
+    variant: "secondary",
+    className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  },
+  FAILED: { label: "Gagal", variant: "destructive" },
 };
 
 function UpdateStatusModal({
@@ -45,47 +77,81 @@ function UpdateStatusModal({
   };
 
   return (
-    <Modal
-      isOpen
-      onClose={onClose}
-      title={`Ubah Status Pembayaran — ${payment.account_name ?? ""}`}
-      maxWidth="sm"
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Batal
-          </Button>
-          <Button type="submit" form="form-update-payment-status" loading={isPending}>
-            Simpan
-          </Button>
-        </>
-      }
-    >
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Ubah Status Pembayaran</DialogTitle>
+          <DialogDescription>
+            {payment.account_name ?? "Perbarui status dan referensi pembayaran."}
+          </DialogDescription>
+        </DialogHeader>
       <form
         id="form-update-payment-status"
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-4"
       >
-        <FormField label="Status" required>
+        <div className="space-y-2">
+          <Label htmlFor="payment-status">
+            Status <span className="text-destructive">*</span>
+          </Label>
           <Controller
             name="status"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Select
-                label="Status"
-                options={paymentStatusOptions}
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
+              <div className="space-y-1.5">
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    id="payment-status"
+                    className="w-full"
+                    aria-invalid={!!fieldState.error}
+                  >
+                    <SelectValue placeholder="Pilih status pembayaran" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentStatusOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldState.error && (
+                  <p className="text-sm text-destructive">
+                    {fieldState.error.message}
+                  </p>
+                )}
+              </div>
             )}
           />
-        </FormField>
-        <FormField label="Referensi Pembayaran" hint="Nomor referensi dari bank (opsional).">
-          <Input label="Referensi" {...form.register("payment_reference")} />
-        </FormField>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="payment-reference">Referensi Pembayaran</Label>
+          <Input
+            id="payment-reference"
+            placeholder="Nomor referensi dari bank (opsional)"
+            {...form.register("payment_reference")}
+          />
+        </div>
       </form>
-    </Modal>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isPending}
+          >
+            Batal
+          </Button>
+          <Button
+            type="submit"
+            form="form-update-payment-status"
+            disabled={isPending}
+          >
+            {isPending ? "Menyimpan..." : "Simpan"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -99,66 +165,79 @@ export default function PayrollPayments({ payrollId }: { payrollId: string }) {
 
   const payments = data?.data ?? [];
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-sm text-muted-foreground">
+          Memuat pembayaran...
+        </CardContent>
+      </Card>
+    );
+  }
   if (payments.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 space-y-4">
-      <h2 className="text-lg font-semibold">Pembayaran</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>Pembayaran</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Rekening Tujuan</TableHead>
+              <TableHead className="text-right">Nominal</TableHead>
+              <TableHead>Referensi</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-36 text-right">Aksi</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {payments.map((row) => {
+              const status = statusConfig[row.status] ?? {
+                label: row.status,
+                variant: "outline" as const,
+              };
 
-      <Table
-        data={payments}
-        keyExtractor={(row) => row.id}
-        columns={[
-          {
-            header: "Rekening Tujuan",
-            accessor: (row) => (
-              <div>
-                <p className="font-medium text-zinc-800">{row.account_name ?? "-"}</p>
-                <p className="text-xs text-zinc-400">
-                  {row.bank_name ?? "-"} · {row.bank_account ?? "-"}
-                </p>
-              </div>
-            ),
-          },
-          {
-            header: "Nominal",
-            accessor: (row) => (
-              <span className="text-sm font-medium">{formatRupiah(row.amount)}</span>
-            ),
-          },
-          {
-            header: "Referensi",
-            accessor: (row) => (
-              <span className="text-xs text-zinc-500 font-mono">
-                {row.payment_reference ?? "-"}
-              </span>
-            ),
-          },
-          {
-            header: "Status",
-            accessor: (row) => (
-              <Badge variant={statusVariant[row.status] ?? "default"}>{row.status}</Badge>
-            ),
-          },
-          {
-            header: "",
-            accessor: (row) => (
-              <button
-                onClick={() => setSelected(row)}
-                className="text-sm text-gray-500 hover:text-black transition-colors"
-              >
-                Ubah Status
-              </button>
-            ),
-            className: "text-right",
-          },
-        ]}
-      />
+              return (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <p className="font-medium">{row.account_name ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.bank_name ?? "-"} · {row.bank_account ?? "-"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {formatRupiah(row.amount)}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {row.payment_reference ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={status.variant} className={status.className}>
+                      {status.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelected(row)}
+                    >
+                      Ubah Status
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
 
       {selected && (
         <UpdateStatusModal payment={selected} onClose={() => setSelected(null)} />
       )}
-    </div>
+    </Card>
   );
 }

@@ -1,9 +1,17 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { formatRupiah } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -52,20 +60,24 @@ export default function PayrollHeader({ payroll }: { payroll: Payroll }) {
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 space-y-5">
+    <Card>
+      <CardHeader className="gap-4 border-b sm:flex-row sm:items-start sm:justify-between">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <button
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
             onClick={() => router.push("/payrolls")}
-            className="text-xs text-zinc-400 hover:text-zinc-700 mb-1"
+            className="-ml-2 mb-1 h-auto px-2 text-muted-foreground"
           >
-            &larr; Kembali ke daftar payroll
-          </button>
+            ← Kembali ke daftar payroll
+          </Button>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold">{payroll.payroll_number}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{payroll.payroll_number}</h1>
             <PayrollStatusBadge status={payroll.status} />
           </div>
-          <p className="text-sm text-zinc-500 mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Periode {monthNames[payroll.period_month - 1]} {payroll.period_year}
             {payroll.payment_date && (
               <> · Dibayarkan {new Date(payroll.payment_date).toLocaleDateString("id-ID")}</>
@@ -76,23 +88,23 @@ export default function PayrollHeader({ payroll }: { payroll: Payroll }) {
         <div className="flex flex-wrap items-center gap-2">
           {payroll.status === "DRAFT" && (
             <>
-              <Button size="sm" loading={isCalculating} onClick={() => calculate()}>
-                Hitung Payroll
+              <Button size="sm" disabled={isCalculating} onClick={() => calculate()}>
+                {isCalculating ? "Menghitung..." : "Hitung Payroll"}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                loading={isDeleting}
+                disabled={isDeleting}
                 onClick={handleDelete}
               >
-                Hapus
+                {isDeleting ? "Menghapus..." : "Hapus"}
               </Button>
             </>
           )}
 
           {payroll.status === "CALCULATED" && (
-            <Button size="sm" loading={isSubmitting} onClick={() => submit()}>
-              Ajukan Persetujuan
+            <Button size="sm" disabled={isSubmitting} onClick={() => submit()}>
+              {isSubmitting ? "Mengajukan..." : "Ajukan Persetujuan"}
             </Button>
           )}
 
@@ -100,20 +112,20 @@ export default function PayrollHeader({ payroll }: { payroll: Payroll }) {
             <>
               <Button
                 size="sm"
-                loading={isDeciding}
+                disabled={isDeciding}
                 onClick={() => decide({ decision: "APPROVE" })}
               >
-                Setujui
+                {isDeciding ? "Menyetujui..." : "Setujui"}
               </Button>
-              <Button size="sm" variant="danger" onClick={() => setRejectOpen(true)}>
+              <Button size="sm" variant="destructive" onClick={() => setRejectOpen(true)}>
                 Tolak
               </Button>
             </>
           )}
 
           {payroll.status === "APPROVED" && (
-            <Button size="sm" loading={isPaying} onClick={() => pay()}>
-              Proses Pembayaran
+            <Button size="sm" disabled={isPaying} onClick={() => pay()}>
+              {isPaying ? "Memproses..." : "Proses Pembayaran"}
             </Button>
           )}
 
@@ -121,56 +133,73 @@ export default function PayrollHeader({ payroll }: { payroll: Payroll }) {
             <Button
               size="sm"
               variant="outline"
-              loading={isCancelling}
+              disabled={isCancelling}
               onClick={handleCancel}
             >
-              Batalkan
+              {isCancelling ? "Membatalkan..." : "Batalkan"}
             </Button>
           )}
         </div>
       </div>
+      </CardHeader>
 
-      <div className="grid grid-cols-3 gap-4 pt-4 border-t border-zinc-100">
-        <div>
-          <p className="text-xs text-zinc-400">Total Gross</p>
-          <p className="text-lg font-semibold">{formatRupiah(payroll.total_gross)}</p>
+      <CardContent className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl bg-muted/50 p-4">
+          <p className="text-sm text-muted-foreground">Total Gross</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">{formatRupiah(payroll.total_gross)}</p>
         </div>
-        <div>
-          <p className="text-xs text-zinc-400">Total Potongan</p>
-          <p className="text-lg font-semibold">{formatRupiah(payroll.total_deduction)}</p>
+        <div className="rounded-2xl bg-muted/50 p-4">
+          <p className="text-sm text-muted-foreground">Total Potongan</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">{formatRupiah(payroll.total_deduction)}</p>
         </div>
-        <div>
-          <p className="text-xs text-zinc-400">Total Net (Take Home Pay)</p>
-          <p className="text-lg font-semibold text-green-700">
+        <div className="rounded-2xl bg-primary/5 p-4">
+          <p className="text-sm text-muted-foreground">Total Net (Take Home Pay)</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-primary">
             {formatRupiah(payroll.total_net)}
           </p>
         </div>
-      </div>
+      </CardContent>
 
-      <Modal
-        isOpen={rejectOpen}
-        onClose={() => setRejectOpen(false)}
-        title="Tolak Payroll"
-        maxWidth="sm"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+      <Dialog open={rejectOpen} onOpenChange={(open) => !open && setRejectOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tolak Payroll</DialogTitle>
+            <DialogDescription>
+              Berikan catatan agar pengajuan payroll dapat diperbaiki.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="payroll-reject-notes">
+              Catatan Penolakan <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="payroll-reject-notes"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="Tuliskan alasan penolakan"
+              aria-invalid={rejectOpen && !rejectNotes.trim()}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRejectOpen(false)}
+              disabled={isDeciding}
+            >
               Batal
             </Button>
-            <Button variant="danger" loading={isDeciding} onClick={handleReject}>
-              Tolak Payroll
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeciding || !rejectNotes.trim()}
+              onClick={handleReject}
+            >
+              {isDeciding ? "Menolak..." : "Tolak Payroll"}
             </Button>
-          </>
-        }
-      >
-        <FormField label="Catatan Penolakan" required>
-          <Input
-            label="Catatan"
-            value={rejectNotes}
-            onChange={(e) => setRejectNotes(e.target.value)}
-          />
-        </FormField>
-      </Modal>
-    </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

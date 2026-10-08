@@ -1,4 +1,3 @@
-import Title from "@/components/ui/title/title";
 import { serverApi } from "@/lib/server-api";
 import { getQueryclient } from "@/providers/get-query-client";
 import ListPayroll from "@/features/payroll/components/list-payroll";
@@ -56,7 +55,12 @@ export default async function PayrollsPage({
 
   return (
     <>
-      <Title title="Payroll" />
+      <header className="mt-4 mb-6 space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Payroll</h1>
+        <p className="text-sm text-muted-foreground">
+          Kelola perhitungan, persetujuan, dan pembayaran gaji karyawan.
+        </p>
+      </header>
       <MenuPayroll />
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ListPayroll search={search} />

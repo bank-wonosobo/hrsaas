@@ -1,6 +1,18 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
+
+/* eslint-disable react-hooks/set-state-in-effect */
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { searchPermission } from "@/features/permission/services/search-permission";
 import { FormRole } from "@/features/role/components/form-role";
 import { assignPermissions } from "@/features/role/services/assign-permissions";
@@ -8,7 +20,7 @@ import { searchRole } from "@/features/role/services/search-role";
 import { getCurrentUser } from "@/features/user/services/user-service";
 import { getAuthUser, saveAuthUser } from "@/lib/auth-storage";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { FormPermission } from "./form-permission";
@@ -20,12 +32,20 @@ export default function PivotTable() {
   );
   const [saving, setSaving] = useState<Set<string>>(new Set());
 
-  const { data: permissionsData, isLoading: loadingPermissions } = useQuery({
+  const {
+    data: permissionsData,
+    isLoading: loadingPermissions,
+    isError: permissionsError,
+  } = useQuery({
     queryKey: ["permissions", "", 1, 100],
     queryFn: () => searchPermission({ key: "", page: 1, size: 100 }),
   });
 
-  const { data: rolesData, isLoading: loadingRoles } = useQuery({
+  const {
+    data: rolesData,
+    isLoading: loadingRoles,
+    isError: rolesError,
+  } = useQuery({
     queryKey: ["roles", "", 1, 100],
     queryFn: () => searchRole({ key: "", page: 1, size: 100 }),
   });
@@ -44,175 +64,193 @@ export default function PivotTable() {
     }
   }, [rolesData?.data]);
 
+  const permissions = useMemo(
+    () => permissionsData?.data ?? [],
+    [permissionsData?.data],
+  );
+  const roles = rolesData?.data ?? [];
+  const filteredPermissions = useMemo(() => {
+    const query = filterKey.trim().toLowerCase();
+    return query
+      ? permissions.filter((permission) =>
+          permission.name.toLowerCase().includes(query),
+        )
+      : permissions;
+  }, [permissions, filterKey]);
+
   const handleToggle = async (roleId: string, permissionId: string) => {
+    if (saving.has(roleId)) return;
+
     const current = new Set(assignments[roleId] ?? []);
     const updated = new Set(current);
-    updated.has(permissionId)
-      ? updated.delete(permissionId)
-      : updated.add(permissionId);
+    if (updated.has(permissionId)) updated.delete(permissionId);
+    else updated.add(permissionId);
 
-    setAssignments((prev) => ({ ...prev, [roleId]: updated }));
-    setSaving((prev) => new Set([...prev, roleId]));
+    setAssignments((previous) => ({ ...previous, [roleId]: updated }));
+    setSaving((previous) => new Set([...previous, roleId]));
 
     try {
       await assignPermissions(roleId, Array.from(updated));
 
       const authUser = getAuthUser();
-      const userHasRole = authUser?.roles?.some((r) => r.id === roleId);
+      const userHasRole = authUser?.roles?.some((role) => role.id === roleId);
       if (authUser && userHasRole) {
         const { data: freshUser } = await getCurrentUser();
         saveAuthUser(freshUser);
       }
     } catch {
-      setAssignments((prev) => ({ ...prev, [roleId]: current }));
+      setAssignments((previous) => ({ ...previous, [roleId]: current }));
       toast.error("Gagal mengubah permission");
     } finally {
-      setSaving((prev) => {
-        const next = new Set(prev);
+      setSaving((previous) => {
+        const next = new Set(previous);
         next.delete(roleId);
         return next;
       });
     }
   };
 
-  const permissions = useMemo(
-    () => permissionsData?.data ?? [],
-    [permissionsData?.data],
-  );
-  const roles = rolesData?.data ?? [];
-
-  const filteredPermissions = useMemo(
-    () =>
-      filterKey
-        ? permissions.filter((p) =>
-            p.name.toLowerCase().includes(filterKey.toLowerCase()),
-          )
-        : permissions,
-    [permissions, filterKey],
-  );
-
   if (loadingPermissions || loadingRoles) {
     return (
-      <div className="flex items-center justify-center p-24">
-        <Loader2 className="animate-spin text-gray-400" size={28} />
-      </div>
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (permissionsError || rolesError) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
+            Gagal memuat daftar role atau permission. Silakan muat ulang halaman.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between bg-white border rounded-2xl p-4">
-        <p className="text-sm text-gray-500">
-          <span className="font-semibold text-gray-700">
-            {permissions.length}
-          </span>{" "}
-          permissions ·{" "}
-          <span className="font-semibold text-gray-700">{roles.length}</span>{" "}
-          roles
-        </p>
-        <div className="flex gap-3">
-          <FormPermission />
-          <FormRole />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-muted">
+              <ShieldCheck className="size-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-medium">Pengaturan Hak Akses</p>
+              <p className="text-sm text-muted-foreground">
+                {permissions.length} permission · {roles.length} role
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <FormPermission />
+            <FormRole />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Pivot table */}
-      <div className="overflow-x-auto rounded-2xl border bg-white">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="px-4 py-3 sticky left-0 bg-gray-50 z-10 min-w-[240px] text-left">
-                <div className="relative">
-                  <Search
-                    size={13}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    value={filterKey}
-                    onChange={(e) => setFilterKey(e.target.value)}
-                    placeholder="Filter permission..."
-                    className="w-full pl-7 pr-3 py-1.5 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-gray-300 bg-white"
-                  />
-                </div>
-              </th>
-              {roles.map((role) => (
-                <th
-                  key={role.id}
-                  className="px-4 py-3 text-center min-w-[130px]"
-                >
-                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                    {role.name}
-                  </p>
-                  <p className="text-[10px] text-gray-400 font-normal mt-0.5">
-                    {assignments[role.id]?.size ?? 0} aktif
-                  </p>
-                </th>
-              ))}
-              {roles.length === 0 && (
-                <th className="px-4 py-3 text-xs font-normal text-gray-400">
-                  Belum ada role
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPermissions.map((permission, i) => (
-              <tr
-                key={permission.id}
-                className={`border-b last:border-0 transition-colors hover:bg-blue-50/40 ${
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                }`}
-              >
-                <td
-                  className="px-4 py-3 text-xs font-medium text-gray-700 sticky left-0 z-10"
-                  style={{
-                    backgroundColor:
-                      i % 2 === 0 ? "white" : "rgba(249,250,251,0.8)",
-                  }}
-                >
-                  {permission.name}
-                </td>
-                {roles.map((role) => {
-                  const checked =
-                    assignments[role.id]?.has(permission.id) ?? false;
-                  const isSaving = saving.has(role.id);
-                  return (
-                    <td key={role.id} className="px-4 py-3 text-center">
-                      {isSaving ? (
-                        <Loader2
-                          size={14}
-                          className="animate-spin mx-auto text-gray-300"
-                        />
-                      ) : (
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => handleToggle(role.id, permission.id)}
-                          className="w-4 h-4 accent-black cursor-pointer"
-                        />
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-            {filteredPermissions.length === 0 && (
-              <tr>
-                <td
-                  colSpan={roles.length + 1}
-                  className="text-center py-12 text-xs text-gray-400"
-                >
-                  {filterKey
-                    ? `Tidak ada permission cocok dengan "${filterKey}"`
-                    : "Belum ada permission."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Card className="gap-0 py-0">
+        <CardHeader className="border-b py-4">
+          <CardTitle className="text-base">Matriks Role & Permission</CardTitle>
+          <CardDescription>
+            Atur permission setiap role. Perubahan disimpan langsung.
+          </CardDescription>
+          <div className="relative mt-2 max-w-sm">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={filterKey}
+              onChange={(event) => setFilterKey(event.target.value)}
+              placeholder="Filter permission..."
+              aria-label="Filter permission"
+              className="pl-9"
+            />
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <div className="max-h-[70vh] overflow-auto">
+            <Table className="min-w-max border-separate border-spacing-0">
+              <TableHeader className="sticky top-0 z-20 bg-background">
+                <TableRow>
+                  <TableHead className="sticky left-0 z-30 min-w-[260px] border-b bg-background">
+                    Permission
+                  </TableHead>
+                  {roles.map((role) => (
+                    <TableHead
+                      key={role.id}
+                      className="min-w-[150px] border-b text-center"
+                    >
+                      <span className="block font-semibold">{role.name}</span>
+                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        {assignments[role.id]?.size ?? 0} aktif
+                      </span>
+                    </TableHead>
+                  ))}
+                  {roles.length === 0 && (
+                    <TableHead className="min-w-[150px] border-b text-center font-normal text-muted-foreground">
+                      Belum ada role
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPermissions.map((permission) => (
+                  <TableRow key={permission.id}>
+                    <TableCell className="sticky left-0 z-10 border-b bg-background font-medium">
+                      {permission.name}
+                    </TableCell>
+                    {roles.map((role) => {
+                      const checked =
+                        assignments[role.id]?.has(permission.id) ?? false;
+                      const isSaving = saving.has(role.id);
+                      return (
+                        <TableCell
+                          key={role.id}
+                          className="border-b text-center"
+                        >
+                          {isSaving ? (
+                            <Loader2
+                              className="mx-auto size-4 animate-spin text-muted-foreground"
+                              aria-label={`Menyimpan permission role ${role.name}`}
+                            />
+                          ) : (
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() =>
+                                void handleToggle(role.id, permission.id)
+                              }
+                              aria-label={`${checked ? "Cabut" : "Berikan"} ${permission.name} untuk role ${role.name}`}
+                            />
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+                {filteredPermissions.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={Math.max(roles.length + 1, 2)}
+                      className="h-28 text-center text-muted-foreground"
+                    >
+                      {filterKey
+                        ? `Tidak ada permission yang cocok dengan "${filterKey}".`
+                        : "Belum ada permission."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

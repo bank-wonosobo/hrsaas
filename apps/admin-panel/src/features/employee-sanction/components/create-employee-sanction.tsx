@@ -1,17 +1,29 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import FileUploader from "@/components/ui/file-uploader/file-uploader";
-import FormField from "@/components/ui/form/form-field";
-import InputDate from "@/components/ui/input-date/input-date";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import SelectSearch from "@/components/ui/select-search/select-search";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useGetEmployees } from "@/features/employee/hooks/use-get-employee";
 import { useZodForm } from "@/hooks/use-zod-form";
-import { mapToOptions } from "@/lib/utils";
-import { format } from "date-fns";
-import { PlusCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Controller } from "react-hook-form";
 import { useCreateEmployeeSanction } from "../hooks/use-create-employee-sanction";
@@ -23,21 +35,11 @@ import {
 
 export function CreateEmployeeSanctionForm() {
   const [open, setOpen] = useState(false);
-
-  const { data: employees } = useGetEmployees({ size: 500 });
-  const { data: sanctionTypes } = useGetSanctionTypes();
-
-  const employeeOptions = mapToOptions(
-    employees?.data ?? [],
-    (e) => e.fullname,
-    (e) => e.id,
-  );
-
-  const sanctionOptions = mapToOptions(
-    sanctionTypes?.data ?? [],
-    (s) => s.name,
-    (s) => s.id,
-  );
+  const { data: employees, isLoading: employeesLoading } = useGetEmployees({
+    size: 500,
+  });
+  const { data: sanctionTypes, isLoading: sanctionsLoading } =
+    useGetSanctionTypes();
 
   const form = useZodForm(CreateEmployeeSanctionSchema, {
     defaultValues: {
@@ -59,95 +61,163 @@ export function CreateEmployeeSanctionForm() {
     mutation.mutate(data);
   };
 
-  return (
-    <>
-      <Button
-        variant="secondary"
-        onClick={() => setOpen(true)}
-        prefixIcon={<PlusCircle size={18} />}
-      >
-        Tambah
-      </Button>
+  const handleOpenChange = (value: boolean) => {
+    setOpen(value);
+    if (!value && !mutation.isPending) form.reset();
+  };
 
-      <Modal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        title="Tambah Sanksi Karyawan"
-        maxWidth="sm"
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-3 space-y-5">
-          <FormField label="Karyawan">
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus />
+          Tambah Sanksi
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Tambah Sanksi Karyawan</DialogTitle>
+          <DialogDescription>
+            Isi informasi karyawan, masa berlaku, dan dokumen pendukung.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="sanction-employee">Karyawan</Label>
             <Controller
               name="employee_id"
               control={form.control}
               render={({ field, fieldState }) => (
-                <SelectSearch
-                  label="Pilih karyawan"
-                  options={employeeOptions}
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={fieldState.error?.message}
-                />
+                <>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={employeesLoading}
+                  >
+                    <SelectTrigger
+                      id="sanction-employee"
+                      className="w-full"
+                      aria-invalid={!!fieldState.error}
+                    >
+                      <SelectValue
+                        placeholder={
+                          employeesLoading
+                            ? "Memuat karyawan..."
+                            : "Pilih karyawan"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(employees?.data ?? []).map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.fullname} · {employee.employee_number}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <p className="text-sm text-destructive">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </>
               )}
             />
-          </FormField>
+          </div>
 
-          <FormField label="Jenis Sanksi">
+          <div className="space-y-2">
+            <Label htmlFor="sanction-type">Jenis Sanksi</Label>
             <Controller
               name="sanction_id"
               control={form.control}
               render={({ field, fieldState }) => (
-                <SelectSearch
-                  label="Pilih jenis sanksi"
-                  options={sanctionOptions}
-                  value={field.value}
-                  onChange={field.onChange}
-                  error={fieldState.error?.message}
-                />
+                <>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={sanctionsLoading}
+                  >
+                    <SelectTrigger
+                      id="sanction-type"
+                      className="w-full"
+                      aria-invalid={!!fieldState.error}
+                    >
+                      <SelectValue
+                        placeholder={
+                          sanctionsLoading
+                            ? "Memuat jenis sanksi..."
+                            : "Pilih jenis sanksi"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(sanctionTypes?.data ?? []).map((sanction) => (
+                        <SelectItem key={sanction.id} value={sanction.id}>
+                          {sanction.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <p className="text-sm text-destructive">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </>
               )}
             />
-          </FormField>
+          </div>
 
-          <FormField label="Alasan">
-            <Input
-              label="Alasan sanksi"
-              type="text"
+          <div className="space-y-2">
+            <Label htmlFor="sanction-reason">Alasan</Label>
+            <Textarea
+              id="sanction-reason"
+              placeholder="Tuliskan alasan pemberian sanksi..."
+              rows={3}
               {...form.register("reason")}
-              error={form.formState.errors.reason?.message}
+              aria-invalid={!!form.formState.errors.reason}
             />
-          </FormField>
+            {form.formState.errors.reason && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.reason.message}
+              </p>
+            )}
+          </div>
 
-          <FormField label="Tanggal Berlaku">
-            <Controller
-              name="start_date"
-              control={form.control}
-              render={({ field }) => (
-                <InputDate
-                  value={field.value ? new Date(field.value) : undefined}
-                  onChange={(date) =>
-                    field.onChange(format(date, "yyyy-MM-dd"))
-                  }
-                />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="sanction-start-date">Tanggal Berlaku</Label>
+              <Input
+                id="sanction-start-date"
+                type="date"
+                {...form.register("start_date")}
+                aria-invalid={!!form.formState.errors.start_date}
+              />
+              {form.formState.errors.start_date && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.start_date.message}
+                </p>
               )}
-            />
-          </FormField>
-
-          <FormField label="Tanggal Akhir">
-            <Controller
-              name="end_date"
-              control={form.control}
-              render={({ field }) => (
-                <InputDate
-                  value={field.value ? new Date(field.value) : undefined}
-                  onChange={(date) =>
-                    field.onChange(format(date, "yyyy-MM-dd"))
-                  }
-                />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sanction-end-date">Tanggal Akhir</Label>
+              <Input
+                id="sanction-end-date"
+                type="date"
+                {...form.register("end_date")}
+                aria-invalid={!!form.formState.errors.end_date}
+              />
+              {form.formState.errors.end_date && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.end_date.message}
+                </p>
               )}
-            />
-          </FormField>
+            </div>
+          </div>
 
-          <FormField label="Dokumen">
+          <div className="space-y-2">
+            <Label>Dokumen Pendukung</Label>
             <Controller
               name="document_url"
               control={form.control}
@@ -155,21 +225,30 @@ export function CreateEmployeeSanctionForm() {
                 <FileUploader
                   value={field.value}
                   onChange={field.onChange}
+                  isPublic={false}
                   error={fieldState.error?.message}
+                  accept="application/pdf, image/*"
+                  useSignedUrl={true}
                 />
               )}
             />
-          </FormField>
+          </div>
 
-          <Button
-            type="submit"
-            className="px-4 py-2 bg-black text-white rounded-lg"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? "Menyimpan..." : "Simpan"}
-          </Button>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={mutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "Menyimpan..." : "Simpan Sanksi"}
+            </Button>
+          </DialogFooter>
         </form>
-      </Modal>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

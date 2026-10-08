@@ -1,6 +1,11 @@
 import { api } from "@/lib/axios";
 import { PaginatedData, ResponseData } from "@/lib/response";
-import { CreateShift, SearchShiftRequest, Shift } from "../schemas/shift-schema";
+import {
+  CreateShift,
+  SearchShiftRequest,
+  Shift,
+  UpdateShift,
+} from "../schemas/shift-schema";
 
 export const getShifts = async (
   search: SearchShiftRequest,
@@ -23,6 +28,17 @@ export const createShift = async (request: CreateShift): Promise<ResponseData<Sh
   const response = await api.post("/shifts", request);
   if (response.status !== 200) {
     throw new Error(response.data.error || "Gagal membuat shift");
+  }
+  return { ...response.data, data: response.data.data };
+};
+
+export const updateShift = async (
+  id: string,
+  request: UpdateShift,
+): Promise<ResponseData<Shift>> => {
+  const response = await api.put(`/shifts/${id}`, request);
+  if (response.status !== 200) {
+    throw new Error(response.data.error || "Gagal memperbarui shift");
   }
   return { ...response.data, data: response.data.data };
 };

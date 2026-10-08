@@ -1,4 +1,3 @@
-import Title from "@/components/ui/title/title";
 import ListSalaryComponent from "@/features/salary-component/components/list-salary-component";
 import MenuSalaryComponent from "@/features/salary-component/components/menu-salary-component";
 import { SearchSalaryComponentRequest } from "@/features/salary-component/schemas/salary-component-schema";
@@ -50,7 +49,12 @@ export default async function SalaryComponentsPage({
 
   return (
     <>
-      <Title title="Komponen Gaji" />
+      <header className="mt-4 mb-6 space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">Komponen Gaji</h1>
+        <p className="text-sm text-muted-foreground">
+          Kelola komponen penghasilan dan potongan dalam perhitungan payroll.
+        </p>
+      </header>
       <MenuSalaryComponent />
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ListSalaryComponent search={search} />

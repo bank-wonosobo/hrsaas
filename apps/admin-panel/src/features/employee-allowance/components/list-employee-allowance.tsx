@@ -46,8 +46,11 @@ function isActivePeriod(start: number, end?: number | null) {
 
 export default function ListEmployeeAllowance({ employeeId }: Props) {
   const [editTarget, setEditTarget] = useState<EmployeeAllowance | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<EmployeeAllowance | null>(null);
-  const { mutate: remove, isPending: isDeleting } = useDeleteEmployeeAllowance();
+  const [deleteTarget, setDeleteTarget] = useState<EmployeeAllowance | null>(
+    null,
+  );
+  const { mutate: remove, isPending: isDeleting } =
+    useDeleteEmployeeAllowance();
   const { data, isLoading, isError, refetch } = useGetEmployeeAllowances({
     employee_id: employeeId,
     page: 1,
@@ -67,7 +70,10 @@ export default function ListEmployeeAllowance({ employeeId }: Props) {
       <Card>
         <CardContent className="pt-6">
           {isLoading ? (
-            <p role="status" className="py-6 text-center text-sm text-muted-foreground">
+            <p
+              role="status"
+              className="py-6 text-center text-sm text-muted-foreground"
+            >
               Memuat data tunjangan...
             </p>
           ) : isError ? (
@@ -75,7 +81,11 @@ export default function ListEmployeeAllowance({ employeeId }: Props) {
               <p role="alert" className="text-sm text-destructive">
                 Data tunjangan gagal dimuat. Silakan coba lagi.
               </p>
-              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+              >
                 Coba lagi
               </Button>
             </div>
@@ -106,9 +116,13 @@ export default function ListEmployeeAllowance({ employeeId }: Props) {
                         {allowance.salary_component?.name ?? "Tunjangan"}
                       </TableCell>
                       <TableCell>
-                        {allowance.percentage > 0
+                        {allowance.salary_component?.calculation_type === "SALARY_PERCENTAGE"
                           ? `${allowance.percentage}% dari gaji pokok`
-                          : formatRupiah(allowance.amount)}
+                          : allowance.salary_component?.calculation_type === "GROSS_PERCENTAGE"
+                            ? `${allowance.percentage}% dari total pendapatan`
+                            : allowance.salary_component?.calculation_type === "ATTENDANCE"
+                              ? `${formatRupiah(allowance.amount)} / kehadiran`
+                              : formatRupiah(allowance.amount)}
                       </TableCell>
                       <TableCell>
                         {toIDDate(new Date(allowance.effective_date))} –{" "}
@@ -163,7 +177,9 @@ export default function ListEmployeeAllowance({ employeeId }: Props) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel asChild>
-              <Button variant="outline" disabled={isDeleting}>Batal</Button>
+              <Button variant="outline" disabled={isDeleting}>
+                Batal
+              </Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
               <Button

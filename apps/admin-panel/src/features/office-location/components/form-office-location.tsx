@@ -1,6 +1,17 @@
 "use client";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { PlusCircle } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -10,11 +21,13 @@ import {
   CreateOfficeLocation,
   CreateOfficeLocationSchema,
 } from "../schemas/office-location-schema";
-import Button from "@/components/ui/button/button";
 
 const MapPicker = dynamic(
   () => import("@/components/ui/map-picker/map-picker"),
-  { ssr: false, loading: () => <div className="h-80 rounded-xl border border-zinc-200 bg-zinc-50 flex items-center justify-center text-sm text-zinc-400">Memuat peta...</div> },
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-80 w-full rounded-2xl" />,
+  },
 );
 
 export function FormOfficeLocation() {
@@ -52,70 +65,137 @@ export function FormOfficeLocation() {
 
   return (
     <>
-      <Button
-        variant="secondary"
-        onClick={() => setOpen(true)}
-        prefixIcon={<PlusCircle size={18} />}
-      >
-        Tambah
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
+        <PlusCircle />
+        Tambah Lokasi
       </Button>
 
-      <Modal
-        isOpen={open}
-        onClose={handleClose}
-        title="Tambah Lokasi Kantor"
-        maxWidth="lg"
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!value) handleClose();
+          else setOpen(true);
+        }}
       >
-        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-3 space-y-5">
-          <Input
-            label="Nama Lokasi"
-            type="text"
-            {...form.register("name")}
-            error={form.formState.errors.name?.message}
-          />
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Tambah Lokasi Kantor</DialogTitle>
+            <DialogDescription>
+              Pilih titik pada peta lalu lengkapi informasi lokasi kantor.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            id="form-office-location"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-5"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="office-location-name">
+                Nama Lokasi <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="office-location-name"
+                placeholder="Nama lokasi kantor"
+                {...form.register("name")}
+                aria-invalid={!!form.formState.errors.name}
+              />
+              {form.formState.errors.name && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.name.message}
+                </p>
+              )}
+            </div>
 
-          {/* Map Picker */}
-          <MapPicker
-            defaultLat={typeof watchLat === "number" ? watchLat : undefined}
-            defaultLng={typeof watchLng === "number" ? watchLng : undefined}
-            onLocationChange={handleLocationChange}
-          />
+            <div className="space-y-2">
+              <Label>Pilih Titik Lokasi</Label>
+              <MapPicker
+                defaultLat={typeof watchLat === "number" ? watchLat : undefined}
+                defaultLng={typeof watchLng === "number" ? watchLng : undefined}
+                onLocationChange={handleLocationChange}
+              />
+            </div>
 
-          <Input
-            label="Alamat"
-            type="text"
-            {...form.register("address")}
-            error={form.formState.errors.address?.message}
-          />
+            <div className="space-y-2">
+              <Label htmlFor="office-location-address">
+                Alamat <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="office-location-address"
+                placeholder="Alamat lokasi kantor"
+                {...form.register("address")}
+                aria-invalid={!!form.formState.errors.address}
+              />
+              {form.formState.errors.address && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.address.message}
+                </p>
+              )}
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Latitude"
-              type="number"
-              step="any"
-              {...form.register("lat")}
-              error={form.formState.errors.lat?.message}
-            />
-            <Input
-              label="Longitude"
-              type="number"
-              step="any"
-              {...form.register("lng")}
-              error={form.formState.errors.lng?.message}
-            />
-          </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                [
+                  ["lat", "office-location-lat", "Latitude"],
+                  ["lng", "office-location-lng", "Longitude"],
+                ] as const
+              ).map(([name, id, label]) => (
+                <div className="space-y-2" key={name}>
+                  <Label htmlFor={id}>
+                    {label} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={id}
+                    type="number"
+                    step="any"
+                    {...form.register(name)}
+                    aria-invalid={!!form.formState.errors[name]}
+                  />
+                  {form.formState.errors[name] && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors[name]?.message}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
 
-          <Input
-            label="Radius (meter)"
-            type="number"
-            min="0"
-            {...form.register("radius")}
-            error={form.formState.errors.radius?.message}
-          />
-
-          <Button loading={mutation.isPending}>Simpan</Button>
-        </form>
-      </Modal>
+            <div className="space-y-2">
+              <Label htmlFor="office-location-radius">
+                Radius (meter) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="office-location-radius"
+                type="number"
+                min="0"
+                {...form.register("radius")}
+                aria-invalid={!!form.formState.errors.radius}
+              />
+              {form.formState.errors.radius && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.radius.message}
+                </p>
+              )}
+            </div>
+          </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={mutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              form="form-office-location"
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? "Menyimpan..." : "Simpan Lokasi"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
