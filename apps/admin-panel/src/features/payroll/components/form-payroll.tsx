@@ -1,9 +1,22 @@
 "use client";
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { months } from "@/lib/data";
 import { PlusCircle } from "lucide-react";
@@ -37,60 +50,110 @@ export function FormPayroll() {
   return (
     <>
       <Button
-        variant="secondary"
+        variant="default"
+        size="sm"
         onClick={() => setOpen(true)}
-        prefixIcon={<PlusCircle size={18} />}
+        className="gap-2"
       >
+        <PlusCircle />
         Buat Payroll
       </Button>
 
-      <Modal
-        isOpen={open}
-        onClose={handleClose}
-        title="Buat Payroll Baru"
-        maxWidth="sm"
-        footer={
-          <>
-            <Button variant="outline" onClick={handleClose} disabled={isPending}>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!value) handleClose();
+          else setOpen(true);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Buat Payroll Baru</DialogTitle>
+            <DialogDescription>
+              Pilih periode untuk membuat payroll baru.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            id="form-payroll"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="period_month">
+                Bulan <span className="text-destructive">*</span>
+              </Label>
+              <Controller
+                name="period_month"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <div className="space-y-1.5">
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger
+                        id="period_month"
+                        className="w-full"
+                        aria-invalid={!!fieldState.error}
+                      >
+                        <SelectValue placeholder="Pilih bulan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((month) => (
+                          <SelectItem key={month.value} value={month.value}>
+                            {month.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldState.error && (
+                      <p className="text-sm text-destructive">
+                        {fieldState.error.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="period_year">
+                Tahun <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="period_year"
+                type="number"
+                min={2000}
+                max={2100}
+                {...form.register("period_year", { valueAsNumber: true })}
+                aria-invalid={!!form.formState.errors.period_year}
+              />
+              {form.formState.errors.period_year && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.period_year.message}
+                </p>
+              )}
+            </div>
+          </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isPending}
+            >
               Batal
             </Button>
-            <Button type="submit" form="form-payroll" loading={isPending}>
-              Buat
+            <Button
+              type="submit"
+              form="form-payroll"
+              disabled={isPending}
+            >
+              {isPending ? "Membuat..." : "Buat Payroll"}
             </Button>
-          </>
-        }
-      >
-        <form
-          id="form-payroll"
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-4"
-        >
-          <FormField label="Bulan" required>
-            <Controller
-              name="period_month"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Select
-                  label="Bulan"
-                  options={months}
-                  value={field.value?.toString()}
-                  onChange={(v) => field.onChange(Number(v))}
-                  error={fieldState.error?.message}
-                />
-              )}
-            />
-          </FormField>
-
-          <FormField label="Tahun" required>
-            <Input
-              label="Tahun"
-              type="number"
-              {...form.register("period_year")}
-              error={form.formState.errors.period_year?.message}
-            />
-          </FormField>
-        </form>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

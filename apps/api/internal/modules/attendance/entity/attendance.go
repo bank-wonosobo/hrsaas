@@ -26,10 +26,10 @@ type Attendance struct {
 }
 
 // BeforeCreate hook to set UUID
-func (u *Attendance) BeforeCreate(tx *gorm.DB) (err error) {
-	u.ID = uuid.NewString()
-	return nil
-}
+// func (u *Attendance) BeforeCreate(tx *gorm.DB) (err error) {
+// 	u.ID = uuid.NewString()
+// 	return nil
+// }
 
 func (Attendance) TableName() string {
 	return "attendances"

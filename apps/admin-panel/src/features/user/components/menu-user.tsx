@@ -1,23 +1,28 @@
 "use client";
 
-import SearchForm from "@/components/ui/search-form/search-form";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ChevronDown, RotateCcw, Search, X } from "lucide-react";
+import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
 
 export default function MenuUser(): React.ReactNode {
   const searchParams = useSearchParams();
   const router = useRouter();
-
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState(searchParams.get("key") ?? "");
-
   const currentKey = searchParams.get("key") ?? "";
   const hasFilters = !!currentKey;
 
-  function handleSearch(e: { preventDefault(): void }) {
-    e.preventDefault();
-    router.push(`?page=1&size=10&key=${key}`, { scroll: false });
+  function handleSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", "1");
+    params.set("size", searchParams.get("size") ?? "10");
+    if (key.trim()) params.set("key", key.trim());
+    else params.delete("key");
+    router.push(`?${params.toString()}`, { scroll: false });
   }
 
   function handleReset() {
@@ -26,60 +31,79 @@ export default function MenuUser(): React.ReactNode {
   }
 
   return (
-    <div className="mb-5 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((p) => !p)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((p) => !p); }}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100">
-            <Search className="h-4 w-4 text-zinc-600" />
-          </div>
-          <span className="font-semibold text-zinc-800">Cari</span>
-          {hasFilters && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white">
-              1
+    <Card className="mb-5">
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between px-5 py-4">
+          <Button
+            type="button"
+            variant="ghost"
+            className="justify-start px-0 hover:bg-transparent"
+            aria-expanded={open}
+            onClick={() => setOpen((previous) => !previous)}
+          >
+            <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+              <Search className="size-4" />
             </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasFilters && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); handleReset(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleReset(); } }}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </span>
-          )}
-          <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </div>
-      </div>
-
-      {open && (
-        <div className="border-t border-zinc-100">
-          <div className="px-5 py-4">
-            <SearchForm onSearch={handleSearch} searchKey={key} setKey={setKey} />
-          </div>
-          {hasFilters && (
-            <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-5 py-3 bg-zinc-50">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
-                {currentKey}
-                <button onClick={handleReset} className="rounded-full opacity-60 hover:opacity-100 transition-opacity">
-                  <X className="h-3 w-3" />
-                </button>
+            Cari Pengguna
+            {hasFilters && (
+              <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                1
               </span>
-            </div>
+            )}
+            <ChevronDown
+              className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </Button>
+          {hasFilters && (
+            <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
+              <RotateCcw />
+              Reset
+            </Button>
           )}
         </div>
-      )}
-    </div>
+
+        {open && (
+          <div className="space-y-3 border-t px-5 py-4">
+            <form
+              onSubmit={handleSearch}
+              className="flex flex-col gap-2 sm:flex-row"
+            >
+              <Input
+                value={key}
+                onChange={(event) => setKey(event.target.value)}
+                placeholder="Cari nama atau email pengguna..."
+                aria-label="Cari pengguna berdasarkan nama atau email"
+                className="sm:max-w-sm"
+              />
+              <Button type="submit">
+                <Search />
+                Cari
+              </Button>
+              {hasFilters && (
+                <Button type="button" variant="outline" onClick={handleReset}>
+                  <RotateCcw />
+                  Reset
+                </Button>
+              )}
+            </form>
+            {hasFilters && (
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-xs font-medium">
+                  {currentKey}
+                  <button
+                    type="button"
+                    aria-label="Hapus filter pencarian"
+                    onClick={handleReset}
+                    className="opacity-60 transition-opacity hover:opacity-100"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

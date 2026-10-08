@@ -1,6 +1,15 @@
 "use client";
 
-import Table from "@/components/ui/table/table";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatRupiah } from "@/lib/utils";
 import { useState } from "react";
 import { Payroll, PayrollDetail } from "../schemas/payroll-schema";
@@ -16,67 +25,73 @@ export default function PayrollEmployeeTable({ payroll }: Props) {
   const editable = payroll.status === "DRAFT" || payroll.status === "CALCULATED";
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 space-y-4">
-      <h2 className="text-lg font-semibold">Rincian per Pegawai</h2>
-
-      <Table
-        data={details}
-        keyExtractor={(row) => row.id}
-        emptyMessage="Payroll belum dihitung. Klik 'Hitung Payroll' untuk membuat rincian per pegawai."
-        columns={[
-          {
-            header: "Pegawai",
-            accessor: (row) => (
-              <div>
-                <p className="font-medium text-zinc-800">
-                  {row.employee?.fullname ?? row.employee_id}
-                </p>
-                <p className="text-xs text-zinc-400">{row.employee?.employee_number}</p>
-              </div>
-            ),
-          },
-          {
-            header: "Gaji Pokok",
-            accessor: (row) => (
-              <span className="text-sm">{formatRupiah(row.basic_salary)}</span>
-            ),
-          },
-          {
-            header: "Gross",
-            accessor: (row) => (
-              <span className="text-sm">{formatRupiah(row.gross_salary)}</span>
-            ),
-          },
-          {
-            header: "Potongan",
-            accessor: (row) => (
-              <span className="text-sm text-red-600">
-                -{formatRupiah(row.total_deduction)}
-              </span>
-            ),
-          },
-          {
-            header: "Take Home Pay",
-            accessor: (row) => (
-              <span className="text-sm font-semibold text-green-700">
-                {formatRupiah(row.net_salary)}
-              </span>
-            ),
-          },
-          {
-            header: "",
-            accessor: (row) => (
-              <button
-                onClick={() => setSelected(row)}
-                className="text-sm text-gray-500 hover:text-black transition-colors"
-              >
-                Detail
-              </button>
-            ),
-            className: "text-right",
-          },
-        ]}
-      />
+    <Card>
+      <CardHeader>
+        <CardTitle>Rincian per Pegawai</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {details.length === 0 ? (
+          <div className="px-6 py-10 text-center">
+            <p className="font-medium">Rincian payroll belum tersedia</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Klik &ldquo;Hitung Payroll&rdquo; untuk membuat rincian per pegawai.
+            </p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead>Pegawai</TableHead>
+                <TableHead className="text-right">Gaji Pokok</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
+                <TableHead className="text-right">Potongan</TableHead>
+                <TableHead className="text-right">Take Home Pay</TableHead>
+                <TableHead className="w-24 text-right">Detail</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {details.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">
+                        {row.employee?.fullname ?? row.employee_id}
+                      </p>
+                      {row.employee?.employee_number && (
+                        <p className="text-xs text-muted-foreground">
+                          {row.employee.employee_number}
+                        </p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatRupiah(row.basic_salary)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatRupiah(row.gross_salary)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-destructive">
+                    -{formatRupiah(row.total_deduction)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">
+                    {formatRupiah(row.net_salary)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelected(row)}
+                    >
+                      Detail
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
 
       {selected && (
         <PayrollDetailModal
@@ -87,6 +102,6 @@ export default function PayrollEmployeeTable({ payroll }: Props) {
           onClose={() => setSelected(null)}
         />
       )}
-    </div>
+    </Card>
   );
 }

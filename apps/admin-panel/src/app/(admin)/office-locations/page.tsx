@@ -1,4 +1,3 @@
-import Title from "@/components/ui/title/title";
 import { serverApi } from "@/lib/server-api";
 import { getQueryclient } from "@/providers/get-query-client";
 import ListOfficeLocation from "@/features/office-location/components/list-office-location";
@@ -43,7 +42,14 @@ export default async function OfficeLocationsPage({
 
   return (
     <>
-      <Title title="Daftar Lokasi Kantor" />
+      <header className="mt-4 mb-6 space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Daftar Lokasi Kantor
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Kelola lokasi kantor dan karyawan yang ditugaskan ke setiap lokasi.
+        </p>
+      </header>
       <MenuOfficeLocation />
       <HydrationBoundary state={dehydrate(queryClient)}>
         <ListOfficeLocation search={search} />

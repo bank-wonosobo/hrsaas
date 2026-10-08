@@ -17,6 +17,7 @@ type AttendanceResponse struct {
 	TotalWorkMinutes  int                     `json:"total_work_minutes"`
 	TotalBreakMinutes int                     `json:"total_break_minutes"`
 	Status            string                  `json:"status"`
+	Message           string                  `json:"message,omitempty"`
 	Logs              []AttendanceLogResponse `json:"logs,omitempty"`
 }
 
@@ -70,7 +71,14 @@ type UpdateAttendanceRequest struct {
 	TotalWorkMinutes  *int    `json:"total_work_minutes,omitempty"`
 	TotalBreakMinutes *int    `json:"total_break_minutes,omitempty"`
 	IsAllowed         *bool   `json:"is_allowed,omitempty"`
-	Status            *string `json:"status,omitempty"              validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
+	Status            *string `json:"status,omitempty"              validate:"omitempty,oneof=HADIR TERLAMBAT TERLAMBAT_PULANG_AWAL ALPHA IZIN SAKIT PENDING"`
+}
+
+type ManualAttendanceRequest struct {
+	EmployeeID   string `json:"employee_id" validate:"required,uuid4"`
+	CheckInTime  int64  `json:"check_in_time" validate:"required"`
+	CheckOutTime *int64 `json:"check_out_time,omitempty"`
+	DeviceInfo   string `json:"device_info" validate:"required"`
 }
 
 type SearchAttendanceRequest struct {
@@ -79,7 +87,7 @@ type SearchAttendanceRequest struct {
 	Date       string `json:"date,omitempty"        validate:"omitempty,max=20"`
 	StartDate  string `json:"start_date,omitempty"  validate:"omitempty,max=20"`
 	EndDate    string `json:"end_date,omitempty"    validate:"omitempty,max=20"`
-	Status     string `json:"status,omitempty"      validate:"omitempty,oneof=HADIR TERLAMBAT ALPHA IZIN SAKIT"`
+	Status     string `json:"status,omitempty"      validate:"omitempty,oneof=HADIR TERLAMBAT TERLAMBAT_PULANG_AWAL ALPHA IZIN SAKIT PENDING"`
 	IsApproved *bool  `json:"is_approved,omitempty"`
 	Page       int    `json:"page,omitempty"        validate:"min=1"`
 	Size       int    `json:"size,omitempty"        validate:"min=1,max=100"`
@@ -92,7 +100,7 @@ type SearchPendingLogRequest struct {
 }
 
 type ReviewLogRequest struct {
-	Approve *bool   `json:"approve" validate:"required"` // pointer, supaya false tidak dianggap kosong
+	Approve *bool   `json:"approve" validate:"required"`
 	Reason  *string `json:"reason"`
 }
 

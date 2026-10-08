@@ -1,10 +1,32 @@
 "use client";
 
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { payrollAdjustmentTypeOptions } from "@/lib/data";
 import { formatRupiah } from "@/lib/utils";
@@ -17,6 +39,7 @@ import {
   CreatePayrollAdjustment,
   CreatePayrollAdjustmentSchema,
   PayrollDetail,
+  PayrollItem,
 } from "../schemas/payroll-schema";
 
 interface Props {
@@ -51,11 +74,13 @@ function AdjustmentForm({
   if (!open) {
     return (
       <Button
+        type="button"
         variant="outline"
         size="sm"
-        prefixIcon={<PlusCircle size={14} />}
         onClick={() => setOpen(true)}
+        className="gap-2"
       >
+        <PlusCircle />
         Tambah Penyesuaian
       </Button>
     );
@@ -64,47 +89,88 @@ function AdjustmentForm({
   return (
     <form
       onSubmit={form.handleSubmit(onSubmit)}
-      className="space-y-3 rounded-xl border border-zinc-200 p-3"
+      className="space-y-4 rounded-2xl border p-4"
     >
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Jenis" required>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="adjustment-type">
+            Jenis <span className="text-destructive">*</span>
+          </Label>
           <Controller
             name="type"
             control={form.control}
             render={({ field, fieldState }) => (
-              <Select
-                label="Jenis"
-                options={payrollAdjustmentTypeOptions}
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
+              <div className="space-y-1.5">
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    id="adjustment-type"
+                    className="w-full"
+                    aria-invalid={!!fieldState.error}
+                  >
+                    <SelectValue placeholder="Pilih jenis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {payrollAdjustmentTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldState.error && (
+                  <p className="text-sm text-destructive">
+                    {fieldState.error.message}
+                  </p>
+                )}
+              </div>
             )}
           />
-        </FormField>
-        <FormField label="Nominal" required>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="adjustment-amount">
+            Nominal (Rp) <span className="text-destructive">*</span>
+          </Label>
           <Input
-            label="Nominal (Rp)"
+            id="adjustment-amount"
             type="number"
-            {...form.register("amount")}
-            error={form.formState.errors.amount?.message}
+            {...form.register("amount", { valueAsNumber: true })}
+            aria-invalid={!!form.formState.errors.amount}
           />
-        </FormField>
+          {form.formState.errors.amount && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.amount.message}
+            </p>
+          )}
+        </div>
       </div>
-      <FormField label="Nama" required>
+
+      <div className="space-y-2">
+        <Label htmlFor="adjustment-name">
+          Nama <span className="text-destructive">*</span>
+        </Label>
         <Input
-          label="mis. THR Idul Fitri 2026"
+          id="adjustment-name"
+          placeholder="Contoh: THR Idul Fitri 2026"
           {...form.register("name")}
-          error={form.formState.errors.name?.message}
+          aria-invalid={!!form.formState.errors.name}
         />
-      </FormField>
-      <FormField label="Keterangan">
-        <Input label="Keterangan (opsional)" {...form.register("description")} />
-      </FormField>
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" loading={isPending}>
-          Simpan
-        </Button>
+        {form.formState.errors.name && (
+          <p className="text-sm text-destructive">
+            {form.formState.errors.name.message}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="adjustment-description">Keterangan</Label>
+        <Input
+          id="adjustment-description"
+          placeholder="Keterangan (opsional)"
+          {...form.register("description")}
+        />
+      </div>
+
+      <div className="flex justify-end gap-2">
         <Button
           type="button"
           size="sm"
@@ -113,11 +179,90 @@ function AdjustmentForm({
             form.reset();
             setOpen(false);
           }}
+          disabled={isPending}
         >
           Batal
         </Button>
+        <Button type="submit" size="sm" disabled={isPending}>
+          {isPending ? "Menyimpan..." : "Simpan"}
+        </Button>
       </div>
     </form>
+  );
+}
+
+function PayrollItemsTable({
+  title,
+  items,
+  totalLabel,
+  total,
+  isDeduction = false,
+}: {
+  title: string;
+  items: PayrollItem[];
+  totalLabel: string;
+  total: number;
+  isDeduction?: boolean;
+}) {
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="overflow-hidden rounded-2xl border">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Komponen</TableHead>
+              <TableHead className="text-right">Nilai Perhitungan</TableHead>
+              <TableHead className="text-right">Nominal</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={3}
+                  className="py-6 text-center text-sm text-muted-foreground"
+                >
+                  Tidak ada {title.toLowerCase()}.
+                </TableCell>
+              </TableRow>
+            ) : (
+              items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {item.calculation_value ?? "-"}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium tabular-nums ${
+                      isDeduction ? "text-destructive" : ""
+                    }`}
+                  >
+                    {isDeduction ? "-" : ""}
+                    {formatRupiah(item.amount)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={2} className="text-right">
+                {totalLabel}
+              </TableCell>
+              <TableCell
+                className={`text-right tabular-nums ${
+                  isDeduction ? "text-destructive" : "text-primary"
+                }`}
+              >
+                {isDeduction ? "-" : ""}
+                {formatRupiah(total)}
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </div>
+    </section>
   );
 }
 
@@ -141,172 +286,133 @@ export default function PayrollDetailModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={detail.employee?.fullname ?? "Detail Payroll Pegawai"}
-      maxWidth="lg"
-    >
-      <div className="space-y-5">
-        <div className="grid grid-cols-3 gap-3 rounded-xl bg-zinc-50 p-3">
-          <div>
-            <p className="text-xs text-zinc-400">Gaji Pokok</p>
-            <p className="text-sm font-semibold">
-              {formatRupiah(detail.basic_salary)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-400">Total Potongan</p>
-            <p className="text-sm font-semibold">
-              {formatRupiah(detail.total_deduction)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-400">Take Home Pay</p>
-            <p className="text-sm font-semibold text-green-700">
-              {formatRupiah(detail.net_salary)}
-            </p>
-          </div>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>
+            {detail.employee?.fullname ?? "Detail Payroll Pegawai"}
+          </DialogTitle>
+          <DialogDescription>
+            Rincian komponen penghasilan, potongan, dan penyesuaian payroll.
+            {detail.employee?.employee_number
+              ? ` No. Pegawai ${detail.employee.employee_number}.`
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-            Allowance
-          </p>
-          <div className="overflow-x-auto rounded-xl border border-zinc-200">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Komponen</th>
-                  <th className="px-3 py-2 text-right font-medium">Nilai Perhitungan</th>
-                  <th className="px-3 py-2 text-right font-medium">Nominal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {allowanceItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-3 py-4 text-center text-zinc-400 italic">
-                      Tidak ada allowance.
-                    </td>
-                  </tr>
-                ) : (
-                  allowanceItems.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-3 py-2 text-zinc-700">{item.name}</td>
-                      <td className="px-3 py-2 text-right text-zinc-500">
-                        {item.calculation_value ?? "-"}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium text-zinc-800">
-                        {formatRupiah(item.amount)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-              <tfoot className="border-t border-zinc-200 bg-zinc-50 text-sm font-semibold">
-                <tr>
-                  <td colSpan={2} className="px-3 py-2 text-right">Total Allowance</td>
-                  <td className="px-3 py-2 text-right text-green-700">
-                    {formatRupiah(totalAllowance)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+        <div className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Gaji Pokok</p>
+              <p className="mt-1 font-semibold tabular-nums">
+                {formatRupiah(detail.basic_salary)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-muted/50 p-4">
+              <p className="text-sm text-muted-foreground">Total Potongan</p>
+              <p className="mt-1 font-semibold tabular-nums">
+                {formatRupiah(detail.total_deduction)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-primary/5 p-4">
+              <p className="text-sm text-muted-foreground">Take Home Pay</p>
+              <p className="mt-1 font-semibold tabular-nums text-primary">
+                {formatRupiah(detail.net_salary)}
+              </p>
+            </div>
           </div>
 
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2 mt-4">
-            Deduction
-          </p>
-          <div className="overflow-x-auto rounded-xl border border-zinc-200">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Komponen</th>
-                  <th className="px-3 py-2 text-right font-medium">Nilai Perhitungan</th>
-                  <th className="px-3 py-2 text-right font-medium">Nominal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {deductionItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-3 py-4 text-center text-zinc-400 italic">
-                      Tidak ada deduction.
-                    </td>
-                  </tr>
-                ) : (
-                  deductionItems.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-3 py-2 text-zinc-700">{item.name}</td>
-                      <td className="px-3 py-2 text-right text-zinc-500">
-                        {item.calculation_value ?? "-"}
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium text-red-600">
-                        -{formatRupiah(item.amount)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-              <tfoot className="border-t border-zinc-200 bg-zinc-50 text-sm font-semibold">
-                <tr>
-                  <td colSpan={2} className="px-3 py-2 text-right">Total Deduction</td>
-                  <td className="px-3 py-2 text-right text-red-600">
-                    -{formatRupiah(detail.total_deduction)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+          <div className="space-y-5">
+            <PayrollItemsTable
+              title="Allowance"
+              items={allowanceItems}
+              totalLabel="Total Allowance"
+              total={totalAllowance}
+            />
+            <PayrollItemsTable
+              title="Deduction"
+              items={deductionItems}
+              totalLabel="Total Deduction"
+              total={detail.total_deduction}
+              isDeduction
+            />
           </div>
-        </div>
 
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-2">
-            Penyesuaian (Bonus / THR / Koreksi)
-          </p>
-          <div className="space-y-1.5 mb-3">
-            {(detail.adjustments ?? []).length === 0 && (
-              <p className="text-sm text-zinc-400 italic">
-                Belum ada penyesuaian.
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold">
+                Penyesuaian (Bonus / THR / Koreksi)
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Penyesuaian tambahan untuk payroll pegawai ini.
+              </p>
+            </div>
+            <div className="rounded-2xl border px-4">
+              {(detail.adjustments ?? []).length === 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Belum ada penyesuaian.
+                </p>
+              ) : (
+                (detail.adjustments ?? []).map((adjustment) => (
+                  <div
+                    key={adjustment.id}
+                    className="flex items-center justify-between gap-3 border-b py-3 last:border-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {adjustment.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {adjustment.type}
+                        {adjustment.description
+                          ? ` · ${adjustment.description}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className={`text-sm font-medium tabular-nums ${
+                          adjustment.amount < 0 ? "text-destructive" : ""
+                        }`}
+                      >
+                        {formatRupiah(adjustment.amount)}
+                      </span>
+                      {editable && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Hapus penyesuaian ${adjustment.name}`}
+                          onClick={() => handleDeleteAdjustment(adjustment.id)}
+                        >
+                          <Trash2 className="text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {editable ? (
+              <AdjustmentForm
+                payrollDetailId={detail.id}
+                payrollId={payrollId}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Penyesuaian hanya bisa diubah saat payroll berstatus
+                Draft/Terhitung.
               </p>
             )}
-            {(detail.adjustments ?? []).map((adj) => (
-              <div
-                key={adj.id}
-                className="flex items-center justify-between text-sm border-b border-zinc-100 pb-1.5"
-              >
-                <div>
-                  <span className="font-medium text-zinc-800">{adj.name}</span>
-                  <span className="ml-2 text-xs text-zinc-400">{adj.type}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`font-medium ${adj.amount < 0 ? "text-red-600" : "text-zinc-800"}`}
-                  >
-                    {formatRupiah(adj.amount)}
-                  </span>
-                  {editable && (
-                    <button
-                      onClick={() => handleDeleteAdjustment(adj.id)}
-                      className="p-1 rounded text-zinc-400 hover:text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {editable ? (
-            <AdjustmentForm payrollDetailId={detail.id} payrollId={payrollId} />
-          ) : (
-            <p className="text-xs text-zinc-400 italic">
-              Penyesuaian hanya bisa diubah saat payroll berstatus
-              Draft/Terhitung.
-            </p>
-          )}
+          </section>
         </div>
-      </div>
-    </Modal>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Tutup
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

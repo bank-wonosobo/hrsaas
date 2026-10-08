@@ -1,10 +1,30 @@
 "use client";
 
-import { PageSelector } from "@/components/shared/page-selector/page-selector";
-import { Pagination } from "@/components/shared/pagination/pagination";
-import Button from "@/components/ui/button/button";
-import ImageViewer from "@/components/ui/image-viewer/image-viewer";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ChevronLeft, ChevronRight, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGetUsers } from "../hooks/use-get-users";
@@ -15,96 +35,197 @@ interface Props {
   search: SearchUserRequest;
 }
 
-function UserCard({ user, onDetail }: { user: User; onDetail: () => void }) {
-  return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center gap-4">
-      {/* Avatar */}
-      <div className="h-11 w-11 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-lg font-semibold flex-shrink-0">
-        {user.image_url ? (
-          <ImageViewer width={60} height={60} circle src={user.image_url} />
-        ) : (
-          user.name.charAt(0).toUpperCase()
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-gray-800 truncate">
-            {user.name}
-          </span>
-          {user.email_verified && (
-            <BadgeCheck size={14} className="text-green-500 flex-shrink-0" />
-          )}
-        </div>
-        <p className="text-xs text-gray-500 truncate mt-0.5">{user.email}</p>
-        {user.roles && user.roles.length > 0 && (
-          <div className="flex items-center gap-1 mt-1.5">
-            <ShieldCheck size={11} className="text-gray-400" />
-            <span className="text-xs text-gray-400">
-              {user.roles.map((r) => r.name).join(", ")}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Status & Action */}
-      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            user.email_verified
-              ? "bg-green-50 text-green-600"
-              : "bg-gray-100 text-gray-400"
-          }`}
-        >
-          {user.email_verified ? "Terverifikasi" : "Belum"}
-        </span>
-        <Button variant="link" onClick={onDetail}>
-          Detail
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function ListUser({ search }: Props): React.ReactNode {
   const router = useRouter();
-  const { data, isLoading, isFetching } = useGetUsers(search);
+  const { data, isLoading, isFetching, isError } = useGetUsers(search);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const currentPage = Number(search.page ?? 1);
+  const pageSize = Number(search.size ?? 10);
+  const totalPages = data?.paging?.total_page ?? 1;
+  const users = data?.data ?? [];
 
-  const handlePaginate = (number: number) => {
+  const updateParams = (updates: Record<string, string>) => {
     const params = new URLSearchParams(window.location.search);
-    params.set("page", number.toString());
+    Object.entries(updates).forEach(([key, value]) => params.set(key, value));
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
-  const handleSize = (size: string) => {
-    const params = new URLSearchParams(window.location.search);
-    params.set("size", size);
-    params.set("page", "1");
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
-
-  if (isLoading || isFetching) {
-    return <div>Loading...</div>;
-  }
+  const firstItem = users.length ? (currentPage - 1) * pageSize + 1 : 0;
+  const lastItem = firstItem + users.length - 1;
 
   return (
-    <div>
-      <div className="grid grid-cols-1 gap-3">
-        {data?.data?.length === 0 && (
-          <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center text-gray-400 text-sm">
-            Tidak ada data pengguna
-          </div>
-        )}
-        {data?.data.map((user) => (
-          <UserCard
-            key={user.id}
-            user={user}
-            onDetail={() => setSelectedId(user.id)}
-          />
-        ))}
-      </div>
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Daftar Pengguna</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3 py-6">
+              <div className="h-10 animate-pulse rounded-md bg-muted" />
+              <div className="h-12 animate-pulse rounded-md bg-muted" />
+              <div className="h-12 animate-pulse rounded-md bg-muted" />
+            </div>
+          ) : isError ? (
+            <p className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
+              Gagal memuat daftar pengguna. Silakan coba kembali.
+            </p>
+          ) : (
+            <>
+              <div className="relative">
+                {isFetching && (
+                  <div className="absolute inset-0 z-10 bg-background/40" />
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Pengguna</TableHead>
+                      <TableHead>Hak Akses</TableHead>
+                      <TableHead>Status Email</TableHead>
+                      <TableHead className="text-right">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={4}
+                          className="h-24 text-center text-muted-foreground"
+                        >
+                          Tidak ada data pengguna.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user: User) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <Avatar className="size-10">
+                                <AvatarImage
+                                  src={user.image_url}
+                                  alt={user.name}
+                                />
+                                <AvatarFallback>
+                                  {user.name.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium">
+                                  {user.name}
+                                </p>
+                                <p className="truncate text-sm text-muted-foreground">
+                                  {user.email}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {user.roles?.length ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {user.roles.map((role) => (
+                                  <Badge
+                                    key={role.id}
+                                    variant="secondary"
+                                    className="gap-1"
+                                  >
+                                    <ShieldCheck />
+                                    {role.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">
+                                Belum ada role
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                user.email_verified ? "default" : "outline"
+                              }
+                            >
+                              {user.email_verified
+                                ? "Terverifikasi"
+                                : "Belum terverifikasi"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedId(user.id)}
+                            >
+                              Detail
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Menampilkan {firstItem}–{lastItem} dari{" "}
+                  {data?.paging?.total_item ?? 0} pengguna
+                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    Baris per halaman
+                    <Select
+                      value={String(pageSize)}
+                      onValueChange={(size) =>
+                        updateParams({ size, page: "1" })
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-[76px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 20, 50, 100].map((size) => (
+                          <SelectItem key={size} value={String(size)}>
+                            {size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="mr-2 text-sm text-muted-foreground">
+                      Halaman {currentPage} dari {Math.max(totalPages, 1)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Halaman sebelumnya"
+                      disabled={currentPage <= 1}
+                      onClick={() =>
+                        updateParams({ page: String(currentPage - 1) })
+                      }
+                    >
+                      <ChevronLeft />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Halaman berikutnya"
+                      disabled={currentPage >= totalPages}
+                      onClick={() =>
+                        updateParams({ page: String(currentPage + 1) })
+                      }
+                    >
+                      <ChevronRight />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {selectedId && (
         <DetailUserModal
@@ -113,26 +234,6 @@ export default function ListUser({ search }: Props): React.ReactNode {
           onClose={() => setSelectedId(null)}
         />
       )}
-
-      {data && (
-        <div className="flex flex-col w-full gap-5 items-end mt-5">
-          <div className="flex w-full items-center justify-between gap-x-1">
-            <p className="font-bold text-xs">
-              Menampilkan {data?.data?.length} dari {data?.paging?.total_item}{" "}
-              total data.
-            </p>
-            <PageSelector
-              onValueChange={(size) => handleSize(size)}
-              value={search.size?.toString() ?? "10"}
-            />
-          </div>
-          <Pagination
-            currentPage={Number(search.page)}
-            paging={data.paging}
-            onPageChange={(number) => handlePaginate(number)}
-          />
-        </div>
-      )}
-    </div>
+    </>
   );
 }

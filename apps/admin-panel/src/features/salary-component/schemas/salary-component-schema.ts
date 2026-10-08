@@ -3,9 +3,9 @@ import z from "zod/v3";
 export const SALARY_COMPONENT_TYPES = ["EARNING", "DEDUCTION"] as const;
 export const CALCULATION_TYPES = [
   "FIXED",
-  "PERCENTAGE",
-  "FORMULA",
-  "MANUAL",
+  "SALARY_PERCENTAGE",
+  "ATTENDANCE",
+  "GROSS_PERCENTAGE",
 ] as const;
 
 export const SalaryComponentSchema = z.object({

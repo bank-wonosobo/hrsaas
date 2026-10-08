@@ -9,6 +9,7 @@ export function useUpdateUser(id: string) {
     mutationFn: (request: UpdateUserRequest) => updateUser(id, request),
     onSuccess: () => {
       toast.success("Data pengguna berhasil diperbarui");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["users", id] });
     },
     onError: (error: Error) => {

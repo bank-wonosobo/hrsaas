@@ -112,7 +112,7 @@ func (c *AttendanceController) CheckIn(ctx *fiber.Ctx) error {
 	request.CompanyID = auth.GetCompanyId(ctx)
 	request.EmployeeID = auth.GetEmployeeId(ctx)
 
-	result, err := c.AttendanceUseCase.CheckIn(ctx.UserContext(), request)
+	result, err := c.AttendanceUseCase.ClockIn(ctx.UserContext(), request)
 	if err != nil {
 		c.Log.WithError(err).Error("failed to check in")
 		return err

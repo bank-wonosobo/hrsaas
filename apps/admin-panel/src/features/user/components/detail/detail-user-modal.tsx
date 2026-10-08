@@ -1,11 +1,21 @@
 "use client";
-import EditableField from "@/components/shared/editable-field/editable-field";
-import Button from "@/components/ui/button/button";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Switch from "@/components/ui/switch/switch";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchRole } from "@/features/role/hooks/use-search-role";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { BadgeCheck, KeyRound, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useDetailUser } from "../../hooks/use-detail-user";
 import { useResetPassword } from "../../hooks/use-reset-password";
@@ -22,25 +32,29 @@ export default function DetailUserModal({
   isOpen,
   onClose,
 }: Props): React.ReactNode {
-  const { data } = useDetailUser(id);
+  const { data, isLoading, isError } = useDetailUser(id);
   const mutation = useUpdateUser(id);
   const resetMutation = useResetPassword(id);
-  const { data: rolesData } = useSearchRole({ key: "", page: 1, size: 100 });
+  const { data: rolesData, isLoading: rolesLoading } = useSearchRole({
+    key: "",
+    page: 1,
+    size: 100,
+  });
   const user = data?.data;
-
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
 
-  const userRoleIds = new Set(user?.roles?.map((r) => r.id) ?? []);
+  const userRoleIds = new Set(user?.roles?.map((role) => role.id) ?? []);
 
   const handleToggleRole = (roleId: string) => {
     const updated = new Set(userRoleIds);
-    updated.has(roleId) ? updated.delete(roleId) : updated.add(roleId);
+    if (updated.has(roleId)) updated.delete(roleId);
+    else updated.add(roleId);
     mutation.mutate({ role_ids: Array.from(updated) });
   };
 
-  const handleResetSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResetSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     resetMutation.mutate(
       { new_password: newPassword },
       {
@@ -54,139 +68,227 @@ export default function DetailUserModal({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title="Detail Pengguna" maxWidth="md">
-        {/* Avatar & Roles */}
-        <div className="flex items-center gap-4 pb-5 mb-2 border-b">
-          <div className="h-14 w-14 rounded-full bg-gray-200 flex justify-center items-center text-2xl font-semibold flex-shrink-0">
-            {user?.name?.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold">{user?.name}</p>
-              {user?.email_verified && (
-                <BadgeCheck size={16} className="text-green-600" />
-              )}
-            </div>
-            {user?.roles && user.roles.length > 0 && (
-              <div className="flex gap-2 mt-1">
-                {user.roles.map((role) => (
-                  <div key={role.id} className="flex items-center gap-1 text-xs text-gray-500">
-                    <ShieldCheck size={12} />
-                    <span>{role.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Detail Pengguna</DialogTitle>
+            <DialogDescription>
+              Kelola informasi, hak akses, dan keamanan akun pengguna.
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Editable Fields */}
-        <div className="space-y-0 mt-4">
-          <EditableField
-            label="Nama"
-            value={user?.name}
-            hint="Pastikan nama sesuai"
-            onSave={(val) => mutation.mutate({ name: val })}
-          />
-          <EditableField
-            label="Email"
-            value={user?.email}
-            hint="Pastikan email sesuai"
-            onSave={(val) => mutation.mutate({ email: val })}
-          />
-          <div className="flex flex-col w-full justify-start items-center pb-6 border-b border-gray-200">
-            <div className="flex w-full justify-between gap-y-1 items-center">
-              <label className="text-md font-semibold">Email Terverifikasi</label>
-              <Switch
-                checked={user?.email_verified ?? false}
-                onChange={(val) => mutation.mutate({ email_verified: val })}
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          ) : isError || !user ? (
+            <p className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">
+              Gagal memuat detail pengguna. Tutup dialog lalu coba kembali.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 rounded-2xl border p-4">
+                <Avatar className="size-14">
+                  <AvatarImage src={user.image_url} alt={user.name} />
+                  <AvatarFallback className="text-lg">
+                    {user.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate font-semibold">{user.name}</p>
+                    {user.email_verified && (
+                      <BadgeCheck
+                        className="size-4 text-emerald-600"
+                        aria-label="Email terverifikasi"
+                      />
+                    )}
+                  </div>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {user.email}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {user.roles?.length ? (
+                      user.roles.map((role) => (
+                        <Badge key={role.id} variant="secondary">
+                          {role.name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Belum ada role
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold">Informasi Akun</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="user-name" className="text-sm font-medium">
+                      Nama
+                    </label>
+                    <Input
+                      key={`name-${user.id}-${user.updated_at}`}
+                      id="user-name"
+                      defaultValue={user.name}
+                      onBlur={(event) => {
+                        const value = event.currentTarget.value.trim();
+                        if (value && value !== user.name) {
+                          mutation.mutate({ name: value });
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="user-email" className="text-sm font-medium">
+                      Email
+                    </label>
+                    <Input
+                      key={`email-${user.id}-${user.updated_at}`}
+                      id="user-email"
+                      type="email"
+                      defaultValue={user.email}
+                      onBlur={(event) => {
+                        const value = event.currentTarget.value.trim();
+                        if (value && value !== user.email) {
+                          mutation.mutate({ email: value });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3">
+                  <Checkbox
+                    checked={user.email_verified ?? false}
+                    disabled={mutation.isPending}
+                    onCheckedChange={(checked) =>
+                      mutation.mutate({ email_verified: checked === true })
+                    }
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">
+                      Email terverifikasi
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      Tandai apakah alamat email pengguna sudah diverifikasi.
+                    </span>
+                  </span>
+                </label>
+              </section>
+
+              <section className="space-y-3 border-t pt-5">
+                <div>
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <ShieldCheck className="size-4" />
+                    Hak Akses
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Pilih role yang diberikan kepada pengguna ini.
+                  </p>
+                </div>
+                {rolesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-11 w-full" />
+                    <Skeleton className="h-11 w-full" />
+                  </div>
+                ) : rolesData?.data.length ? (
+                  <div className="divide-y rounded-xl border">
+                    {rolesData.data.map((role) => (
+                      <label
+                        key={role.id}
+                        className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3"
+                      >
+                        <span className="text-sm font-medium">{role.name}</span>
+                        <Checkbox
+                          checked={userRoleIds.has(role.id)}
+                          disabled={mutation.isPending}
+                          onCheckedChange={() => handleToggleRole(role.id)}
+                          aria-label={`Atur role ${role.name}`}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border p-4 text-sm text-muted-foreground">
+                    Belum ada role yang tersedia.
+                  </p>
+                )}
+              </section>
+
+              <section className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="flex items-center gap-2 text-sm font-semibold">
+                    <KeyRound className="size-4" />
+                    Reset Password
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Atur ulang password dan minta pengguna login kembali.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsResetOpen(true)}
+                >
+                  Reset Password
+                </Button>
+              </section>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isResetOpen}
+        onOpenChange={(open) => {
+          setIsResetOpen(open);
+          if (!open) setNewPassword("");
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password Pengguna</DialogTitle>
+            <DialogDescription>
+              Password baru minimal 8 karakter. Pengguna perlu login kembali
+              setelah password direset.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="new-user-password" className="text-sm font-medium">
+                Password Baru
+              </label>
+              <Input
+                id="new-user-password"
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                minLength={8}
+                required
+                autoComplete="new-password"
               />
             </div>
-            <div className="flex w-full justify-start mt-1">
-              <p className="text-sm text-gray-500">
-                {user?.email_verified ? "Terverifikasi" : "Belum diverifikasi"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Roles */}
-        {rolesData?.data && rolesData.data.length > 0 && (
-          <div className="pb-6 border-b border-gray-200 mt-2">
-            <div className="flex items-center gap-1.5 mb-3">
-              <ShieldCheck size={15} className="text-gray-500" />
-              <p className="text-md font-semibold">Roles</p>
-            </div>
-            <div className="space-y-3">
-              {rolesData.data.map((role) => (
-                <div key={role.id} className="flex items-center justify-between">
-                  <p className="text-sm text-gray-700">{role.name}</p>
-                  <Switch
-                    checked={userRoleIds.has(role.id)}
-                    onChange={() => handleToggleRole(role.id)}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Reset Password */}
-        <div className="mt-6 pt-4 border-t">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-md font-semibold">Reset Password</p>
-              <p className="text-sm text-gray-500">
-                Atur ulang password pengguna ini
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => setIsResetOpen(true)}>
-              Reset Password
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Reset Password Modal */}
-      <Modal
-        isOpen={isResetOpen}
-        onClose={() => setIsResetOpen(false)}
-        title="Reset Password Pengguna"
-        maxWidth="sm"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setIsResetOpen(false)}>
-              Batal
-            </Button>
-            <Button
-              form="reset-password-form"
-              type="submit"
-              loading={resetMutation.isPending}
-            >
-              Reset
-            </Button>
-          </>
-        }
-      >
-        <form
-          id="reset-password-form"
-          onSubmit={handleResetSubmit}
-          className="space-y-4"
-        >
-          <p className="text-sm text-gray-500">
-            Password baru minimal 8 karakter. Pengguna perlu login ulang setelah
-            password direset.
-          </p>
-          <Input
-            label="Password Baru"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            minLength={8}
-          />
-        </form>
-      </Modal>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsResetOpen(false)}
+                disabled={resetMutation.isPending}
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={resetMutation.isPending}>
+                {resetMutation.isPending ? "Mereset..." : "Reset Password"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

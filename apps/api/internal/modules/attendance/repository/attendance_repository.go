@@ -28,7 +28,7 @@ func (r *AttendanceRepository) CountPresentByEmployeeIDAndDateRange(
 ) (int64, error) {
 	var count int64
 	err := db.Model(&entity.Attendance{}).
-		Where("employee_id = ? AND date >= ? AND date <= ? AND status IN ?", employeeID, startDate, endDate, []string{"HADIR", "TERLAMBAT"}).
+		Where("employee_id = ? AND date >= ? AND date <= ? AND status IN ?", employeeID, startDate, endDate, []string{"HADIR", "TERLAMBAT", "TERLAMBAT_PULANG_AWAL"}).
 		Count(&count).Error
 	return count, err
 }
@@ -46,10 +46,16 @@ func (r *AttendanceRepository) Update(db *gorm.DB, attendance *entity.Attendance
 		"updated_at":          attendance.UpdatedAt,
 	}
 
-	return db.Table(attendance.TableName()).
+	result := db.Table(attendance.TableName()).
 		Where("id = ?", attendance.ID).
-		Updates(updates).
-		Error
+		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *AttendanceRepository) Search(
@@ -153,6 +159,18 @@ func (r *AttendanceRepository) FindByEmployeeIDAndDate(
 		Preload("Employee.EmployeeContract.Position").
 		Where("employee_id = ? AND date = ?", employeeId, startOfDay).
 		Take(entity).
+		Error
+}
+
+func (r *AttendanceRepository) FindByEmployeeIDAndDateRange(
+	db *gorm.DB,
+	attendance *entity.Attendance,
+	employeeID string,
+	startDate, endDate int64,
+) error {
+	return db.
+		Where("employee_id = ? AND date >= ? AND date < ?", employeeID, startDate, endDate).
+		Take(attendance).
 		Error
 }
 

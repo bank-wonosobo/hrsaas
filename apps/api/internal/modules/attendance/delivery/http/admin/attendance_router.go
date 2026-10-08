@@ -11,6 +11,7 @@ func (c *AttendanceController) RegisterRoutes(
 	protected middleware.ProtectedMiddleware) {
 	route := router.Group("/attendances")
 	route.Get("/", protected("ATTENDANCES", c.List)...)
+	route.Post("/_backdoor", protected("ATTENDANCES", c.ManualInput)...)
 	route.Get("/_export", protected("ATTENDANCES", c.Export)...)
 	route.Get("/logs", protected("ATTENDANCES", c.ListLog)...)
 	route.Get("/logs/pending", protected("ATTENDANCES", c.ListPendingLog)...)

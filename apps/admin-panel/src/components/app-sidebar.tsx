@@ -98,12 +98,7 @@ const createMenuCategories = (pendingApprovals: number): MenuCategory[] => [
         path: "/attendances",
         permission: "ATTENDANCES",
       },
-      {
-        label: "Kunjungan",
-        icon: MapsLocation01Icon,
-        path: "/visits",
-        permission: "VISITS",
-      },
+
       {
         label: "Sanksi / Pelanggaran",
         icon: Alert02Icon,
@@ -113,7 +108,24 @@ const createMenuCategories = (pendingApprovals: number): MenuCategory[] => [
     ],
   },
   {
-    title: "Payroll",
+    title: "Bisnis Bank",
+    items: [
+      {
+        label: "Penagihan Kredit",
+        icon: Wallet01Icon,
+        path: "/credit-collections",
+        permission: "REMIDIAL_VISITS",
+      },
+      {
+        label: "Kunjungan Klient",
+        icon: MapsLocation01Icon,
+        path: "/visits",
+        permission: "VISITS",
+      },
+    ],
+  },
+  {
+    title: "Penggajian",
     items: [
       {
         label: "Proses Payroll",

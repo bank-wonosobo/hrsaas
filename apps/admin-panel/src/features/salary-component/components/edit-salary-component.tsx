@@ -1,10 +1,24 @@
 "use client";
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
-import Select from "@/components/ui/select/select";
-import Switch from "@/components/ui/switch/switch";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useZodForm } from "@/hooks/use-zod-form";
 import { calculationTypeOptions, salaryComponentTypeOptions } from "@/lib/data";
 import { Controller } from "react-hook-form";
@@ -21,7 +35,11 @@ interface Props {
   onClose: () => void;
 }
 
-export default function EditSalaryComponent({ component, isOpen, onClose }: Props) {
+export default function EditSalaryComponent({
+  component,
+  isOpen,
+  onClose,
+}: Props) {
   const form = useZodForm(UpdateSalaryComponentSchema, {
     values: {
       name: component.name,
@@ -40,107 +58,159 @@ export default function EditSalaryComponent({ component, isOpen, onClose }: Prop
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Edit Komponen Gaji"
-      maxWidth="md"
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Edit Komponen Gaji</DialogTitle>
+          <DialogDescription>
+            Perbarui pengaturan komponen {component.name}.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          id="form-edit-salary-component"
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+        >
+          <div className="space-y-2">
+            <Label htmlFor="edit-salary-component-code">Kode</Label>
+            <Input
+              id="edit-salary-component-code"
+              value={component.code}
+              disabled
+              readOnly
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-salary-component-name">
+              Nama <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="edit-salary-component-name"
+              {...form.register("name")}
+              aria-invalid={!!form.formState.errors.name}
+            />
+            {form.formState.errors.name && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.name.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-salary-component-type">
+              Tipe <span className="text-destructive">*</span>
+            </Label>
+            <Controller
+              name="type"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <div className="space-y-1.5">
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id="edit-salary-component-type"
+                      className="w-full"
+                      aria-invalid={!!fieldState.error}
+                    >
+                      <SelectValue placeholder="Pilih tipe komponen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salaryComponentTypeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <p className="text-sm text-destructive">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-salary-component-calculation">
+              Metode Perhitungan <span className="text-destructive">*</span>
+            </Label>
+            <Controller
+              name="calculation_type"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <div className="space-y-1.5">
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id="edit-salary-component-calculation"
+                      className="w-full"
+                      aria-invalid={!!fieldState.error}
+                    >
+                      <SelectValue placeholder="Pilih metode perhitungan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {calculationTypeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <p className="text-sm text-destructive">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
+          </div>
+
+          <div className="space-y-3 rounded-2xl border p-4">
+            {(
+              [
+                ["is_taxable", "edit-salary-component-taxable", "Kena Pajak"],
+                ["is_bpjs_base", "edit-salary-component-bpjs", "Dasar BPJS"],
+                ["is_active", "edit-salary-component-active", "Aktif"],
+              ] as const
+            ).map(([name, id, label]) => (
+              <Controller
+                key={name}
+                name={name}
+                control={form.control}
+                render={({ field }) => (
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id={id}
+                      checked={!!field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                    <Label htmlFor={id}>{label}</Label>
+                  </div>
+                )}
+              />
+            ))}
+          </div>
+        </form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isPending}
+          >
             Batal
           </Button>
-          <Button type="submit" form="form-edit-salary-component" loading={isPending}>
-            Simpan
+          <Button
+            type="submit"
+            form="form-edit-salary-component"
+            disabled={isPending}
+          >
+            {isPending ? "Menyimpan..." : "Simpan"}
           </Button>
-        </>
-      }
-    >
-      <form
-        id="form-edit-salary-component"
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-4"
-      >
-        <FormField label="Kode">
-          <Input label="Kode" value={component.code} disabled readOnly />
-        </FormField>
-
-        <FormField label="Nama" required>
-          <Input
-            label="Nama Komponen"
-            {...form.register("name")}
-            error={form.formState.errors.name?.message}
-          />
-        </FormField>
-
-        <FormField label="Tipe" required>
-          <Controller
-            name="type"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Select
-                label="Tipe"
-                options={salaryComponentTypeOptions}
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-        </FormField>
-
-        <FormField label="Metode Perhitungan" required>
-          <Controller
-            name="calculation_type"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Select
-                label="Metode Perhitungan"
-                options={calculationTypeOptions}
-                value={field.value}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-              />
-            )}
-          />
-        </FormField>
-
-        <Controller
-          name="is_taxable"
-          control={form.control}
-          render={({ field }) => (
-            <Switch
-              label="Kena Pajak"
-              checked={!!field.value}
-              onChange={field.onChange}
-            />
-          )}
-        />
-
-        <Controller
-          name="is_bpjs_base"
-          control={form.control}
-          render={({ field }) => (
-            <Switch
-              label="Dasar BPJS"
-              checked={!!field.value}
-              onChange={field.onChange}
-            />
-          )}
-        />
-
-        <Controller
-          name="is_active"
-          control={form.control}
-          render={({ field }) => (
-            <Switch
-              label="Aktif"
-              checked={!!field.value}
-              onChange={field.onChange}
-            />
-          )}
-        />
-      </form>
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

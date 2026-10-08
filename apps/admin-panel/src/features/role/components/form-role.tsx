@@ -1,66 +1,87 @@
 "use client";
-import Button from "@/components/ui/button/button";
-import FormField from "@/components/ui/form/form-field";
-import Input from "@/components/ui/input/input";
-import Modal from "@/components/ui/modal/modal";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { useZodForm } from "@/hooks/use-zod-form";
-import { PlusCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useCreateRole } from "../hooks/use-create-role";
 import { CreateRole, CreateRoleSchema } from "../schemas/role-schema";
 
 export function FormRole() {
   const [open, setOpen] = useState(false);
-
   const form = useZodForm(CreateRoleSchema, {
     defaultValues: { name: "" },
   });
-
   const mutation = useCreateRole();
+
+  const handleOpenChange = (value: boolean) => {
+    setOpen(value);
+    if (!value) form.reset();
+  };
 
   const onSubmit = (data: CreateRole) => {
     mutation.mutate(data, {
-      onSuccess: () => {
-        setOpen(false);
-        form.reset();
-      },
+      onSuccess: () => handleOpenChange(false),
     });
   };
 
   return (
-    <>
-      <Button
-        variant="secondary"
-        onClick={() => setOpen(true)}
-        prefixIcon={<PlusCircle size={18} />}
-      >
-        Tambah Role
-      </Button>
-
-      <Modal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        title="Tambah Role"
-        maxWidth="sm"
-      >
-        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-3 space-y-5">
-          <FormField label="Nama Role">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus />
+          Tambah Role
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tambah Role</DialogTitle>
+          <DialogDescription>
+            Buat role untuk mengelompokkan hak akses pengguna.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="role-name" className="text-sm font-medium">
+              Nama Role
+            </label>
             <Input
-              label="Nama Role"
-              type="text"
+              id="role-name"
+              placeholder="Contoh: HR Admin"
               {...form.register("name")}
-              error={form.formState.errors.name?.message}
+              aria-invalid={!!form.formState.errors.name}
             />
-          </FormField>
-
-          <Button
-            className="px-4 py-2 bg-black text-white rounded-lg"
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? "Menyimpan..." : "Simpan"}
-          </Button>
+            {form.formState.errors.name && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.name.message}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={mutation.isPending}
+            >
+              Batal
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "Menyimpan..." : "Simpan"}
+            </Button>
+          </DialogFooter>
         </form>
-      </Modal>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

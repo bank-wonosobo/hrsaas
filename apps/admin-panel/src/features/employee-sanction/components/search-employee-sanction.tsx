@@ -3,7 +3,16 @@
 import { DateRange } from "@/components/shared/date-range-picker/date-range-picker";
 import InputDateRange from "@/components/ui/input-date-range/input-date-range";
 import SelectSearch from "@/components/ui/select-search/select-search";
-import Select from "@/components/ui/select/select";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select as ShadcnSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useGetEmployees } from "@/features/employee/hooks/use-get-employee";
 import { mapToOptions } from "@/lib/utils";
 import { CalendarDays, ChevronDown, Filter, RotateCcw, User, X } from "lucide-react";
@@ -18,11 +27,6 @@ const STATUS_OPTIONS = [
   { label: "Aktif", value: "active" },
   { label: "Tidak Aktif", value: "inactive" },
 ];
-
-const CHIP_COLOR: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  inactive: "bg-zinc-100 text-zinc-700 border-zinc-200",
-};
 
 interface Props {
   search: SearchEmployeeSanctionRequest;
@@ -56,7 +60,6 @@ export default function SearchEmployeeSanction({ search }: Props): React.ReactNo
       else params.set(key, value);
     });
     params.set("page", "1");
-    params.set("size", "10");
     router.push(`?${params.toString()}`, { scroll: false });
   }
 
@@ -85,99 +88,112 @@ export default function SearchEmployeeSanction({ search }: Props): React.ReactNo
   const hasFilters = activeFilters.length > 0;
 
   return (
-    <div className="mb-5 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen((p) => !p)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((p) => !p); }}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100">
-            <Filter className="h-4 w-4 text-zinc-600" />
-          </div>
-          <span className="font-semibold text-zinc-800">Filter</span>
-          {hasFilters && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-bold text-white">
-              {activeFilters.length}
+    <Card className="mb-5 gap-0 py-0">
+      <CardContent className="p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+          <Button
+            type="button"
+            variant="ghost"
+            className="justify-start px-0 hover:bg-transparent"
+            aria-expanded={open}
+            onClick={() => setOpen((previous) => !previous)}
+          >
+            <span className="flex size-8 items-center justify-center rounded-lg bg-muted">
+              <Filter className="size-4" />
             </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasFilters && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); handleReset(); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); handleReset(); } }}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </span>
-          )}
-          <span onClick={(e) => e.stopPropagation()}>
+            Filter
+            {hasFilters && (
+              <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {activeFilters.length}
+              </span>
+            )}
+            <ChevronDown
+              className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </Button>
+          <div className="flex items-center gap-2">
+            {hasFilters && (
+              <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
+                <RotateCcw />
+                Reset
+              </Button>
+            )}
             <CreateEmployeeSanctionForm />
-          </span>
-          <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </div>
         </div>
-      </div>
 
-      {open && (
-        <div className="border-t border-zinc-100">
-          <div className="px-5 pt-4 pb-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  <User className="h-3 w-3" />
+        {open && (
+          <div className="space-y-4 border-t px-5 py-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-2">
+                <label className="flex items-center gap-1.5 text-sm font-medium">
+                  <User className="size-4 text-muted-foreground" />
                   Karyawan
                 </label>
-                <SelectSearch label="Pilih karyawan" options={employeeOptions} value={employeeID} onChange={handleEmployee} />
+                <SelectSearch
+                  label="Pilih karyawan"
+                  options={employeeOptions}
+                  value={employeeID}
+                  onChange={handleEmployee}
+                />
               </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Jenis Sanksi
-                </label>
-                <SelectSearch label="Pilih jenis sanksi" options={sanctionOptions} value={sanctionID} onChange={handleSanction} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Jenis Sanksi</label>
+                <SelectSearch
+                  label="Pilih jenis sanksi"
+                  options={sanctionOptions}
+                  value={sanctionID}
+                  onChange={handleSanction}
+                />
               </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Status
-                </label>
-                <Select label="Pilih status" options={STATUS_OPTIONS} value={status} onChange={handleStatus} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <ShadcnSelect value={status} onValueChange={handleStatus}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Pilih status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </ShadcnSelect>
               </div>
             </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                <CalendarDays className="h-3 w-3" />
+            <div className="space-y-2">
+              <label className="flex items-center gap-1.5 text-sm font-medium">
+                <CalendarDays className="size-4 text-muted-foreground" />
                 Rentang Tanggal
               </label>
-              <InputDateRange labelStart="Tanggal mulai" labelEnd="Tanggal selesai" value={dateRange} onChange={handleDateRange} />
+              <InputDateRange
+                labelStart="Tanggal mulai"
+                labelEnd="Tanggal selesai"
+                value={dateRange}
+                onChange={handleDateRange}
+              />
             </div>
-          </div>
 
-          {hasFilters && (
-            <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-5 py-3 bg-zinc-50">
-              {activeFilters.map((f) => (
-                <span
-                  key={f.key}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${CHIP_COLOR[f.key === "status" ? status : ""] ?? "bg-zinc-100 text-zinc-700 border-zinc-200"}`}
-                >
-                  {f.label}
-                  <button onClick={f.onRemove} className="rounded-full opacity-60 hover:opacity-100 transition-opacity">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+            {hasFilters && (
+              <div className="flex flex-wrap gap-2 border-t pt-3">
+                {activeFilters.map((filter) => (
+                  <Badge key={filter.key} variant="secondary" className="gap-1.5">
+                    {filter.label}
+                    <button
+                      type="button"
+                      aria-label={`Hapus filter ${filter.label}`}
+                      onClick={filter.onRemove}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

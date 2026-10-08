@@ -16,10 +16,21 @@ export const ShiftEmployeeSchema = z.object({
   employee_number: z.string(),
 });
 
+export const ShiftDaySchema = z.object({
+  weekday: z.number(),
+  day_type: z.enum(["workday", "offday"]),
+  check_in: z.string().optional().default(""),
+  check_out: z.string().optional().default(""),
+  break_start: z.string().optional().default(""),
+  break_end: z.string().optional().default(""),
+  max_break_minutes: z.number(),
+});
+
 export const ShiftSchema = z.object({
   id: z.string(),
   name: z.string(),
   late_tolerance: z.number(),
+  shift_days: z.array(ShiftDaySchema).optional(),
   employees: z.array(ShiftEmployeeSchema).optional(),
   created_at: z.number(),
   updated_at: z.number(),
@@ -50,6 +61,8 @@ export const CreateShiftSchema = z.object({
   shift_days: z.array(ShiftDayRequestSchema),
 });
 
+export const UpdateShiftSchema = CreateShiftSchema;
+
 export const DEFAULT_SHIFT_DAYS = [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
   weekday,
   day_type: weekday <= 5 ? ("workday" as const) : ("offday" as const),
@@ -61,7 +74,9 @@ export const DEFAULT_SHIFT_DAYS = [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
 }));
 
 export type Shift = z.infer<typeof ShiftSchema>;
+export type ShiftDay = z.infer<typeof ShiftDaySchema>;
 export type ShiftEmployee = z.infer<typeof ShiftEmployeeSchema>;
 export type SearchShiftRequest = z.infer<typeof SearchShiftRequestSchema>;
 export type ShiftDayRequest = z.infer<typeof ShiftDayRequestSchema>;
 export type CreateShift = z.infer<typeof CreateShiftSchema>;
+export type UpdateShift = z.infer<typeof UpdateShiftSchema>;

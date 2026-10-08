@@ -63,6 +63,18 @@ func ExportAbsensiToExcel(
 			},
 		})
 
+		// Style baris Tidak Hadir (abu-abu, border tetap)
+		absentStyle, _ := f.NewStyle(&excelize.Style{
+			Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
+			Fill:      excelize.Fill{Type: "pattern", Color: []string{"#D9D9D9"}, Pattern: 1},
+			Border: []excelize.Border{
+				{Type: "left", Color: "656565", Style: 1},
+				{Type: "right", Color: "656565", Style: 1},
+				{Type: "top", Color: "656565", Style: 1},
+				{Type: "bottom", Color: "656565", Style: 1},
+			},
+		})
+
 		// Judul
 		f.SetCellValue(sheetName, "B1", "REKAP KEHADIRAN HARIAN")
 		f.MergeCell(sheetName, "B1", "H1")
@@ -164,6 +176,10 @@ func ExportAbsensiToExcel(
 					},
 				})
 				f.SetCellStyle(sheetName, fmt.Sprintf("D%d", r), fmt.Sprintf("D%d", r), style)
+			}
+
+			if row.Status == "TIDAK HADIR" {
+				f.SetCellStyle(sheetName, fmt.Sprintf("B%d", r), fmt.Sprintf("I%d", r), absentStyle)
 			}
 			no++
 		}

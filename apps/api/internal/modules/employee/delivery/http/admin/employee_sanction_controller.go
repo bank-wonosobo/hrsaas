@@ -34,8 +34,10 @@ func (c *EmSancController) Create(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	companyID := auth.GetCompanyId(ctx)
-	request.CompanyID = companyID
+	user := auth.GetUser(ctx)
+	request.CompanyID = user.CompanyID
+	request.CreatedBy = user.Name
+
 	result, err := c.EmSancUseCase.Create(ctx.Context(), request)
 	if err != nil {
 		c.Log.WithError(err).Error("Failed to create employee sanction")
