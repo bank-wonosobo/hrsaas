@@ -29,6 +29,7 @@ import {
   Clock01Icon,
   CommandIcon,
   DashboardSquare01Icon,
+  GridIcon,
   HelpCircleIcon,
   MapPin,
   MapsLocation01Icon,
@@ -42,6 +43,7 @@ import {
   Wallet01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -128,16 +130,23 @@ const createMenuCategories = (pendingApprovals: number): MenuCategory[] => [
     title: "Penggajian",
     items: [
       {
-        label: "Proses Payroll",
-        icon: Wallet01Icon,
-        path: "/payrolls",
-        permission: "PAYROLLS",
-      },
-      {
         label: "Komponen Gaji",
         icon: SlidersHorizontalIcon,
         path: "/salary-components",
         permission: "SALARY_COMPONENTS",
+      },
+      {
+        label: "Grid Gaji",
+        icon: GridIcon,
+        path: "/salary-grid",
+        permission: "PAYROLLS",
+      },
+
+      {
+        label: "Proses Payroll",
+        icon: Wallet01Icon,
+        path: "/payrolls",
+        permission: "PAYROLLS",
       },
     ],
   },
