@@ -3,6 +3,7 @@ import z from "zod/v3";
 export const AttendanceLogSchema = z.object({
   id: z.string(),
   attendance_id: z.string(),
+  employee_name: z.string().optional(),
   type: z.string(),
   time: z.number(),
   lat: z.number(),
@@ -38,6 +39,20 @@ export const SearchAttendanceSchema = z.object({
   size: z.number().optional(),
 });
 
+export const SearchPendingAttendanceLogsSchema = z.object({
+  page: z.number().optional(),
+  size: z.number().optional(),
+});
+
+export const ReviewAttendanceLogSchema = z.object({
+  approve: z.boolean(),
+  reasons: z.string(),
+});
+
 export type AttendanceLog = z.infer<typeof AttendanceLogSchema>;
 export type Attendance = z.infer<typeof AttendanceSchema>;
 export type SearchAttendanceRequest = z.infer<typeof SearchAttendanceSchema>;
+export type SearchPendingAttendanceLogs = z.infer<
+  typeof SearchPendingAttendanceLogsSchema
+>;
+export type ReviewAttendanceLog = z.infer<typeof ReviewAttendanceLogSchema>;

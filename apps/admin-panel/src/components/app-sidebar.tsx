@@ -18,6 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { usePendingAttendanceLogs } from "@/features/attendance/hooks/use-pending-attendance-logs";
 import { useSearchTimeOffAppr } from "@/features/time-off-approval/hooks/use-search-timeoffappr";
 import { useCurrentUser } from "@/features/user/hooks/use-current-user";
 import {
@@ -26,6 +27,7 @@ import {
   CalendarCheckIn01Icon,
   CalendarLove01Icon,
   CheckmarkCircle01Icon,
+  ClipboardCheck,
   Clock01Icon,
   CommandIcon,
   DashboardSquare01Icon,
@@ -61,7 +63,10 @@ type MenuCategory = {
   items: MenuItem[];
 };
 
-const createMenuCategories = (pendingApprovals: number): MenuCategory[] => [
+const createMenuCategories = (
+  pendingApprovals: number,
+  pendingAttendanceApprovals: number,
+): MenuCategory[] => [
   {
     title: "Utama",
     items: [
@@ -100,7 +105,13 @@ const createMenuCategories = (pendingApprovals: number): MenuCategory[] => [
         path: "/attendances",
         permission: "ATTENDANCES",
       },
-
+      {
+        label: "Persetujuan Kehadiran",
+        icon: ClipboardCheck,
+        path: "/attendance-approvals",
+        permission: "ATTENDANCE_APPROVALS",
+        totalData: pendingAttendanceApprovals,
+      },
       {
         label: "Sanksi / Pelanggaran",
         icon: Alert02Icon,
@@ -225,6 +236,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     size: 100,
     status: "PENDING",
   });
+  const { data: pendingAttendance } = usePendingAttendanceLogs({
+    page: 1,
+    size: 100,
+  });
   const userPermissions = useMemo(
     () =>
       new Set(user?.permissions?.map((permission) => permission.name) ?? []),
@@ -232,7 +247,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
   const filteredCategories = useMemo(
     () =>
-      createMenuCategories(timeOffApproval?.data?.length ?? 0)
+      createMenuCategories(
+        timeOffApproval?.paging?.total_item ??
+          timeOffApproval?.data?.length ??
+          0,
+        pendingAttendance?.paging?.total_item ??
+          pendingAttendance?.data?.length ??
+          0,
+      )
         .map((category) => ({
           ...category,
           items: category.items.filter(
@@ -242,7 +264,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ),
         }))
         .filter((category) => category.items.length > 0),
-    [search, timeOffApproval, userPermissions],
+    [search, timeOffApproval, pendingAttendance, userPermissions],
   );
 
   return (
@@ -310,7 +332,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         </Link>
                       </SidebarMenuButton>
                       {item.totalData !== undefined && item.totalData > 0 && (
-                        <SidebarMenuBadge>{item.totalData}</SidebarMenuBadge>
+                        <SidebarMenuBadge className="bg-destructive text-white">
+                          {item.totalData}
+                        </SidebarMenuBadge>
                       )}
                     </SidebarMenuItem>
                   );
