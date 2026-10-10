@@ -184,6 +184,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		userRepository,
 		cfg.Upload,
 		cfg.Config.GetString("face.base_url"),
+		cfg.S3Client,
 	)
 	shiftUseCase := attendanceUc.NewShiftUseCase(
 		cfg.DB,

@@ -24,6 +24,7 @@ type AttendanceResponse struct {
 type AttendanceLogResponse struct {
 	ID                 string  `json:"id"`
 	AttendanceID       string  `json:"attendance_id"`
+	EmployeeName       string  `json:"employee_name"`
 	Type               string  `json:"type"`
 	Time               int64   `json:"time"`
 	Lat                float64 `json:"lat"`
@@ -101,7 +102,8 @@ type SearchPendingLogRequest struct {
 
 type ReviewLogRequest struct {
 	Approve *bool   `json:"approve" validate:"required"`
-	Reason  *string `json:"reason"`
+	Reasons *string `json:"reasons"`
+	Reason  *string `json:"reason,omitempty"`
 }
 
 type SearchAttendanceLogRequest struct {
@@ -161,6 +163,7 @@ func AttendanceLogToResponse(log *entity.AttendanceLog) *AttendanceLogResponse {
 	return &AttendanceLogResponse{
 		ID:                 log.ID,
 		AttendanceID:       log.AttendanceID,
+		EmployeeName:       log.EmployeeName,
 		Type:               log.Type,
 		Time:               log.Time,
 		Lat:                log.Lat,
