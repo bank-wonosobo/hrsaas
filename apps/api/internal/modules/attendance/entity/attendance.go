@@ -52,6 +52,7 @@ type AttendanceLog struct {
 	ReviewedBy         string  `gorm:"column:reviewed_by"`
 	RejectReason       string  `gorm:"column:reject_reason"`
 	DeviceInfo         string  `gorm:"column:device_info"`
+	EmployeeName       string  `gorm:"->;column:employee_name"`
 	CreatedAt          int64   `gorm:"column:created_at;autoCreateTime"`
 	UpdatedAt          int64   `gorm:"column:updated_at;autoUpdateTime"`
 

@@ -169,6 +169,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		userRepository,
 		uploadUseCase,
 		cfg.Config.GetString("face.base_url"),
+		cfg.S3Client,
 	)
 	shiftUseCase := attendanceUc.NewShiftUseCase(
 		cfg.DB,

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 
 	"hrsaas/internal/modules/attendance/entity"
 	"hrsaas/internal/modules/attendance/model"
@@ -27,6 +29,9 @@ import (
 	"mime/multipart"
 	"time"
 
+	s3Client "hrsaas/pkg/s3"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -49,6 +54,7 @@ type AttendanceUseCase struct {
 	UserRepository           *userRepo.UserRepository
 	UploadUseCase            *upload.UploadUseCase
 	FaceServiceURL           string
+	S3Client                 *s3Client.S3Client
 }
 
 func NewAttendanceUseCase(
@@ -65,6 +71,7 @@ func NewAttendanceUseCase(
 	userRepository *userRepo.UserRepository,
 	uploadUseCase *upload.UploadUseCase,
 	faceServiceURL string,
+	s3Client *s3Client.S3Client,
 ) *AttendanceUseCase {
 	return &AttendanceUseCase{
 		DB:                       db,
@@ -80,6 +87,7 @@ func NewAttendanceUseCase(
 		UserRepository:           userRepository,
 		UploadUseCase:            uploadUseCase,
 		FaceServiceURL:           faceServiceURL,
+		S3Client:                 s3Client,
 	}
 }
 
@@ -667,6 +675,21 @@ func (c *AttendanceUseCase) Detail(
 	if err != nil {
 		c.Log.WithError(err).Error("Failed to find attendance logs")
 		return nil, fiber.ErrInternalServerError
+	}
+
+	presignClient := s3.NewPresignClient(c.S3Client.Client)
+	for i := range logs {
+		parsedURL, err := url.Parse(logs[i].FaceImageURL)
+		if err != nil {
+			panic(err)
+		}
+		path := strings.TrimPrefix(parsedURL.Path, "/")
+		generatedURL, err := c.S3Client.GenerateDownloadURL(presignClient, path)
+		if err != nil {
+			c.Log.WithError(err).Error("Failed to generate attendance face image download url")
+			continue
+		}
+		logs[i].FaceImageURL = generatedURL
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -1345,7 +1368,11 @@ func (c *AttendanceUseCase) ReviewLog(
 	if err := c.Validate.Struct(req); err != nil {
 		return nil, fiber.ErrBadRequest
 	}
-	if !*req.Approve && (req.Reason == nil || *req.Reason == "") {
+	reason := req.Reasons
+	if reason == nil {
+		reason = req.Reason
+	}
+	if !*req.Approve && (reason == nil || strings.TrimSpace(*reason) == "") {
 		return nil, fiber.NewError(fiber.StatusBadRequest, "Alasan penolakan wajib diisi")
 	}
 
@@ -1368,7 +1395,7 @@ func (c *AttendanceUseCase) ReviewLog(
 	log.ReviewedAt = time.Now().UnixMilli()
 	log.ReviewedBy = reviewerID
 	if !*req.Approve {
-		log.RejectReason = *req.Reason
+		log.RejectReason = strings.TrimSpace(*reason)
 	}
 
 	if err := c.AttendanceLogRepo.Update(tx, log); err != nil {
