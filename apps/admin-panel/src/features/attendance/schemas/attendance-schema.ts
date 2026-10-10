@@ -49,6 +49,23 @@ export const ReviewAttendanceLogSchema = z.object({
   reasons: z.string(),
 });
 
+export const UpdateAttendanceSchema = z.object({
+  date: z.number(),
+  check_in_time: z.number(),
+  check_out_time: z.number(),
+  total_work_minutes: z.number().int().min(0),
+  total_break_minutes: z.number().int().min(0),
+  status: z.enum([
+    "HADIR",
+    "TERLAMBAT",
+    "TERLAMBAT_PULANG_AWAL",
+    "ALPHA",
+    "IZIN",
+    "SAKIT",
+    "PENDING",
+  ]),
+});
+
 export type AttendanceLog = z.infer<typeof AttendanceLogSchema>;
 export type Attendance = z.infer<typeof AttendanceSchema>;
 export type SearchAttendanceRequest = z.infer<typeof SearchAttendanceSchema>;
@@ -56,3 +73,4 @@ export type SearchPendingAttendanceLogs = z.infer<
   typeof SearchPendingAttendanceLogsSchema
 >;
 export type ReviewAttendanceLog = z.infer<typeof ReviewAttendanceLogSchema>;
+export type UpdateAttendance = z.infer<typeof UpdateAttendanceSchema>;

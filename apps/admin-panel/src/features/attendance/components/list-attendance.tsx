@@ -32,6 +32,7 @@ import {
   SearchAttendanceRequest,
 } from "../schemas/attendance-schema";
 import DetailAttendance from "./detail-attendance";
+import EditAttendance from "./edit-attendance";
 
 interface Props {
   search: SearchAttendanceRequest;
@@ -107,7 +108,7 @@ export default function ListAttendance({ search }: Props) {
                 <TableHead>Jam Kerja</TableHead>
                 <TableHead>Istirahat</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Detail</TableHead>
+                <TableHead className="text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -153,8 +154,11 @@ export default function ListAttendance({ search }: Props) {
                         {row.status.replaceAll("_", " ")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DetailAttendance attendance={row} />
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <EditAttendance attendance={row} />
+                        <DetailAttendance attendance={row} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
