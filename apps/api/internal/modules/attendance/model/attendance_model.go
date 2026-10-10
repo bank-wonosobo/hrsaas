@@ -163,7 +163,6 @@ func AttendanceLogToResponse(log *entity.AttendanceLog) *AttendanceLogResponse {
 	return &AttendanceLogResponse{
 		ID:                 log.ID,
 		AttendanceID:       log.AttendanceID,
-		EmployeeName:       log.EmployeeName,
 		Type:               log.Type,
 		Time:               log.Time,
 		Lat:                log.Lat,
