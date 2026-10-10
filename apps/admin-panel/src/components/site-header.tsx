@@ -19,6 +19,7 @@ import { ModeToggle } from "./mode-togle";
 const routeLabels: Record<string, string> = {
   announcements: "Pengumuman",
   attendances: "Kehadiran",
+  "attendance-approvals": "Persetujuan Kehadiran",
   companies: "Perusahaan",
   contract: "Kontrak Kepegawaian",
   dashboard: "Dashboard",
