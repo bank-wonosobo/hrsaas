@@ -28,7 +28,7 @@ func (r *AttendanceRepository) CountPresentByEmployeeIDAndDateRange(
 ) (int64, error) {
 	var count int64
 	err := db.Model(&entity.Attendance{}).
-		Where("employee_id = ? AND date >= ? AND date <= ? AND status IN ?", employeeID, startDate, endDate, []string{"HADIR", "TERLAMBAT", "TERLAMBAT_PULANG_AWAL"}).
+		Where("employee_id = ? AND date >= ? AND date <= ? AND status IN ?", employeeID, startDate, endDate, []string{"HADIR", "TERLAMBAT", "PULANG_AWAL", "TERLAMBAT_PULANG_AWAL"}).
 		Count(&count).Error
 	return count, err
 }

@@ -58,6 +58,7 @@ export const UpdateAttendanceSchema = z.object({
   status: z.enum([
     "HADIR",
     "TERLAMBAT",
+    "PULANG_AWAL",
     "TERLAMBAT_PULANG_AWAL",
     "ALPHA",
     "IZIN",

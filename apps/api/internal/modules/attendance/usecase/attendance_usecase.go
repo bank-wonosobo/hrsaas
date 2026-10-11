@@ -990,6 +990,10 @@ func (c *AttendanceUseCase) CheckOut(
 	}
 
 	attendance.CheckOutTime = nowMilli
+	attendance.Status, err = c.resolveCheckOutStatus(tx, &attendance)
+	if err != nil {
+		return nil, err
+	}
 
 	checkInTime := time.UnixMilli(attendance.CheckInTime)
 	totalWorkMinutes := max(int(now.Sub(checkInTime).Minutes())-attendance.TotalBreakMinutes, 0)
@@ -1315,10 +1319,11 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
+	now = now.In(time.Local)
 	now = time.Date(
 		now.Year(), now.Month(), now.Day(),
 		now.Hour(), now.Minute(), 0, 0,
-		time.UTC,
+		time.Local,
 	)
 	if shiftDay.CheckIn == "" {
 		return "HADIR", nil
@@ -1331,7 +1336,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	scheduled := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		shiftTime.Hour(), shiftTime.Minute(), 0, 0,
-		time.UTC,
+		time.Local,
 	)
 	deadline := scheduled.Add(time.Duration(shift.LateTolerance) * time.Minute)
 
@@ -1341,6 +1346,9 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
 	c.Log.Infof("===== SHIFT TIME ====== %s", shiftDay.CheckIn)
 
+	if now.After(deadline) {
+		return "TERLAMBAT", nil
+	}
 	return "HADIR", nil
 }
 
@@ -1394,6 +1402,36 @@ func (c *AttendanceUseCase) ReviewLog(
 	log.IsApproved = *req.Approve
 	log.ReviewedAt = time.Now().UnixMilli()
 	log.ReviewedBy = reviewerID
+
+	attendance := new(entity.Attendance)
+	if err := c.AttendanceRepository.FindByIdAndCompany(tx, attendance, log.AttendanceID, companyID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fiber.NewError(fiber.StatusNotFound, "Absensi tidak ditemukan")
+		}
+		return nil, fiber.ErrInternalServerError
+	}
+
+	status, err := c.resolveCheckInStatus(
+		tx,
+		attendance.EmployeeID,
+		time.UnixMilli(attendance.CheckInTime).In(time.Local),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if attendance.CheckOutTime > 0 {
+		attendance.Status = status
+		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	attendance.Status = status
+	if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
 	if !*req.Approve {
 		log.RejectReason = strings.TrimSpace(*reason)
 	}
@@ -1406,6 +1444,43 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, fiber.ErrInternalServerError
 	}
 	return model.AttendanceLogToResponse(log), nil
+}
+
+func (c *AttendanceUseCase) resolveCheckOutStatus(tx *gorm.DB, attendance *entity.Attendance) (string, error) {
+	if attendance.CheckOutTime == 0 {
+		return attendance.Status, nil
+	}
+
+	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, attendance.EmployeeID)
+	if err != nil {
+		return "", fiber.ErrInternalServerError
+	}
+	if len(shifts) == 0 {
+		return attendance.Status, nil
+	}
+
+	checkIn := time.UnixMilli(attendance.CheckInTime).In(time.Local)
+	shiftDay := new(entity.ShiftDay)
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(tx, shiftDay, shifts[0].ID, int(checkIn.Weekday()))
+	if errors.Is(err, gorm.ErrRecordNotFound) || shiftDay.CheckOut == "" {
+		return attendance.Status, nil
+	}
+	if err != nil {
+		return "", fiber.ErrInternalServerError
+	}
+
+	shiftTime, err := parseShiftTime(shiftDay.CheckOut)
+	if err != nil {
+		return "", fiber.ErrInternalServerError
+	}
+	scheduled := time.Date(checkIn.Year(), checkIn.Month(), checkIn.Day(), shiftTime.Hour(), shiftTime.Minute(), 0, 0, time.Local)
+	if !time.UnixMilli(attendance.CheckOutTime).In(time.Local).Before(scheduled) {
+		return attendance.Status, nil
+	}
+	if attendance.Status == "TERLAMBAT" {
+		return "TERLAMBAT_PULANG_AWAL", nil
+	}
+	return "PULANG_AWAL", nil
 }
 
 func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, error) {
@@ -1515,6 +1590,10 @@ func (c *AttendanceUseCase) ManualInput(
 	// === CHECK-OUT (sama persis kaya flow CheckOut) ===
 	if request.CheckOutTime != nil && *request.CheckOutTime > 0 {
 		attendance.CheckOutTime = *request.CheckOutTime
+		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance)
+		if err != nil {
+			return nil, err
+		}
 
 		// Hitung TotalWorkMinutes sama kaya CheckOut
 		checkIn := time.UnixMilli(attendance.CheckInTime)

@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Attendance, UpdateAttendance } from "../schemas/attendance-schema";
-import { useUpdateAttendance } from "../hooks/use-update-attendance";
 import { Pencil } from "lucide-react";
 import { FormEvent, useState } from "react";
 import toast from "react-hot-toast";
+import { useUpdateAttendance } from "../hooks/use-update-attendance";
+import { Attendance, UpdateAttendance } from "../schemas/attendance-schema";
 
 interface Props {
   attendance: Attendance;
@@ -34,6 +34,7 @@ type FormValues = {
 const STATUS_OPTIONS: { label: string; value: UpdateAttendance["status"] }[] = [
   { label: "Hadir", value: "HADIR" },
   { label: "Terlambat", value: "TERLAMBAT" },
+  { label: "Pulang awal", value: "PULANG_AWAL" },
   { label: "Terlambat pulang awal", value: "TERLAMBAT_PULANG_AWAL" },
   { label: "Alpha", value: "ALPHA" },
   { label: "Izin", value: "IZIN" },
@@ -157,7 +158,9 @@ export default function EditAttendance({ attendance }: Props) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor={`attendance-date-${attendance.id}`}>Tanggal</Label>
+              <Label htmlFor={`attendance-date-${attendance.id}`}>
+                Tanggal
+              </Label>
               <Input
                 id={`attendance-date-${attendance.id}`}
                 type="date"
