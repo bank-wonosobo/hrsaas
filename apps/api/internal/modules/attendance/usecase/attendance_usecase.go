@@ -1734,7 +1734,7 @@ func (c *AttendanceUseCase) ClockIn(
 	}
 
 	shiftDay := new(entity.ShiftDay)
-	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(c.DB.WithContext(ctx), shiftDay, shifts[0].ID, int(time.Now().Weekday()))
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(c.DB.WithContext(ctx), shiftDay, shifts[0].ID, int(time.Now().Weekday()+1))
 	if err != nil {
 		return nil, fiber.ErrInternalServerError
 	}
