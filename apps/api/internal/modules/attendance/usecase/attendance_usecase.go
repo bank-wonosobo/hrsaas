@@ -1315,10 +1315,11 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 		return "", fiber.ErrInternalServerError
 	}
 
+	now = now.In(time.Local)
 	now = time.Date(
 		now.Year(), now.Month(), now.Day(),
 		now.Hour(), now.Minute(), 0, 0,
-		time.UTC,
+		time.Local,
 	)
 	if shiftDay.CheckIn == "" {
 		return "HADIR", nil
@@ -1331,7 +1332,7 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	scheduled := time.Date(
 		now.Year(), now.Month(), now.Day(),
 		shiftTime.Hour(), shiftTime.Minute(), 0, 0,
-		time.UTC,
+		time.Local,
 	)
 	deadline := scheduled.Add(time.Duration(shift.LateTolerance) * time.Minute)
 
@@ -1341,6 +1342,9 @@ func (c *AttendanceUseCase) resolveCheckInStatus(
 	c.Log.Infof("===== NOW AFTER DEADLINE ====== %t", now.After(deadline))
 	c.Log.Infof("===== SHIFT TIME ====== %s", shiftDay.CheckIn)
 
+	if now.After(deadline) {
+		return "TERLAMBAT", nil
+	}
 	return "HADIR", nil
 }
 
@@ -1394,6 +1398,53 @@ func (c *AttendanceUseCase) ReviewLog(
 	log.IsApproved = *req.Approve
 	log.ReviewedAt = time.Now().UnixMilli()
 	log.ReviewedBy = reviewerID
+
+	attendance := new(entity.Attendance)
+	if err := c.AttendanceRepository.FindByIdAndCompany(tx, attendance, log.AttendanceID, companyID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fiber.NewError(fiber.StatusNotFound, "Absensi tidak ditemukan")
+		}
+		return nil, fiber.ErrInternalServerError
+	}
+
+	status, err := c.resolveCheckInStatus(
+		tx,
+		attendance.EmployeeID,
+		time.UnixMilli(attendance.CheckInTime).In(time.Local),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if attendance.CheckOutTime > 0 {
+		shifts, findErr := c.ShiftRepository.FindByEmployeeID(tx, attendance.EmployeeID)
+		if findErr != nil {
+			return nil, fiber.ErrInternalServerError
+		}
+		if len(shifts) > 0 {
+			checkIn := time.UnixMilli(attendance.CheckInTime).In(time.Local)
+			shiftDay := new(entity.ShiftDay)
+			findErr = c.ShiftDayRepo.FindByShiftIDAndWeekday(tx, shiftDay, shifts[0].ID, int(checkIn.Weekday()))
+			if findErr != nil && !errors.Is(findErr, gorm.ErrRecordNotFound) {
+				return nil, fiber.ErrInternalServerError
+			}
+			if findErr == nil && shiftDay.CheckOut != "" {
+				shiftTime, parseErr := parseShiftTime(shiftDay.CheckOut)
+				if parseErr != nil {
+					return nil, fiber.ErrInternalServerError
+				}
+				scheduled := time.Date(checkIn.Year(), checkIn.Month(), checkIn.Day(), shiftTime.Hour(), shiftTime.Minute(), 0, 0, time.Local)
+				if time.UnixMilli(attendance.CheckOutTime).In(time.Local).Before(scheduled) {
+					status = "TERLAMBAT_PULANG_AWAL"
+				}
+			}
+		}
+	}
+
+	attendance.Status = status
+	if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
 	if !*req.Approve {
 		log.RejectReason = strings.TrimSpace(*reason)
 	}
