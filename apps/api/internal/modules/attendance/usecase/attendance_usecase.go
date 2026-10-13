@@ -1363,6 +1363,20 @@ func (c *AttendanceUseCase) SearchPendingLogs(
 		c.Log.WithError(err).Error("Failed to search pending logs")
 		return nil, 0, fiber.ErrInternalServerError
 	}
+	presignClient := s3.NewPresignClient(c.S3Client.Client)
+	for i := range logs {
+		parsedURL, err := url.Parse(logs[i].FaceImageURL)
+		if err != nil {
+			panic(err)
+		}
+		path := strings.TrimPrefix(parsedURL.Path, "/")
+		generatedURL, err := c.S3Client.GenerateDownloadURL(presignClient, path)
+		if err != nil {
+			c.Log.WithError(err).Error("Failed to generate attendance face image download url")
+			continue
+		}
+		logs[i].FaceImageURL = generatedURL
+	}
 	res := make([]model.AttendanceLogResponse, len(logs))
 	for i, l := range logs {
 		res[i] = *model.AttendanceLogToResponse(&l)
@@ -1446,7 +1460,10 @@ func (c *AttendanceUseCase) ReviewLog(
 	return model.AttendanceLogToResponse(log), nil
 }
 
-func (c *AttendanceUseCase) resolveCheckOutStatus(tx *gorm.DB, attendance *entity.Attendance) (string, error) {
+func (c *AttendanceUseCase) resolveCheckOutStatus(
+	tx *gorm.DB,
+	attendance *entity.Attendance,
+) (string, error) {
 	if attendance.CheckOutTime == 0 {
 		return attendance.Status, nil
 	}
@@ -1473,7 +1490,16 @@ func (c *AttendanceUseCase) resolveCheckOutStatus(tx *gorm.DB, attendance *entit
 	if err != nil {
 		return "", fiber.ErrInternalServerError
 	}
-	scheduled := time.Date(checkIn.Year(), checkIn.Month(), checkIn.Day(), shiftTime.Hour(), shiftTime.Minute(), 0, 0, time.Local)
+	scheduled := time.Date(
+		checkIn.Year(),
+		checkIn.Month(),
+		checkIn.Day(),
+		shiftTime.Hour(),
+		shiftTime.Minute(),
+		0,
+		0,
+		time.Local,
+	)
 	if !time.UnixMilli(attendance.CheckOutTime).In(time.Local).Before(scheduled) {
 		return attendance.Status, nil
 	}
@@ -1677,7 +1703,10 @@ func (c *AttendanceUseCase) ClockIn(
 	}
 
 	// verifikasi checkin location
-	locations, err := c.LocationRepository.GetByEmployeeID(c.DB.WithContext(ctx), request.EmployeeID)
+	locations, err := c.LocationRepository.GetByEmployeeID(
+		c.DB.WithContext(ctx),
+		request.EmployeeID,
+	)
 	if err != nil {
 		return nil, fiber.NewError(500, "Failed to verify check-in location")
 	}
@@ -1734,7 +1763,12 @@ func (c *AttendanceUseCase) ClockIn(
 	}
 
 	shiftDay := new(entity.ShiftDay)
-	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(c.DB.WithContext(ctx), shiftDay, shifts[0].ID, int(time.Now().Weekday()+1))
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(
+		c.DB.WithContext(ctx),
+		shiftDay,
+		shifts[0].ID,
+		int(time.Now().Weekday()+1),
+	)
 	if err != nil {
 		return nil, fiber.ErrInternalServerError
 	}
@@ -1744,7 +1778,16 @@ func (c *AttendanceUseCase) ClockIn(
 		return nil, fiber.ErrInternalServerError
 	}
 
-	targetShif := time.Date(now.Year(), now.Month(), now.Day(), shiftTime.Hour(), shiftTime.Minute(), shiftTime.Second(), 0, loc)
+	targetShif := time.Date(
+		now.Year(),
+		now.Month(),
+		now.Day(),
+		shiftTime.Hour(),
+		shiftTime.Minute(),
+		shiftTime.Second(),
+		0,
+		loc,
+	)
 
 	deadline := targetShif.Add(time.Duration(shifts[0].LateTolerance) * time.Minute)
 

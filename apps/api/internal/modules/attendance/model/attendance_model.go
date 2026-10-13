@@ -76,10 +76,10 @@ type UpdateAttendanceRequest struct {
 }
 
 type ManualAttendanceRequest struct {
-	EmployeeID   string `json:"employee_id" validate:"required,uuid4"`
-	CheckInTime  int64  `json:"check_in_time" validate:"required"`
+	EmployeeID   string `json:"employee_id"              validate:"required,uuid4"`
+	CheckInTime  int64  `json:"check_in_time"            validate:"required"`
 	CheckOutTime *int64 `json:"check_out_time,omitempty"`
-	DeviceInfo   string `json:"device_info" validate:"required"`
+	DeviceInfo   string `json:"device_info"              validate:"required"`
 }
 
 type SearchAttendanceRequest struct {
@@ -95,13 +95,17 @@ type SearchAttendanceRequest struct {
 }
 
 type SearchPendingLogRequest struct {
-	CompanyID string
-	Page      int `validate:"min=1"`
-	Size      int `validate:"min=1,max=100"`
+	CompanyID  string `json:"company_id"            validate:"required,uuid4"`
+	EmployeeID string `json:"employee_id,omitempty" validate:"omitempty,uuid4"`
+	Date       string `json:"date,omitempty"        validate:"omitempty,max=20"`
+	StartDate  string `json:"start_date,omitempty"  validate:"omitempty,max=20"`
+	EndDate    string `json:"end_date,omitempty"    validate:"omitempty,max=20"`
+	Page       int    `                             validate:"min=1"`
+	Size       int    `                             validate:"min=1,max=100"`
 }
 
 type ReviewLogRequest struct {
-	Approve *bool   `json:"approve" validate:"required"`
+	Approve *bool   `json:"approve"          validate:"required"`
 	Reasons *string `json:"reasons"`
 	Reason  *string `json:"reason,omitempty"`
 }
@@ -160,9 +164,15 @@ func AttendandeToResponse(attendance *entity.Attendance) *AttendanceResponse {
 }
 
 func AttendanceLogToResponse(log *entity.AttendanceLog) *AttendanceLogResponse {
+	var employeeName string
+	if log.Attendance.Employee.Fullname != "" {
+		employeeName = log.Attendance.Employee.Fullname
+	}
+
 	return &AttendanceLogResponse{
 		ID:                 log.ID,
 		AttendanceID:       log.AttendanceID,
+		EmployeeName:       employeeName,
 		Type:               log.Type,
 		Time:               log.Time,
 		Lat:                log.Lat,
