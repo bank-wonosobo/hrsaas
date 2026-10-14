@@ -235,6 +235,19 @@ func (c *AttendanceUseCase) verifyAndStoreFace(
 	return uploadURL, result, nil
 }
 
+func (c *AttendanceUseCase) storeFaceWithoutVerification(
+	ctx context.Context,
+	file *multipart.FileHeader,
+) (string, *face.FaceRecognizeResponse, error) {
+	uploadURL, err := c.uploadFace(ctx, file)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to upload face image")
+		return "", nil, fiber.NewError(fiber.StatusInternalServerError, "Gagal menyimpan wajah !")
+	}
+
+	return uploadURL, &face.FaceRecognizeResponse{Match: true}, nil
+}
+
 func (c *AttendanceUseCase) Search(
 	ctx context.Context,
 	request *model.SearchAttendanceRequest,
@@ -981,13 +994,19 @@ func (c *AttendanceUseCase) CheckOut(
 		return nil, err
 	}
 
-	faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
+	// faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
 	if err != nil {
 		return nil, err
 	}
-	if !faceResult.Match {
-		return nil, fiber.NewError(fiber.StatusBadRequest, faceResult.Message)
-	}
+
+	// if !faceResult.Match {
+	// 	return nil, fiber.NewError(fiber.StatusBadRequest, faceResult.Message)
+	// }
 
 	attendance.CheckOutTime = nowMilli
 	attendance.Status, err = c.resolveCheckOutStatus(tx, &attendance)
@@ -1748,7 +1767,13 @@ func (c *AttendanceUseCase) ClockIn(
 	}
 
 	// validasi face
-	faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
+	// faceImageURL, faceResult, err := c.verifyAndStoreFace(ctx, request.EmployeeID, request.File)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// bypass verifikasi wajah anti server njeblug
+	faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
 	if err != nil {
 		return nil, err
 	}
