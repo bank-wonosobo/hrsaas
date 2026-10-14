@@ -27,6 +27,9 @@ func (r *AttendanceLogRepository) Search(
 ) ([]entity.AttendanceLog, int64, error) {
 	var logs []entity.AttendanceLog
 	if err := db.Scopes(r.FilterSearch(request)).
+		Select("attendance_logs.*").
+		Preload("Attendance").
+		Preload("Attendance.Employee").
 		Order("attendance_logs.time DESC").
 		Offset((request.Page - 1) * request.Size).
 		Limit(request.Size).
@@ -47,7 +50,6 @@ func (r *AttendanceLogRepository) SearchPending(
 ) ([]entity.AttendanceLog, int64, error) {
 	q := tx.Model(&entity.AttendanceLog{}).
 		Joins("JOIN attendances ON attendances.id = attendance_logs.attendance_id").
-		Joins("JOIN employees ON employees.id = attendances.employee_id").
 		Where("attendances.company_id = ?", req.CompanyID).
 		Where("attendance_logs.is_approved = ? AND (attendance_logs.reviewed_at IS NULL OR attendance_logs.reviewed_at = 0)", false).
 		Session(&gorm.Session{})
@@ -59,7 +61,9 @@ func (r *AttendanceLogRepository) SearchPending(
 
 	var logs []entity.AttendanceLog
 	if err := q.
-		Select("attendance_logs.*, employees.fullname AS employee_name").
+		Select("attendance_logs.*").
+		Preload("Attendance").
+		Preload("Attendance.Employee").
 		Order("attendance_logs.time DESC").
 		Offset((req.Page - 1) * req.Size).
 		Limit(req.Size).
