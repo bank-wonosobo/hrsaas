@@ -56,7 +56,7 @@ type AttendanceLog struct {
 	UpdatedAt          int64   `gorm:"column:updated_at;autoUpdateTime"`
 
 	// Foreign key constraint to attendances table
-	Attendance Attendance `gorm:"-"`
+	Attendance Attendance `gorm:"foreignKey:AttendanceID;references:ID"`
 }
 
 // BeforeCreate hook to set UUID
