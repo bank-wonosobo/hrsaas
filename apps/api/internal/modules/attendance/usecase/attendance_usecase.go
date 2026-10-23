@@ -1008,11 +1008,11 @@ func (c *AttendanceUseCase) CheckOut(
 	// 	return nil, fiber.NewError(fiber.StatusBadRequest, faceResult.Message)
 	// }
 
-	attendance.CheckOutTime = nowMilli
-	attendance.Status, err = c.resolveCheckOutStatus(tx, &attendance)
-	if err != nil {
-		return nil, err
-	}
+	// attendance.CheckOutTime = nowMilli
+	// attendance.Status, err = c.resolveCheckOutStatus(tx, &attendance)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	checkInTime := time.UnixMilli(attendance.CheckInTime)
 	totalWorkMinutes := max(int(now.Sub(checkInTime).Minutes())-attendance.TotalBreakMinutes, 0)
@@ -1420,6 +1420,14 @@ func (c *AttendanceUseCase) ReviewLog(
 	tx := c.DB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to load attendance timezone")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	now := time.Now().In(loc)
+
 	log := new(entity.AttendanceLog)
 	if err := c.AttendanceLogRepo.FindLogByIdAndCompany(tx, log, logID, companyID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1455,7 +1463,7 @@ func (c *AttendanceUseCase) ReviewLog(
 
 	if attendance.CheckOutTime > 0 {
 		attendance.Status = status
-		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance)
+		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance, now, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -1478,54 +1486,85 @@ func (c *AttendanceUseCase) ReviewLog(
 	}
 	return model.AttendanceLogToResponse(log), nil
 }
-
 func (c *AttendanceUseCase) resolveCheckOutStatus(
 	tx *gorm.DB,
 	attendance *entity.Attendance,
+	now time.Time,
+	loc *time.Location,
 ) (string, error) {
-	if attendance.CheckOutTime == 0 {
-		return attendance.Status, nil
-	}
-
-	shifts, err := c.ShiftRepository.FindByEmployeeID(tx, attendance.EmployeeID)
-	if err != nil {
-		return "", fiber.ErrInternalServerError
-	}
-	if len(shifts) == 0 {
-		return attendance.Status, nil
-	}
-
-	checkIn := time.UnixMilli(attendance.CheckInTime).In(time.Local)
-	shiftDay := new(entity.ShiftDay)
-	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(tx, shiftDay, shifts[0].ID, int(checkIn.Weekday()))
-	if errors.Is(err, gorm.ErrRecordNotFound) || shiftDay.CheckOut == "" {
-		return attendance.Status, nil
-	}
-	if err != nil {
-		return "", fiber.ErrInternalServerError
-	}
-
-	shiftTime, err := parseShiftTime(shiftDay.CheckOut)
-	if err != nil {
-		return "", fiber.ErrInternalServerError
-	}
-	scheduled := time.Date(
-		checkIn.Year(),
-		checkIn.Month(),
-		checkIn.Day(),
-		shiftTime.Hour(),
-		shiftTime.Minute(),
-		0,
-		0,
-		time.Local,
+	// Ambil shift karyawan.
+	shifts, err := c.ShiftRepository.FindByEmployeeID(
+		tx,
+		attendance.EmployeeID,
 	)
-	if !time.UnixMilli(attendance.CheckOutTime).In(time.Local).Before(scheduled) {
-		return attendance.Status, nil
+	if err != nil {
+		return "", fiber.ErrInternalServerError
 	}
-	if attendance.Status == "TERLAMBAT" {
+
+	if len(shifts) == 0 {
+		return "", fiber.NewError(
+			fiber.StatusNotFound,
+			"Shift tidak ditemukan",
+		)
+	}
+
+	// Gunakan tanggal check-in, bukan tanggal check-out.
+	checkInTime := time.UnixMilli(attendance.CheckInTime).In(loc)
+
+	shiftDay := new(entity.ShiftDay)
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(
+		tx,
+		shiftDay,
+		shifts[0].ID,
+		int(checkInTime.Weekday()+1),
+	)
+	if err != nil {
+		return "", fiber.ErrInternalServerError
+	}
+
+	// Sesuaikan nama field CheckOut dengan entity ShiftDay milikmu.
+	shiftCheckOut, err := time.Parse("15:04:05", shiftDay.CheckOut)
+	if err != nil {
+		return "", fiber.ErrInternalServerError
+	}
+
+	// Buat jadwal pulang berdasarkan tanggal check-in.
+	scheduledCheckOut := time.Date(
+		checkInTime.Year(),
+		checkInTime.Month(),
+		checkInTime.Day(),
+		shiftCheckOut.Hour(),
+		shiftCheckOut.Minute(),
+		shiftCheckOut.Second(),
+		0,
+		loc,
+	)
+
+	// Jika shift melewati tengah malam, jadwal pulang adalah hari berikutnya.
+	if !scheduledCheckOut.After(checkInTime) {
+		scheduledCheckOut = scheduledCheckOut.AddDate(0, 0, 1)
+	}
+
+	// Tentukan apakah karyawan pulang lebih awal.
+	pulangAwal := now.Before(scheduledCheckOut)
+
+	// Pertahankan status keterlambatan dari ClockIn.
+	terlambat := attendance.Status == "TERLAMBAT" ||
+		attendance.Status == "TERLAMBAT_PULANG_AWAL"
+
+	if terlambat && pulangAwal {
 		return "TERLAMBAT_PULANG_AWAL", nil
 	}
-	return "PULANG_AWAL", nil
+
+	if terlambat {
+		return "TERLAMBAT", nil
+	}
+
+	if pulangAwal {
+		return "PULANG_AWAL", nil
+	}
+
+	return "HADIR", nil
 }
 
 func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, error) {
@@ -1567,18 +1606,25 @@ func (c *AttendanceUseCase) ManualInput(
 		return nil, fiber.ErrBadRequest
 	}
 
-	utc := time.UTC
-	checkInTime := time.UnixMilli(request.CheckInTime).In(utc)
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to load attendance timezone")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	now := time.Now().In(loc)
+
+	checkInTime := time.UnixMilli(request.CheckInTime).In(loc)
 	startOfDay := time.Date(
 		checkInTime.Year(), checkInTime.Month(), checkInTime.Day(),
 		0, 0, 0, 0,
-		utc,
+		loc,
 	)
 	startOfDayMilli := startOfDay.UnixMilli()
 
 	// === CHECK-IN (sama persis kaya flow CheckIn) ===
 	attendance := new(entity.Attendance)
-	err := c.AttendanceRepository.FindByEmployeeIDAndDate(
+	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
 		tx, attendance, request.EmployeeID, request.CheckInTime,
 	)
 	existingAttendance := err == nil
@@ -1635,7 +1681,7 @@ func (c *AttendanceUseCase) ManualInput(
 	// === CHECK-OUT (sama persis kaya flow CheckOut) ===
 	if request.CheckOutTime != nil && *request.CheckOutTime > 0 {
 		attendance.CheckOutTime = *request.CheckOutTime
-		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance)
+		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance, now, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -1788,12 +1834,9 @@ func (c *AttendanceUseCase) ClockIn(
 	}
 
 	shiftDay := new(entity.ShiftDay)
-	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(
-		c.DB.WithContext(ctx),
-		shiftDay,
-		shifts[0].ID,
-		int(time.Now().Weekday()+1),
-	)
+
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(c.DB.WithContext(ctx), shiftDay, shifts[0].ID, int(now.Weekday()))
+
 	if err != nil {
 		return nil, fiber.ErrInternalServerError
 	}
@@ -1816,17 +1859,12 @@ func (c *AttendanceUseCase) ClockIn(
 
 	deadline := targetShif.Add(time.Duration(shifts[0].LateTolerance) * time.Minute)
 
-	fmt.Println("===== now =====")
-	fmt.Println(now)
-	fmt.Println("===== target shift =====")
-	fmt.Println(targetShif)
-	fmt.Println("===== deadline =====")
-	fmt.Println(deadline)
 	if now.After(deadline) {
 		status = "TERLAMBAT"
 	} else {
 		status = "HADIR"
 	}
+	// pending status
 	if !locationVerified || !faceResult.Match {
 		status = "PENDING"
 	}
@@ -1879,6 +1917,211 @@ func (c *AttendanceUseCase) ClockIn(
 	response := model.AttendandeToResponse(attendance)
 	if !locationVerified || !faceResult.Match {
 		response.Message = "Check-in berhasil, namun verifikasi lokasi dan/atau wajah belum valid. Mohon tunggu persetujuan admin."
+	}
+
+	return response, nil
+}
+
+func (c *AttendanceUseCase) ClockOut(
+	ctx context.Context,
+	request *model.CheckInAttendanceRequest,
+) (*model.AttendanceResponse, error) {
+	if request.EmployeeID == "" {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"User tidak bisa melakukan check-out karena bukan karyawan",
+		)
+	}
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate clock out request")
+		return nil, fiber.ErrBadRequest
+	}
+
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to load attendance timezone")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	now := time.Now().In(loc)
+	nowMilli := now.UnixMilli()
+
+	// Cari absensi yang masih terbuka.
+	// Mendukung shift malam yang check-in kemarin dan check-out hari ini.
+	var attendance entity.Attendance
+
+	err = c.AttendanceRepository.FindOpenByEmployeeID(
+		c.DB.WithContext(ctx),
+		&attendance,
+		request.EmployeeID,
+	)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fiber.NewError(
+				fiber.StatusBadRequest,
+				"Belum check-in atau absensi sudah selesai",
+			)
+		}
+
+		c.Log.WithError(err).Error("Failed to find open attendance")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if attendance.CheckInTime <= 0 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Belum melakukan check-in",
+		)
+	}
+
+	if attendance.CheckOutTime > 0 {
+		return nil, fiber.NewError(
+			fiber.StatusConflict,
+			"Anda sudah melakukan check-out",
+		)
+	}
+
+	if nowMilli < attendance.CheckInTime {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Waktu check-out tidak boleh sebelum check-in",
+		)
+	}
+
+	// Verifikasi lokasi kantor.
+	locations, err := c.LocationRepository.GetByEmployeeID(
+		c.DB.WithContext(ctx),
+		request.EmployeeID,
+	)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to get employee locations")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if len(locations) == 0 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Karyawan belum memiliki lokasi kantor",
+		)
+	}
+
+	nearest := math.MaxFloat64
+	locationVerified := false
+
+	for _, location := range locations {
+		lat, err := strconv.ParseFloat(location.Lat, 64)
+		if err != nil {
+			continue
+		}
+
+		lng, err := strconv.ParseFloat(location.Lng, 64)
+		if err != nil {
+			continue
+		}
+
+		distance := distances.DistanceMeter(
+			request.Lat,
+			request.Lng,
+			lat,
+			lng,
+		)
+
+		if distance < nearest {
+			nearest = distance
+		}
+
+		if distance <= float64(location.Radius) {
+			locationVerified = true
+		}
+	}
+
+	if nearest == math.MaxFloat64 {
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Koordinat lokasi kantor tidak valid",
+		)
+	}
+
+	// Verifikasi wajah.
+	faceImageURL, faceResult, err := c.verifyAndStoreFace(
+		ctx,
+		request.EmployeeID,
+		request.File,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Hitung total waktu kerja dikurangi waktu istirahat.
+	checkInTime := time.UnixMilli(attendance.CheckInTime)
+
+	totalWorkMinutes := max(
+		int(now.Sub(checkInTime).Minutes())-attendance.TotalBreakMinutes,
+		0,
+	)
+
+	// Tentukan status berdasarkan hasil verifikasi.
+	// Jika verifikasi gagal, perlu persetujuan admin.
+	status := attendance.Status
+	isApproved := locationVerified && faceResult.Match
+
+	status, err = c.resolveCheckOutStatus(
+		c.DB.WithContext(ctx),
+		&attendance,
+		now,
+		loc,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isApproved {
+		status = "PENDING"
+	}
+
+	attendance.CheckOutTime = nowMilli
+	attendance.TotalWorkMinutes = totalWorkMinutes
+	attendance.Status = status
+	attendance.UpdatedAt = nowMilli
+
+	attendanceLog := &entity.AttendanceLog{
+		AttendanceID:       attendance.ID,
+		Type:               "CHECK_OUT",
+		Time:               nowMilli,
+		Lat:                request.Lat,
+		Lng:                request.Lng,
+		LocationDistance:   nearest,
+		IsLocationVerified: locationVerified,
+		IsFaceVerified:     faceResult.Match,
+		FaceImageURL:       faceImageURL,
+		DeviceInfo:         request.DeviceInfo,
+		IsApproved:         isApproved,
+	}
+
+	// Simpan attendance dan log dalam satu transaksi.
+	err = c.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := c.AttendanceRepository.Update(tx, &attendance); err != nil {
+			c.Log.WithError(err).Error("Failed to update attendance on clock out")
+			return fiber.ErrInternalServerError
+		}
+
+		if err := c.AttendanceLogRepo.Create(tx, attendanceLog); err != nil {
+			c.Log.WithError(err).Error("Failed to create attendance log on clock out")
+			return fiber.ErrInternalServerError
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	response := model.AttendandeToResponse(&attendance)
+
+	if !isApproved {
+		response.Message = "Check-out berhasil, namun verifikasi lokasi dan/atau wajah belum valid. Mohon tunggu persetujuan admin."
 	}
 
 	return response, nil
