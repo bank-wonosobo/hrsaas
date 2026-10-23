@@ -182,3 +182,18 @@ func (r *AttendanceRepository) FindUnclosedBeforeDate(
 		Find(&list).Error
 	return list, err
 }
+
+func (r *AttendanceRepository) FindOpenByEmployeeID(
+	db *gorm.DB,
+	attendance *entity.Attendance,
+	employeeID string,
+) error {
+	return db.
+		Where(
+			"employee_id = ? AND check_in_time > 0 AND (check_out_time IS NULL OR check_out_time = 0)",
+			employeeID,
+		).
+		Order("date DESC").
+		First(attendance).
+		Error
+}
