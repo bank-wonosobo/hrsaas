@@ -1,0 +1,16 @@
+services:
+  face:
+    image: ghcr.io/bank-wonosobo/face-recogntion-api:latest
+    container_name: face
+    restart: always
+    ports:
+      - "5001:5000"
+    networks:
+      - api-net
+    volumes:
+      - ./registered_faces:/app/registered_faces
+
+networks:
+  api-net:
+    driver: bridge
+    external: true

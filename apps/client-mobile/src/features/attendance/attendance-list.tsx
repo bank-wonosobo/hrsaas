@@ -30,6 +30,7 @@ export default function AttendaceList({ ListHeaderComponent }: Props) {
 
   useEffect(() => {
     if (!data || isPlaceholderData) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems((prev) => {
       const list = data.data ?? [];
       if (page === 1) return list;

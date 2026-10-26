@@ -1014,6 +1014,16 @@ func (c *AttendanceUseCase) CheckOut(
 	// 	return nil, err
 	// }
 
+	attendance.CheckOutTime = nowMilli
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		return nil, fiber.ErrInternalServerError
+	}
+	attendance.Status, err = c.resolveCheckOutStatus(tx, &attendance, now.In(loc), loc)
+	if err != nil {
+		return nil, err
+	}
+
 	checkInTime := time.UnixMilli(attendance.CheckInTime)
 	totalWorkMinutes := max(int(now.Sub(checkInTime).Minutes())-attendance.TotalBreakMinutes, 0)
 	attendance.TotalWorkMinutes = totalWorkMinutes
@@ -1835,7 +1845,12 @@ func (c *AttendanceUseCase) ClockIn(
 
 	shiftDay := new(entity.ShiftDay)
 
-	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(c.DB.WithContext(ctx), shiftDay, shifts[0].ID, int(now.Weekday()))
+	err = c.ShiftDayRepo.FindByShiftIDAndWeekday(
+		c.DB.WithContext(ctx),
+		shiftDay,
+		shifts[0].ID,
+		int(now.Weekday()),
+	)
 
 	if err != nil {
 		return nil, fiber.ErrInternalServerError
@@ -2044,11 +2059,16 @@ func (c *AttendanceUseCase) ClockOut(
 	}
 
 	// Verifikasi wajah.
-	faceImageURL, faceResult, err := c.verifyAndStoreFace(
-		ctx,
-		request.EmployeeID,
-		request.File,
-	)
+	// faceImageURL, faceResult, err := c.verifyAndStoreFace(
+	// 	ctx,
+	// 	request.EmployeeID,
+	// 	request.File,
+	// )
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
 	if err != nil {
 		return nil, err
 	}

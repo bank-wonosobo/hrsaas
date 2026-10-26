@@ -1,9 +1,8 @@
-import { PhotoResult } from "@/schema/photo-schema";
 import ReactNativeBlobUtil from "react-native-blob-util";
 
 export const uploadSignUrl = async (
   uploadUrl: string,
-  file: PhotoResult,
+  file: { uri: string; mimeType: string },
 ): Promise<void> => {
   // react-native-blob-util tidak menggunakan prefix file://
   const path = file.uri.replace("file://", "");
@@ -12,7 +11,7 @@ export const uploadSignUrl = async (
     "PUT",
     uploadUrl,
     {
-      "Content-Type": "image/jpeg",
+      "Content-Type": file.mimeType,
     },
     ReactNativeBlobUtil.wrap(path),
   );

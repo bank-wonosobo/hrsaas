@@ -36,7 +36,7 @@ function formatAttendanceDate(dateMs: number) {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    timeZone: "UTC",
+    timeZone: "Asia/Jakarta",
   });
 }
 
@@ -72,7 +72,9 @@ export default function AttendanceItem({ attendance }: Props) {
             </Text>
           </View>
           <Text className="font-poppins-bold text-text text-base">
-            {attendance.check_in_time ? formatTime(attendance.check_in_time) : "--"}
+            {attendance.check_in_time
+              ? formatTime(attendance.check_in_time)
+              : "--"}
           </Text>
         </View>
 
