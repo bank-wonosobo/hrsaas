@@ -2059,11 +2059,16 @@ func (c *AttendanceUseCase) ClockOut(
 	}
 
 	// Verifikasi wajah.
-	faceImageURL, faceResult, err := c.verifyAndStoreFace(
-		ctx,
-		request.EmployeeID,
-		request.File,
-	)
+	// faceImageURL, faceResult, err := c.verifyAndStoreFace(
+	// 	ctx,
+	// 	request.EmployeeID,
+	// 	request.File,
+	// )
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
 	if err != nil {
 		return nil, err
 	}
