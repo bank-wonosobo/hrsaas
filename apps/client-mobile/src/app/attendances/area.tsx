@@ -144,8 +144,19 @@ export default function AttendaceArea() {
               Profile
             </Text>
             {user && <AttendanceProfile user={user} />}
-            <Text className="font-poppins-semibold text-md my-2">
-              Shif Karyawan
+            <Text className="font-poppins-semibold text-md my-3">
+              {shifts?.data[0].name || "Shift"} -{" "}
+              {
+                [
+                  "Senin",
+                  "Selasa",
+                  "Rabu",
+                  "Kamis",
+                  "Jumat",
+                  "Sabtu",
+                  "Minggu",
+                ][currentShiftDay?.weekday ?? 0 + 1]
+              }
             </Text>
             {currentShiftDay ? (
               <AttendanceShif

@@ -1,4 +1,3 @@
-import { formatTime } from "@/lib/utils/format-time";
 import { ShifDay } from "@/schema/shift-schema";
 import clsx from "clsx";
 import { LogIn, LogOut } from "lucide-react-native";
@@ -69,7 +68,7 @@ export default function AttendanceShift({
                 isActive ? "text-white" : "text-gray-700",
               )}
             >
-              {item.time !== undefined ? formatTime(item.time) : "-"}
+              {item.time ? item.time : "-"}
             </Text>
           </View>
         );
