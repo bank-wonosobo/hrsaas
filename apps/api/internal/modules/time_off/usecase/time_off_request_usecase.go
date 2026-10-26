@@ -96,6 +96,7 @@ func (c *TimeOffRequestUseCase) CreateRequest(
 	if startDate > endDate {
 		return nil, fiber.NewError(fiber.StatusBadRequest, "Invalid start_date or end_date")
 	}
+	
 	// Derive requested days from the date range (inclusive).
 	const dayMillis = 24 * 60 * 60 * 1000
 	request.RequestedDays = int((endDate-startDate)/dayMillis) + 1
@@ -138,6 +139,7 @@ func (c *TimeOffRequestUseCase) CreateRequest(
 			"Kuota Pengajuan Cuti Harian Sudah Penuh",
 		)
 	}
+
 
 	timeOffType, err := c.TimeOffTypeRepo.FindByID(tx, request.TimeOffTypeID)
 	if err != nil {

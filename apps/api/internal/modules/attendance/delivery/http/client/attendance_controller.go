@@ -129,7 +129,7 @@ func (c *AttendanceController) CheckOut(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	result, err := c.AttendanceUseCase.CheckOut(ctx.UserContext(), request)
+	result, err := c.AttendanceUseCase.ClockOut(ctx.UserContext(), request)
 	if err != nil {
 		c.Log.WithError(err).Error("failed to check out attendance")
 		return err
