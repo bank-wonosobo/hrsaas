@@ -14,6 +14,7 @@ import { FormEvent, useState } from "react";
 import {
   Download,
   FileSpreadsheet,
+  LoaderCircle,
   Plus,
   RotateCcw,
   Search,
@@ -22,6 +23,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import ImportEmployee from "./import-employee";
+import { exportEmployee } from "../services/export-employee";
+import toast from "react-hot-toast";
 
 export default function MenuEmployee() {
   const searchParams = useSearchParams();
@@ -29,6 +32,30 @@ export default function MenuEmployee() {
   const currentKey = searchParams.get("key") ?? "";
   const [key, setKey] = useState(currentKey);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  async function handleExport() {
+    setIsExporting(true);
+    try {
+      const file = await exportEmployee(currentKey);
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "export-employees.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal mengunduh data karyawan.",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,11 +105,15 @@ export default function MenuEmployee() {
             </Button>
             <Button
               variant="outline"
-              disabled
-              title="Fitur unduh data karyawan belum tersedia"
+              onClick={handleExport}
+              disabled={isExporting}
             >
-              <Download />
-              Unduh
+              {isExporting ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                <Download />
+              )}
+              {isExporting ? "Menyiapkan..." : "Unduh"}
             </Button>
             <Button asChild>
               <Link href="/employees/create">
