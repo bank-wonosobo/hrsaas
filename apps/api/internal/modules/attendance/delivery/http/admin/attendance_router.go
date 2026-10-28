@@ -15,6 +15,7 @@ func (c *AttendanceController) RegisterRoutes(
 	route.Get("/_export", protected("ATTENDANCES", c.Export)...)
 	route.Get("/logs", protected("ATTENDANCES", c.ListLog)...)
 	route.Get("/logs/pending", protected("ATTENDANCES", c.ListPendingLog)...)
+	route.Post("/logs/pending/approve-all", protected("ATTENDANCES", c.ApproveAllPendingLog)...)
 	route.Patch("/logs/:logID/review", protected("ATTENDANCES", c.ReviewLog)...)
 	route.Get("/:attendanceID", protected("ATTENDANCES", c.Detail)...)
 	route.Put("/:attendanceID", protected("ATTENDANCES", c.Update)...)

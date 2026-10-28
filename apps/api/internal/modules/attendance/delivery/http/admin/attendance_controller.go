@@ -214,6 +214,32 @@ func (c *AttendanceController) ReviewLog(ctx *fiber.Ctx) error {
 	return ctx.JSON(response.WebResponse[*model.AttendanceLogResponse]{Data: result})
 }
 
+func (c *AttendanceController) ApproveAllPendingLog(ctx *fiber.Ctx) error {
+	request := new(model.ApproveAllPendingLogsRequest)
+	if len(ctx.Body()) > 0 {
+		if err := ctx.BodyParser(request); err != nil {
+			c.Log.WithError(err).Error("failed to parse request body")
+			return fiber.ErrBadRequest
+		}
+	}
+
+	companyID := auth.GetCompanyId(ctx)
+	reviewerID := auth.GetUser(ctx).ID
+
+	result, err := c.UseCase.ApproveAllPendingLogs(
+		ctx.UserContext(),
+		companyID,
+		reviewerID,
+		request,
+	)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to approve all pending attendance logs")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[*model.ApproveAllLogsResponse]{Data: result})
+}
+
 func (c *AttendanceController) ManualInput(ctx *fiber.Ctx) error {
 	request := new(model.ManualAttendanceRequest)
 	if err := ctx.BodyParser(request); err != nil {

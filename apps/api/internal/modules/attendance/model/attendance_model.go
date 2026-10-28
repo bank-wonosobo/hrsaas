@@ -110,6 +110,14 @@ type ReviewLogRequest struct {
 	Reason  *string `json:"reason,omitempty"`
 }
 
+type ApproveAllPendingLogsRequest struct {
+	LogIDs []string `json:"log_ids,omitempty"`
+}
+
+type ApproveAllLogsResponse struct {
+	TotalApproved int `json:"total_approved"`
+}
+
 type SearchAttendanceLogRequest struct {
 	CompanyID    string `json:"-"                       validate:"required,uuid4"`
 	AttendanceID string `json:"attendance_id,omitempty" validate:"omitempty,uuid4"`
