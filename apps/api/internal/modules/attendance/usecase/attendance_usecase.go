@@ -1471,15 +1471,15 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, err
 	}
 
+	attendance.Status = status
 	if attendance.CheckOutTime > 0 {
-		attendance.Status = status
-		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance, now, loc)
+		outStatus, err := c.resolveCheckOutStatus(tx, attendance, now, loc)
 		if err != nil {
 			return nil, err
 		}
+		attendance.Status = outStatus
 	}
 
-	attendance.Status = status
 	if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
 		return nil, fiber.ErrInternalServerError
 	}
@@ -1495,6 +1495,96 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, fiber.ErrInternalServerError
 	}
 	return model.AttendanceLogToResponse(log), nil
+}
+
+func (c *AttendanceUseCase) ApproveAllPendingLogs(
+	ctx context.Context, companyID, reviewerID string, req *model.ApproveAllPendingLogsRequest,
+) (*model.ApproveAllLogsResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	var logIDs []string
+	if req != nil && len(req.LogIDs) > 0 {
+		logIDs = req.LogIDs
+	}
+
+	logs, err := c.AttendanceLogRepo.FindPendingLogsByCompany(tx, companyID, logIDs...)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to find pending logs")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if len(logs) == 0 {
+		return &model.ApproveAllLogsResponse{TotalApproved: 0}, nil
+	}
+
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to load attendance timezone")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	now := time.Now().In(loc)
+	nowMilli := now.UnixMilli()
+
+	attendanceIDs := make(map[string]struct{})
+
+	for i := range logs {
+		log := &logs[i]
+		log.IsApproved = true
+		log.ReviewedAt = nowMilli
+		log.ReviewedBy = reviewerID
+
+		if err := c.AttendanceLogRepo.Update(tx, log); err != nil {
+			c.Log.WithError(err).Errorf("Failed to update attendance log %s", log.ID)
+			return nil, fiber.ErrInternalServerError
+		}
+
+		attendanceIDs[log.AttendanceID] = struct{}{}
+	}
+
+	for attendanceID := range attendanceIDs {
+		attendance := new(entity.Attendance)
+		if err := c.AttendanceRepository.FindByIdAndCompany(tx, attendance, attendanceID, companyID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			c.Log.WithError(err).Errorf("Failed to find attendance %s", attendanceID)
+			return nil, fiber.ErrInternalServerError
+		}
+
+		status, err := c.resolveCheckInStatus(
+			tx,
+			attendance.EmployeeID,
+			time.UnixMilli(attendance.CheckInTime).In(time.Local),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		attendance.Status = status
+		if attendance.CheckOutTime > 0 {
+			outStatus, err := c.resolveCheckOutStatus(tx, attendance, now, loc)
+			if err != nil {
+				return nil, err
+			}
+			attendance.Status = outStatus
+		}
+
+		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+			c.Log.WithError(err).Errorf("Failed to update attendance %s", attendanceID)
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction in ApproveAllPendingLogs")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return &model.ApproveAllLogsResponse{
+		TotalApproved: len(logs),
+	}, nil
 }
 func (c *AttendanceUseCase) resolveCheckOutStatus(
 	tx *gorm.DB,

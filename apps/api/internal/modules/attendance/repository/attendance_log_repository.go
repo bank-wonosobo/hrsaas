@@ -74,6 +74,29 @@ func (r *AttendanceLogRepository) SearchPending(
 	return logs, total, nil
 }
 
+func (r *AttendanceLogRepository) FindPendingLogsByCompany(
+	tx *gorm.DB, companyID string, logIDs ...string,
+) ([]entity.AttendanceLog, error) {
+	q := tx.Model(&entity.AttendanceLog{}).
+		Joins("JOIN attendances ON attendances.id = attendance_logs.attendance_id").
+		Where("attendances.company_id = ?", companyID).
+		Where("attendance_logs.is_approved = ? AND (attendance_logs.reviewed_at IS NULL OR attendance_logs.reviewed_at = 0)", false)
+
+	if len(logIDs) > 0 {
+		q = q.Where("attendance_logs.id IN ?", logIDs)
+	}
+
+	var logs []entity.AttendanceLog
+	if err := q.
+		Select("attendance_logs.*").
+		Order("attendance_logs.time ASC").
+		Find(&logs).Error; err != nil {
+		return nil, err
+	}
+
+	return logs, nil
+}
+
 func (r *AttendanceLogRepository) FindLogByIdAndCompany(
 	tx *gorm.DB, log *entity.AttendanceLog, id, companyID string,
 ) error {
