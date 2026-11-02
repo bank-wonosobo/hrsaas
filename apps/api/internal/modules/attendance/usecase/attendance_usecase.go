@@ -692,6 +692,9 @@ func (c *AttendanceUseCase) Detail(
 
 	presignClient := s3.NewPresignClient(c.S3Client.Client)
 	for i := range logs {
+		if logs[i].FaceImageURL == "" {
+			continue
+		}
 		parsedURL, err := url.Parse(logs[i].FaceImageURL)
 		if err != nil {
 			panic(err)
@@ -910,6 +913,7 @@ func (c *AttendanceUseCase) CheckIn(
 		).UnixMilli()
 
 		attendance = &entity.Attendance{
+			ID:          uuid.NewString(),
 			CompanyID:   request.CompanyID,
 			EmployeeID:  request.EmployeeID,
 			Date:        startOfDay,
@@ -1394,6 +1398,9 @@ func (c *AttendanceUseCase) SearchPendingLogs(
 	}
 	presignClient := s3.NewPresignClient(c.S3Client.Client)
 	for i := range logs {
+		if logs[i].FaceImageURL == "" {
+			continue
+		}
 		parsedURL, err := url.Parse(logs[i].FaceImageURL)
 		if err != nil {
 			panic(err)
@@ -1471,15 +1478,15 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, err
 	}
 
+	attendance.Status = status
 	if attendance.CheckOutTime > 0 {
-		attendance.Status = status
-		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance, now, loc)
+		outStatus, err := c.resolveCheckOutStatus(tx, attendance, now, loc)
 		if err != nil {
 			return nil, err
 		}
+		attendance.Status = outStatus
 	}
 
-	attendance.Status = status
 	if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
 		return nil, fiber.ErrInternalServerError
 	}
@@ -1495,6 +1502,96 @@ func (c *AttendanceUseCase) ReviewLog(
 		return nil, fiber.ErrInternalServerError
 	}
 	return model.AttendanceLogToResponse(log), nil
+}
+
+func (c *AttendanceUseCase) ApproveAllPendingLogs(
+	ctx context.Context, companyID, reviewerID string, req *model.ApproveAllPendingLogsRequest,
+) (*model.ApproveAllLogsResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	var logIDs []string
+	if req != nil && len(req.LogIDs) > 0 {
+		logIDs = req.LogIDs
+	}
+
+	logs, err := c.AttendanceLogRepo.FindPendingLogsByCompany(tx, companyID, logIDs...)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to find pending logs")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if len(logs) == 0 {
+		return &model.ApproveAllLogsResponse{TotalApproved: 0}, nil
+	}
+
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to load attendance timezone")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	now := time.Now().In(loc)
+	nowMilli := now.UnixMilli()
+
+	attendanceIDs := make(map[string]struct{})
+
+	for i := range logs {
+		log := &logs[i]
+		log.IsApproved = true
+		log.ReviewedAt = nowMilli
+		log.ReviewedBy = reviewerID
+
+		if err := c.AttendanceLogRepo.Update(tx, log); err != nil {
+			c.Log.WithError(err).Errorf("Failed to update attendance log %s", log.ID)
+			return nil, fiber.ErrInternalServerError
+		}
+
+		attendanceIDs[log.AttendanceID] = struct{}{}
+	}
+
+	for attendanceID := range attendanceIDs {
+		attendance := new(entity.Attendance)
+		if err := c.AttendanceRepository.FindByIdAndCompany(tx, attendance, attendanceID, companyID); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			c.Log.WithError(err).Errorf("Failed to find attendance %s", attendanceID)
+			return nil, fiber.ErrInternalServerError
+		}
+
+		status, err := c.resolveCheckInStatus(
+			tx,
+			attendance.EmployeeID,
+			time.UnixMilli(attendance.CheckInTime).In(time.Local),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		attendance.Status = status
+		if attendance.CheckOutTime > 0 {
+			outStatus, err := c.resolveCheckOutStatus(tx, attendance, now, loc)
+			if err != nil {
+				return nil, err
+			}
+			attendance.Status = outStatus
+		}
+
+		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
+			c.Log.WithError(err).Errorf("Failed to update attendance %s", attendanceID)
+			return nil, fiber.ErrInternalServerError
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction in ApproveAllPendingLogs")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return &model.ApproveAllLogsResponse{
+		TotalApproved: len(logs),
+	}, nil
 }
 func (c *AttendanceUseCase) resolveCheckOutStatus(
 	tx *gorm.DB,
@@ -1603,6 +1700,48 @@ func (c *AttendanceUseCase) ResolveMissedCheckout(ctx context.Context) (int, err
 	return len(stale), nil
 }
 
+func parseManualTime(value string, loc *time.Location) (int64, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return 0, errors.New("waktu tidak boleh kosong")
+	}
+
+	if millis, err := strconv.ParseInt(trimmed, 10, 64); err == nil {
+		return millis, nil
+	}
+
+	formats := []string{
+		time.RFC3339,
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04",
+		"2006-01-02 15:04",
+		"2006-01-02",
+	}
+	for _, layout := range formats {
+		if t, err := time.ParseInLocation(layout, trimmed, loc); err == nil {
+			return t.UnixMilli(), nil
+		}
+	}
+	return 0, errors.New(
+		"format waktu tidak valid, gunakan format: 2006-01-02 15:04:05 atau 2006-01-02",
+	)
+}
+
+func getManualLatitude(r *model.ManualAttendanceRequest) float64 {
+	if r.Lat != 0 {
+		return r.Lat
+	}
+	return r.LatAlt
+}
+
+func getManualLongitude(r *model.ManualAttendanceRequest) float64 {
+	if r.Lng != 0 {
+		return r.Lng
+	}
+	return r.LngAlt
+}
+
 func (c *AttendanceUseCase) ManualInput(
 	ctx context.Context,
 	companyID string,
@@ -1624,7 +1763,17 @@ func (c *AttendanceUseCase) ManualInput(
 
 	now := time.Now().In(loc)
 
-	checkInTime := time.UnixMilli(request.CheckInTime).In(loc)
+	// Parse check_in_time dari string ke int64
+	checkInTimeMilli, err := parseManualTime(request.CheckInTime, loc)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to parse check_in_time")
+		return nil, fiber.NewError(
+			fiber.StatusBadRequest,
+			"Format check_in_time tidak valid. Gunakan format: 2006-01-02 15:04:05 atau 2006-01-02",
+		)
+	}
+
+	checkInTime := time.UnixMilli(checkInTimeMilli).In(loc)
 	startOfDay := time.Date(
 		checkInTime.Year(), checkInTime.Month(), checkInTime.Day(),
 		0, 0, 0, 0,
@@ -1632,10 +1781,39 @@ func (c *AttendanceUseCase) ManualInput(
 	)
 	startOfDayMilli := startOfDay.UnixMilli()
 
-	// === CHECK-IN (sama persis kaya flow CheckIn) ===
+	// Parse check_out_time dari string ke int64 (jika ada)
+	var checkOutTimeMilli int64
+	if request.CheckOutTime != nil && strings.TrimSpace(*request.CheckOutTime) != "" {
+		checkOutTimeMilli, err = parseManualTime(*request.CheckOutTime, loc)
+		if err != nil {
+			c.Log.WithError(err).Error("Failed to parse check_out_time")
+			return nil, fiber.NewError(
+				fiber.StatusBadRequest,
+				"Format check_out_time tidak valid. Gunakan format: 2006-01-02 15:04:05 atau 2006-01-02",
+			)
+		}
+	}
+
+	// Upload foto wajah jika ada file gambar yang dikirimkan (opsional)
+	var faceImageURL string
+	if request.File != nil {
+		uploadedURL, err := c.uploadFace(ctx, request.File)
+		if err != nil {
+			c.Log.WithError(err).Error("Failed to upload face image on manual input")
+			return nil, fiber.NewError(
+				fiber.StatusInternalServerError,
+				"Gagal mengunggah foto wajah",
+			)
+		}
+		faceImageURL = uploadedURL
+	}
+
+	lat := getManualLatitude(request)
+	lng := getManualLongitude(request)
+
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
-		tx, attendance, request.EmployeeID, request.CheckInTime,
+		tx, attendance, request.EmployeeID, checkInTimeMilli,
 	)
 	existingAttendance := err == nil
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1651,10 +1829,11 @@ func (c *AttendanceUseCase) ManualInput(
 		}
 
 		attendance = &entity.Attendance{
+			ID:          uuid.NewString(),
 			CompanyID:   companyID,
 			EmployeeID:  request.EmployeeID,
 			Date:        startOfDayMilli,
-			CheckInTime: request.CheckInTime,
+			CheckInTime: checkInTimeMilli,
 			Status:      status,
 			CreatedAt:   checkInTime.UnixMilli(),
 			UpdatedAt:   checkInTime.UnixMilli(),
@@ -1666,20 +1845,29 @@ func (c *AttendanceUseCase) ManualInput(
 		}
 	} else {
 		// Kalau sudah ada, update check-in time
-		attendance.CheckInTime = request.CheckInTime
+		attendance.CheckInTime = checkInTimeMilli
 		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
 			c.Log.WithError(err).Error("Failed to update attendance check-in")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		// Hapus logs lama agar tidak ada log duplikat/kosong dari input sebelumnya
+		if err := c.AttendanceLogRepo.DeleteByAttendanceID(tx, attendance.ID); err != nil {
+			c.Log.WithError(err).Error("Failed to delete previous attendance logs on manual update")
 			return nil, fiber.ErrInternalServerError
 		}
 	}
 
 	// Buat attendance log CHECK_IN (sama kaya CheckIn)
 	checkInLog := &entity.AttendanceLog{
-		AttendanceID:       attendance.ID,
+		// AttendanceID:       attendance.ID,
 		Type:               "CHECK_IN",
-		Time:               request.CheckInTime,
+		Time:               checkInTimeMilli,
+		Lat:                lat,
+		Lng:                lng,
 		IsLocationVerified: true,
-		IsFaceVerified:     true,
+		IsFaceVerified:     faceImageURL != "",
+		FaceImageURL:       faceImageURL,
 		IsApproved:         true,
 		DeviceInfo:         request.DeviceInfo,
 	}
@@ -1689,16 +1877,16 @@ func (c *AttendanceUseCase) ManualInput(
 	}
 
 	// === CHECK-OUT (sama persis kaya flow CheckOut) ===
-	if request.CheckOutTime != nil && *request.CheckOutTime > 0 {
-		attendance.CheckOutTime = *request.CheckOutTime
+	if checkOutTimeMilli > 0 {
+		attendance.CheckOutTime = checkOutTimeMilli
 		attendance.Status, err = c.resolveCheckOutStatus(tx, attendance, now, loc)
 		if err != nil {
 			return nil, err
 		}
 
 		// Hitung TotalWorkMinutes sama kaya CheckOut
-		checkIn := time.UnixMilli(attendance.CheckInTime)
-		checkOut := time.UnixMilli(*request.CheckOutTime)
+		checkIn := time.UnixMilli(checkInTimeMilli)
+		checkOut := time.UnixMilli(checkOutTimeMilli)
 		totalWorkMinutes := max(
 			int(checkOut.Sub(checkIn).Minutes())-attendance.TotalBreakMinutes,
 			0,
@@ -1710,15 +1898,17 @@ func (c *AttendanceUseCase) ManualInput(
 			return nil, fiber.ErrInternalServerError
 		}
 
-		// Buat attendance log CHECK_OUT (sama kaya CheckOut)
 		checkOutLog := &entity.AttendanceLog{
-			AttendanceID:       attendance.ID,
+			// AttendanceID:       attendance.ID,
 			Type:               "CHECK_OUT",
-			Time:               *request.CheckOutTime,
+			Time:               checkOutTimeMilli,
+			Lat:                lat,
+			Lng:                lng,
 			IsLocationVerified: true,
-			IsFaceVerified:     true,
+			IsFaceVerified:     faceImageURL != "",
+			FaceImageURL:       faceImageURL,
 			IsApproved:         true,
-			DeviceInfo:         "Manual Input",
+			DeviceInfo:         request.DeviceInfo,
 		}
 		if err := c.AttendanceLogRepo.Create(tx, checkOutLog); err != nil {
 			c.Log.WithError(err).Error("Failed to create manual check-out log")
@@ -1731,7 +1921,18 @@ func (c *AttendanceUseCase) ManualInput(
 		return nil, fiber.ErrInternalServerError
 	}
 
-	return model.AttendandeToResponse(attendance), nil
+	// Reload attendance dengan preload Employee agar response lengkap
+	response := new(entity.Attendance)
+	if err := c.AttendanceRepository.FindByIdAndCompany(
+		c.DB.WithContext(ctx), response, attendance.ID, companyID,
+		"Employee", "Employee.EmployeeContract", "Employee.EmployeeContract.Position",
+	); err != nil {
+		c.Log.WithError(err).
+			Warn("Failed to reload attendance after manual input, returning basic response")
+		return model.AttendandeToResponse(attendance), nil
+	}
+
+	return model.AttendandeToResponse(response), nil
 }
 
 func (c *AttendanceUseCase) ClockIn(
