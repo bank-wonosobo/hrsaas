@@ -247,6 +247,15 @@ func (c *AttendanceController) ManualInput(ctx *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
+	// File gambar bersifat opsional (bisa dikirim dengan key "file" atau "image")
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		file, _ = ctx.FormFile("image")
+	}
+	if file != nil {
+		request.File = file
+	}
+
 	companyID := auth.GetCompanyId(ctx)
 	result, err := c.UseCase.ManualInput(ctx.UserContext(), companyID, request)
 	if err != nil {

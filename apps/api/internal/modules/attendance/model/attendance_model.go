@@ -76,10 +76,15 @@ type UpdateAttendanceRequest struct {
 }
 
 type ManualAttendanceRequest struct {
-	EmployeeID   string `json:"employee_id"              validate:"required,uuid4"`
-	CheckInTime  int64  `json:"check_in_time"            validate:"required"`
-	CheckOutTime *int64 `json:"check_out_time,omitempty"`
-	DeviceInfo   string `json:"device_info"              validate:"required"`
+	EmployeeID   string                `json:"employee_id"              form:"employee_id"    validate:"required,uuid4"`
+	CheckInTime  string                `json:"check_in_time"            form:"check_in_time"`
+	CheckOutTime *string               `json:"check_out_time,omitempty" form:"check_out_time"`
+	Lat          float64               `json:"latitude,omitempty"       form:"latitude"`
+	Lng          float64               `json:"longitude,omitempty"      form:"longitude"`
+	LatAlt       float64               `json:"lat,omitempty"            form:"lat"`
+	LngAlt       float64               `json:"lng,omitempty"            form:"lng"`
+	DeviceInfo   string                `json:"device_info"              form:"device_info"    validate:"required"`
+	File         *multipart.FileHeader `json:"-"                        form:"-"`
 }
 
 type SearchAttendanceRequest struct {
