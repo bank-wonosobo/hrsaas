@@ -1844,6 +1844,14 @@ func (c *AttendanceUseCase) ManualInput(
 			return nil, fiber.ErrInternalServerError
 		}
 	} else {
+		// Jika data yang ada sebelumnya memiliki ID kosong di database (legacy bug), generate ID baru
+		if attendance.ID == "" {
+			attendance.ID = uuid.NewString()
+			_ = tx.Model(&entity.Attendance{}).
+				Where("employee_id = ? AND date = ? AND (id = '' OR id IS NULL)", attendance.EmployeeID, attendance.Date).
+				Update("id", attendance.ID).Error
+		}
+
 		// Kalau sudah ada, update check-in time
 		attendance.CheckInTime = checkInTimeMilli
 		if err := c.AttendanceRepository.Update(tx, attendance); err != nil {
@@ -1858,9 +1866,8 @@ func (c *AttendanceUseCase) ManualInput(
 		}
 	}
 
-	// Buat attendance log CHECK_IN (sama kaya CheckIn)
 	checkInLog := &entity.AttendanceLog{
-		// AttendanceID:       attendance.ID,
+		AttendanceID:       attendance.ID,
 		Type:               "CHECK_IN",
 		Time:               checkInTimeMilli,
 		Lat:                lat,
@@ -1899,7 +1906,7 @@ func (c *AttendanceUseCase) ManualInput(
 		}
 
 		checkOutLog := &entity.AttendanceLog{
-			// AttendanceID:       attendance.ID,
+			AttendanceID:       attendance.ID,
 			Type:               "CHECK_OUT",
 			Time:               checkOutTimeMilli,
 			Lat:                lat,
