@@ -25,7 +25,7 @@ type Attendance struct {
 	Employee employeeEntity.Employee `gorm:"foreignKey:EmployeeID;references:ID"`
 }
 
-// BeforeCreate hook to set UUID
+// // BeforeCreate hook to set UUID
 // func (u *Attendance) BeforeCreate(tx *gorm.DB) (err error) {
 // 	if u.ID == "" {
 // 		u.ID = uuid.NewString()
