@@ -1728,20 +1728,6 @@ func parseManualTime(value string, loc *time.Location) (int64, error) {
 	)
 }
 
-func getManualLatitude(r *model.ManualAttendanceRequest) float64 {
-	if r.Lat != 0 {
-		return r.Lat
-	}
-	return r.LatAlt
-}
-
-func getManualLongitude(r *model.ManualAttendanceRequest) float64 {
-	if r.Lng != 0 {
-		return r.Lng
-	}
-	return r.LngAlt
-}
-
 func (c *AttendanceUseCase) ManualInput(
 	ctx context.Context,
 	companyID string,
@@ -1808,9 +1794,6 @@ func (c *AttendanceUseCase) ManualInput(
 		faceImageURL = uploadedURL
 	}
 
-	lat := getManualLatitude(request)
-	lng := getManualLongitude(request)
-
 	attendance := new(entity.Attendance)
 	err = c.AttendanceRepository.FindByEmployeeIDAndDate(
 		tx, attendance, request.EmployeeID, checkInTimeMilli,
@@ -1870,8 +1853,8 @@ func (c *AttendanceUseCase) ManualInput(
 		AttendanceID:       attendance.ID,
 		Type:               "CHECK_IN",
 		Time:               checkInTimeMilli,
-		Lat:                lat,
-		Lng:                lng,
+		Lat:                request.Lat,
+		Lng:                request.Lng,
 		IsLocationVerified: true,
 		IsFaceVerified:     faceImageURL != "",
 		FaceImageURL:       faceImageURL,
@@ -1909,8 +1892,8 @@ func (c *AttendanceUseCase) ManualInput(
 			AttendanceID:       attendance.ID,
 			Type:               "CHECK_OUT",
 			Time:               checkOutTimeMilli,
-			Lat:                lat,
-			Lng:                lng,
+			Lat:                request.Lat,
+			Lng:                request.Lng,
 			IsLocationVerified: true,
 			IsFaceVerified:     faceImageURL != "",
 			FaceImageURL:       faceImageURL,
