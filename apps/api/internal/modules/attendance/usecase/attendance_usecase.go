@@ -154,10 +154,11 @@ func (c *AttendanceUseCase) FaceStatus(
 		return nil, fiber.ErrNotFound
 	}
 
-	result := face.CheckFaceExistence(c.FaceServiceURL+"/check-exists", employee.ID)
+	// result := face.CheckFaceExistence(c.FaceServiceURL+"/check-exists", employee.ID)
+	result := true
 	return &model.FaceStatusResponse{
 		EmployeeID: employee.ID,
-		Registered: result.Registered,
+		Registered: result,
 	}, nil
 }
 
