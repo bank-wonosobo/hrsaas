@@ -12,6 +12,7 @@ func (c *TimeOffBalanceController) RegisterRoutes(
 ) {
 	route := router.Group("/time-off-balances")
 	route.Post("/_set", protected("TIME_OFF_BALANCES", c.SetBalance)...)
+	route.Post("/_set-all", protected("TIME_OFF_BALANCES", c.SetAllBalances)...)
 	route.Get("/", protected("TIME_OFF_BALANCES", c.ListBalancesByEmployee)...)
 	route.Put("/:id", protected("TIME_OFF_BALANCES", c.Update)...)
 	route.Delete("/:id", protected("TIME_OFF_BALANCES", c.Delete)...)

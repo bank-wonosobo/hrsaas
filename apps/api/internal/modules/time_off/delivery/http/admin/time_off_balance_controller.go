@@ -93,3 +93,21 @@ func (c *TimeOffBalanceController) Delete(ctx *fiber.Ctx) error {
 		Data: nil,
 	})
 }
+
+func (c *TimeOffBalanceController) SetAllBalances(ctx *fiber.Ctx) error {
+	request := new(model.SetAllTimeOffBalancesRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.ErrBadRequest
+	}
+
+	result, err := c.BalanceUseCase.SetAllBalances(ctx.UserContext(), request)
+	if err != nil {
+		c.Log.WithError(err).Error("failed to set all time off balances")
+		return err
+	}
+
+	return ctx.JSON(response.WebResponse[[]model.TimeOffBalanceResponse]{
+		Data: result,
+	})
+}
