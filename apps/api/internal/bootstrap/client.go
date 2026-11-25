@@ -246,6 +246,7 @@ func BootstrapClient(cfg *ClientBootstrapConfig) {
 		cfg.Validator,
 		timeOffBalanceRepository,
 		timeOffTypeRepository,
+		employeeRepository,
 	)
 	timeOffRequestUseCase := timeOffUc.NewTimeOffRequestUseCase(
 		cfg.DB,

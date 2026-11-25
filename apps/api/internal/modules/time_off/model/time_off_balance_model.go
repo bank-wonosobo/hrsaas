@@ -32,6 +32,13 @@ type SetTimeOffBalanceRequest struct {
 	RemainingDays *int   `json:"remaining_days,omitempty" validate:"omitempty,min=0"`
 }
 
+type SetAllTimeOffBalancesRequest struct {
+	CompanyID     string `json:"company_id"      validate:"required"`
+	TimeOffTypeID string `json:"time_off_type_id" validate:"required"`
+	PeriodYear    int    `json:"period_year"      validate:"required,min=2000"`
+	EntitledDays  int    `json:"entitled_days"    validate:"min=0"`
+}
+
 type UpdateTimeOffBalanceRequest struct {
 	PeriodYear    *int `json:"period_year,omitempty"    validate:"min=2000"`
 	EntitledDays  *int `json:"entitled_days,omitempty"  validate:"omitempty,min=0"`
