@@ -1004,8 +1004,13 @@ func (c *AttendanceUseCase) CheckOut(
 	// 	return nil, err
 	// }
 
-	faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
+	// faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	uploaded, err := c.UploadUseCase.Upload(ctx, &upload.UploadRequest{File: request.File})
 	if err != nil {
+		c.Log.WithError(err).Error("Failed to upload face image")
 		return nil, err
 	}
 
@@ -1046,9 +1051,9 @@ func (c *AttendanceUseCase) CheckOut(
 		Lng:                request.Lng,
 		LocationDistance:   locationDistance,
 		IsLocationVerified: isInRange,
-		IsFaceVerified:     faceResult.Match,
+		IsFaceVerified:     true,
 		// FaceConfidence:     0, // Python /recognize belum mengembalikan confidence
-		FaceImageURL: faceImageURL,
+		FaceImageURL: uploaded.Url,
 		DeviceInfo:   request.DeviceInfo,
 		IsApproved:   isInRange,
 	}
