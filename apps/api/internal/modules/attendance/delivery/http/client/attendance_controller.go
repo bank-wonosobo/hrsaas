@@ -124,18 +124,44 @@ func (c *AttendanceController) CheckIn(ctx *fiber.Ctx) error {
 }
 
 func (c *AttendanceController) CheckOut(ctx *fiber.Ctx) error {
-	request, err := c.parseRequest(ctx)
-	if err != nil {
-		return err
+	request := new(model.CheckInAttendanceRequest)
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.WithError(err).Error("failed to parse request body")
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 	}
+
+	file, err := ctx.FormFile("file")
+	if err != nil {
+		c.Log.WithError(err).Error("failed to read selfie file")
+		return fiber.NewError(fiber.StatusBadRequest, "Foto selfie harus diunggah")
+	}
+	request.File = file
+
+	request.CompanyID = auth.GetCompanyId(ctx)
+	request.EmployeeID = auth.GetEmployeeId(ctx)
 
 	result, err := c.AttendanceUseCase.ClockOut(ctx.UserContext(), request)
 	if err != nil {
-		c.Log.WithError(err).Error("failed to check out attendance")
+		c.Log.WithError(err).Error("failed to check in")
 		return err
 	}
 
-	return ctx.JSON(response.WebResponse[*model.AttendanceResponse]{Data: result})
+	return ctx.JSON(response.WebResponse[*model.AttendanceResponse]{
+		Data: result,
+	})
+
+	// request, err := c.parseRequest(ctx)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// result, err := c.AttendanceUseCase.ClockOut(ctx.UserContext(), request)
+	// if err != nil {
+	// 	c.Log.WithError(err).Error("failed to check out attendance")
+	// 	return err
+	// }
+
+	// return ctx.JSON(response.WebResponse[*model.AttendanceResponse]{Data: result})
 }
 
 func (c *AttendanceController) BreakIn(ctx *fiber.Ctx) error {
