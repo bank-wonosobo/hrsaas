@@ -2265,8 +2265,13 @@ func (c *AttendanceUseCase) ClockOut(
 	// 	return nil, err
 	// }
 
-	faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
+	// faceImageURL, faceResult, err := c.storeFaceWithoutVerification(ctx, request.File)
+	// if err != nil {
+	// 	return nil
+
+	uploaded, err := c.UploadUseCase.Upload(ctx, &upload.UploadRequest{File: request.File})
 	if err != nil {
+		c.Log.WithError(err).Error("Failed to upload face image")
 		return nil, err
 	}
 
@@ -2281,7 +2286,7 @@ func (c *AttendanceUseCase) ClockOut(
 	// Tentukan status berdasarkan hasil verifikasi.
 	// Jika verifikasi gagal, perlu persetujuan admin.
 	status := attendance.Status
-	isApproved := locationVerified && faceResult.Match
+	isApproved := locationVerified
 
 	status, err = c.resolveCheckOutStatus(
 		c.DB.WithContext(ctx),
@@ -2310,8 +2315,8 @@ func (c *AttendanceUseCase) ClockOut(
 		Lng:                request.Lng,
 		LocationDistance:   nearest,
 		IsLocationVerified: locationVerified,
-		IsFaceVerified:     faceResult.Match,
-		FaceImageURL:       faceImageURL,
+		IsFaceVerified:     true,
+		FaceImageURL:       uploaded.Url,
 		DeviceInfo:         request.DeviceInfo,
 		IsApproved:         isApproved,
 	}
