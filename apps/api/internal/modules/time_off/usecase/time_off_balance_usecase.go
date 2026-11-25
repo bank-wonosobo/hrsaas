@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	employeeRepo "hrsaas/internal/modules/employee/repository"
 	"hrsaas/internal/modules/time_off/entity"
 	"hrsaas/internal/modules/time_off/model"
 	"hrsaas/internal/modules/time_off/repository"
@@ -18,6 +19,7 @@ type TimeOffBalanceUseCase struct {
 	Validate           *validator.Validate
 	TimeOffBalanceRepo *repository.TimeOffBalanceRepository
 	TimeOffTypeRepo    *repository.TimeOffTypeRepository
+	EmployeeRepo       *employeeRepo.EmployeeRepository
 }
 
 func NewTimeOffBalanceUseCase(
@@ -26,6 +28,7 @@ func NewTimeOffBalanceUseCase(
 	validate *validator.Validate,
 	timeOffBalanceRepo *repository.TimeOffBalanceRepository,
 	timeOffTypeRepo *repository.TimeOffTypeRepository,
+	employeeRepository *employeeRepo.EmployeeRepository,
 ) *TimeOffBalanceUseCase {
 	return &TimeOffBalanceUseCase{
 		DB:                 db,
@@ -33,6 +36,7 @@ func NewTimeOffBalanceUseCase(
 		Validate:           validate,
 		TimeOffBalanceRepo: timeOffBalanceRepo,
 		TimeOffTypeRepo:    timeOffTypeRepo,
+		EmployeeRepo:       employeeRepository,
 	}
 }
 
@@ -136,6 +140,89 @@ func (c *TimeOffBalanceUseCase) SetBalance(
 	}
 
 	return model.TimeOffBalanceToResponse(item), nil
+}
+
+func (c *TimeOffBalanceUseCase) SetAllBalances(
+	ctx context.Context,
+	request *model.SetAllTimeOffBalancesRequest,
+) ([]model.TimeOffBalanceResponse, error) {
+	tx := c.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	if err := c.Validate.Struct(request); err != nil {
+		c.Log.WithError(err).Error("Failed to validate request body")
+		return nil, fiber.ErrBadRequest
+	}
+
+	// Validate time off type exists
+	if _, err := c.TimeOffTypeRepo.FindByID(tx, request.TimeOffTypeID); err != nil {
+		c.Log.WithError(err).Error("Time off type not found")
+		return nil, fiber.NewError(fiber.StatusBadRequest, "Time off type not found")
+	}
+
+	// Get all active employees for the company
+	employees, err := c.EmployeeRepo.ListActiveByCompany(tx, request.CompanyID)
+	if err != nil {
+		c.Log.WithError(err).Error("Failed to list active employees")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if len(employees) == 0 {
+		return nil, fiber.NewError(fiber.StatusNotFound, "No active employees found for this company")
+	}
+
+	var responses []model.TimeOffBalanceResponse
+
+	for _, emp := range employees {
+		// Check if balance already exists for this employee/type/year
+		item, err := c.TimeOffBalanceRepo.FindByEmployeeTypeYear(
+			tx,
+			emp.ID,
+			request.TimeOffTypeID,
+			request.PeriodYear,
+		)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			c.Log.WithError(err).Error("Failed to check existing balance")
+			return nil, fiber.ErrInternalServerError
+		}
+
+		if item == nil || err == gorm.ErrRecordNotFound {
+			// Create new balance
+			item = &entity.TimeOffBalance{
+				CompanyID:     request.CompanyID,
+				EmployeeID:    emp.ID,
+				TimeOffTypeId: request.TimeOffTypeID,
+				PeriodYear:    request.PeriodYear,
+				EntitledDays:  request.EntitledDays,
+				UsedDays:      0,
+				RemainingDays: request.EntitledDays,
+			}
+			if err := c.TimeOffBalanceRepo.Create(tx, item); err != nil {
+				c.Log.WithError(err).Error("Failed to create time off balance")
+				return nil, fiber.ErrInternalServerError
+			}
+		} else {
+			// Update existing balance — recalculate remaining based on new entitled
+			item.EntitledDays = request.EntitledDays
+			item.RemainingDays = request.EntitledDays - item.UsedDays
+			if item.RemainingDays < 0 {
+				item.RemainingDays = 0
+			}
+			if err := c.TimeOffBalanceRepo.Update(tx, item); err != nil {
+				c.Log.WithError(err).Error("Failed to update time off balance")
+				return nil, fiber.ErrInternalServerError
+			}
+		}
+
+		responses = append(responses, *model.TimeOffBalanceToResponse(item))
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		c.Log.WithError(err).Error("Failed to commit transaction")
+		return nil, fiber.ErrInternalServerError
+	}
+
+	return responses, nil
 }
 
 func (c *TimeOffBalanceUseCase) Detail(

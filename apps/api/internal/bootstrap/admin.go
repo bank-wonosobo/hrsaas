@@ -324,6 +324,7 @@ func BootstrapAdmin(cfg *AdminBootstrapConfig) {
 		cfg.Validator,
 		timeOffBalanceRepository,
 		timeOffTypeRepository,
+		employeeRepository,
 	)
 	timeOffRequestUseCase := timeOffUc.NewTimeOffRequestUseCase(
 		cfg.DB,
